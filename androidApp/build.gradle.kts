@@ -81,6 +81,15 @@ android {
         }
     }
 
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            isUniversalApk = true
+            include(*abis)
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true
@@ -89,14 +98,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            splits {
-                abi {
-                    isEnable = true
-                    reset()
-                    isUniversalApk = true
-                    include(*abis)
-                }
-            }
         }
         debug {
             isMinifyEnabled = false
@@ -116,7 +117,7 @@ android {
         buildConfig = true
     }
     packaging {
-        jniLibs.useLegacyPackaging = true
+        jniLibs.useLegacyPackaging = false
         jniLibs.excludes +=
             listOf(
                 "META-INF/META-INF/DEPENDENCIES",

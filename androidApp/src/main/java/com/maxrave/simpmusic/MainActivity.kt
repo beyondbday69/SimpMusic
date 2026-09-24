@@ -188,67 +188,83 @@ class MainActivity : AppCompatActivity() {
                 ),
         )
         viewModel.checkIsRestoring()
-        val request =
-            PeriodicWorkRequestBuilder<NotifyWork>(
-                12L,
-                TimeUnit.HOURS,
-            ).addTag("Worker Test")
-                .setConstraints(
-                    Constraints
-                        .Builder()
-                        .setRequiredNetworkType(NetworkType.CONNECTED)
-                        .build(),
-                ).build()
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "Artist Worker",
-            ExistingPeriodicWorkPolicy.KEEP,
-            request,
-        )
+        try {
+            val request =
+                PeriodicWorkRequestBuilder<NotifyWork>(
+                    12L,
+                    TimeUnit.HOURS,
+                ).addTag("Worker Test")
+                    .setConstraints(
+                        Constraints
+                            .Builder()
+                            .setRequiredNetworkType(NetworkType.CONNECTED)
+                            .build(),
+                    ).build()
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                "Artist Worker",
+                ExistingPeriodicWorkPolicy.KEEP,
+                request,
+            )
+        } catch (e: Throwable) {
+            Logger.e("MainActivity", "Failed to enqueue Artist Worker: ${e.message}")
+        }
+
         lifecycleScope.launch {
-            dataStoreManager.blogNotificationEnabled.collect { enabled ->
-                if (enabled == DataStoreManager.TRUE) {
-                    val rssRequest =
-                        PeriodicWorkRequestBuilder<RssFeedNotifyWork>(
-                            24L,
-                            TimeUnit.HOURS,
-                        ).addTag("Blog RSS Worker")
-                            .setConstraints(
-                                Constraints
-                                    .Builder()
-                                    .setRequiredNetworkType(NetworkType.CONNECTED)
-                                    .build(),
-                            ).build()
-                    WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
-                        "Blog RSS Worker",
-                        ExistingPeriodicWorkPolicy.KEEP,
-                        rssRequest,
-                    )
-                } else {
-                    WorkManager.getInstance(this@MainActivity).cancelUniqueWork("Blog RSS Worker")
+            try {
+                dataStoreManager.blogNotificationEnabled.collect { enabled ->
+                    if (enabled == DataStoreManager.TRUE) {
+                        val rssRequest =
+                            PeriodicWorkRequestBuilder<RssFeedNotifyWork>(
+                                24L,
+                                TimeUnit.HOURS,
+                            ).addTag("Blog RSS Worker")
+                                .setConstraints(
+                                    Constraints
+                                        .Builder()
+                                        .setRequiredNetworkType(NetworkType.CONNECTED)
+                                        .build(),
+                                ).build()
+                        WorkManager.getInstance(this@MainActivity).enqueueUniquePeriodicWork(
+                            "Blog RSS Worker",
+                            ExistingPeriodicWorkPolicy.KEEP,
+                            rssRequest,
+                        )
+                    } else {
+                        WorkManager.getInstance(this@MainActivity).cancelUniqueWork("Blog RSS Worker")
+                    }
                 }
+            } catch (e: Throwable) {
+                Logger.e("MainActivity", "Failed in blogNotificationWorker: ${e.message}")
             }
         }
 
-        if (!EasyPermissions.hasPermissions(this, Manifest.permission.POST_NOTIFICATIONS)) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                val doNotAsk = getString("notification_permission_do_not_ask")
-                if (doNotAsk != "true") {
-                    val wasAsked = getString("notification_permission_asked")
-                    if (wasAsked != "true") {
-                        // First time: request system permission
-                        EasyPermissions.requestPermissions(
-                            this,
-                            runBlocking { ComposeResUtils.getResString(ComposeResUtils.StringType.NOTIFICATION_REQUEST) },
-                            1,
-                            Manifest.permission.POST_NOTIFICATIONS,
-                        )
-                        putString("notification_permission_asked", "true")
-                    } else {
-                        // Already asked before: show custom dialog with "Don't show again"
-                        viewModel.showNotificationPermissionDialog()
+        try {
+            if (!EasyPermissions.hasPermissions(this, Manifest.permission.POST_NOTIFICATIONS)) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val doNotAsk = getString("notification_permission_do_not_ask")
+                    if (doNotAsk != "true") {
+                        val wasAsked = getString("notification_permission_asked")
+                        if (wasAsked != "true") {
+                            // First time: request system permission
+                            val rationale = runCatching {
+                                runBlocking { ComposeResUtils.getResString(ComposeResUtils.StringType.NOTIFICATION_REQUEST) }
+                            }.getOrDefault("This app needs notification access to show playback controls.")
+                            EasyPermissions.requestPermissions(
+                                this,
+                                rationale,
+                                1,
+                                Manifest.permission.POST_NOTIFICATIONS,
+                            )
+                            putString("notification_permission_asked", "true")
+                        } else {
+                            // Already asked before: show custom dialog with "Don't show again"
+                            viewModel.showNotificationPermissionDialog()
+                        }
                     }
                 }
             }
+        } catch (e: Throwable) {
+            Logger.e("MainActivity", "Failed to check or request notification permission: ${e.message}")
         }
         viewModel.getLocation()
 

@@ -50,10 +50,22 @@ class SimpMusicApplication :
 
     override fun onCreate() {
         super.onCreate()
-        configCrashlytics(this, BuildKonfig.sentryDsn)
-        configLastfm(BuildKonfig.lastfmApiKey, BuildKonfig.lastfmSecret)
+        if (BuildKonfig.sentryDsn.isNotEmpty()) {
+            try {
+                configCrashlytics(this, BuildKonfig.sentryDsn)
+            } catch (e: Throwable) {
+                Logger.e("SimpMusicApplication", "Crashlytics init failed: ${e.message}")
+            }
+        }
+        if (BuildKonfig.lastfmApiKey.isNotEmpty() && BuildKonfig.lastfmSecret.isNotEmpty()) {
+            try {
+                configLastfm(BuildKonfig.lastfmApiKey, BuildKonfig.lastfmSecret)
+            } catch (e: Throwable) {
+                Logger.e("SimpMusicApplication", "Lastfm init failed: ${e.message}")
+            }
+        }
         startKoin {
-            androidLogger(level = Level.DEBUG)
+            androidLogger(level = Level.INFO)
             androidContext(this@SimpMusicApplication)
             loadAllModules(
                 AppIdentity(
@@ -71,36 +83,54 @@ class SimpMusicApplication :
                 .setMinimumLoggingLevel(Log.INFO)
                 .build()
 
-        // initialize WorkManager
-        WorkManager.initialize(this, workConfig)
+        // initialize WorkManager safely
+        try {
+            if (!WorkManager.isInitialized()) {
+                WorkManager.initialize(this, workConfig)
+            }
+        } catch (e: Throwable) {
+            Logger.e("SimpMusicApplication", "WorkManager init failed: ${e.message}")
+        }
 
         // Initialize and start AutoBackupScheduler
-        autoBackupScheduler = AutoBackupScheduler(this, dataStoreManager)
-        applicationScope.launch {
-            autoBackupScheduler.observeAndSchedule()
+        try {
+            autoBackupScheduler = AutoBackupScheduler(this, dataStoreManager)
+            applicationScope.launch {
+                autoBackupScheduler.observeAndSchedule()
+            }
+        } catch (e: Throwable) {
+            Logger.e("SimpMusicApplication", "AutoBackupScheduler init failed: ${e.message}")
         }
 
         CaocConfig.Builder
             .create()
-            .backgroundMode(CaocConfig.BACKGROUND_MODE_SILENT) // default: CaocConfig.BACKGROUND_MODE_SHOW_CUSTOM
+            .backgroundMode(CaocConfig.BACKGROUND_MODE_SHOW_CUSTOM) // default: CaocConfig.BACKGROUND_MODE_SHOW_CUSTOM
             .enabled(true) // default: true
             .showErrorDetails(true) // default: true
             .showRestartButton(true) // default: true
             .errorDrawable(R.mipmap.ic_launcher_round)
-            .logErrorOnRestart(false) // default: true
+            .logErrorOnRestart(true) // default: true
             .trackActivities(true) // default: false
             .minTimeBetweenCrashesMs(2000) // default: 3000 //default: bug image
             .restartActivity(MainActivity::class.java) // default: null (your app's launch activity)
             .apply()
 
-        @SuppressLint("DiscouragedPrivateApi")
-        val field: Field = CursorWindow::class.java.getDeclaredField("sCursorWindowSize")
-        field.isAccessible = true
-        val expectSize = 100 * 1024 * 1024
-        field.set(null, expectSize)
+        try {
+            @SuppressLint("DiscouragedPrivateApi")
+            val field: Field = CursorWindow::class.java.getDeclaredField("sCursorWindowSize")
+            field.isAccessible = true
+            val expectSize = 100 * 1024 * 1024
+            field.set(null, expectSize)
+        } catch (e: Throwable) {
+            Logger.w("SimpMusicApplication", "CursorWindow sCursorWindowSize reflection unavailable on this Android version: ${e.message}")
+        }
 
-        AppContext.apply {
-            set(applicationContext)
+        try {
+            AppContext.apply {
+                set(applicationContext)
+            }
+        } catch (e: Throwable) {
+            Logger.e("SimpMusicApplication", "AppContext init failed: ${e.message}")
         }
     }
 
