@@ -477,7 +477,7 @@ fun App(
                                     .height(60.dp)
                                     .widthIn(max = 560.dp)
                                     .fillMaxWidth(if (isTablet) 0.65f else 0.94f)
-                                    .padding(bottom = 6.dp, horizontal = 16.dp),
+                                    .padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
                                 backdrop = backdrop,
                                 onClick = {
                                     isShowNowPlaylistScreen = true
