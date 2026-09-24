@@ -38,11 +38,19 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Setup local.properties
+        run: |
+          touch ./local.properties
+          echo 'SENTRY_DSN=""' >> ./local.properties
+          echo "SENTRY_AUTH_TOKEN=" >> ./local.properties
+          echo "LASTFM_API_KEY=" >> ./local.properties
+          echo "LASTFM_SECRET=" >> ./local.properties
+
       - name: Export Library Definitions
         run: ./gradlew exportLibraryDefinitions
 
       - name: Compile and Verify Compose UI
-        run: ./gradlew :composeApp:compileKotlinJvm :composeApp:compileDebugKotlinAndroid
+        run: ./gradlew :composeApp:compileKotlinJvm :composeApp:compileKotlinAndroid
 
       - name: Upload Build Reports on Failure
         if: failure()
