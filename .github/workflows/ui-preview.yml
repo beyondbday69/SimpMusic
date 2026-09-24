@@ -1,4 +1,4 @@
-name: UI Previews & Verification
+name: Build & Preview SimpMusic
 
 on:
   workflow_dispatch:
@@ -6,21 +6,17 @@ on:
     branches:
       - main
       - dev
-    paths:
-      - 'composeApp/**'
-      - 'core/**'
-      - '.github/workflows/ui-preview.yml'
   pull_request:
     branches:
       - main
       - dev
-    paths:
-      - 'composeApp/**'
-      - 'core/**'
+
+permissions:
+  contents: write
 
 jobs:
-  ui-verification:
-    name: Verify UI & Layouts
+  build-and-preview:
+    name: Build APK & Verify UI
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -52,6 +48,26 @@ jobs:
 
       - name: Compile and Verify Compose UI
         run: ./gradlew :composeApp:compileKotlinJvm
+
+      - name: Build Android App (APK)
+        run: ./gradlew :androidApp:assembleDebug
+
+      - name: Upload Android APK Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SimpMusic-debug-apk
+          path: androidApp/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release with APK
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
+          gh release create "$TAG" androidApp/build/outputs/apk/debug/*.apk \
+            --title "SimpMusic with Bottom Center Dock ($TAG)" \
+            --notes "Downloadable Android APK with redesigned floating bottom-center dock and tablet layout optimizations." \
+            --prerelease || true
 
       - name: Upload Build Reports on Failure
         if: failure()
