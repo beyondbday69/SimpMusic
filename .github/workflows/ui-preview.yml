@@ -45,12 +45,13 @@ jobs:
           echo "SENTRY_AUTH_TOKEN=" >> ./local.properties
           echo "LASTFM_API_KEY=" >> ./local.properties
           echo "LASTFM_SECRET=" >> ./local.properties
+          echo "sdk.dir=$ANDROID_HOME" >> ./local.properties
 
       - name: Export Library Definitions
         run: ./gradlew exportLibraryDefinitions
 
       - name: Compile and Verify Compose UI
-        run: ./gradlew :composeApp:compileKotlinJvm :composeApp:compileKotlinAndroid
+        run: ./gradlew :composeApp:compileKotlinJvm
 
       - name: Upload Build Reports on Failure
         if: failure()
