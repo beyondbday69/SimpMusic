@@ -128,7 +128,7 @@ fun MoreAlbumsScreen(
                 TopAppBar(
                     modifier =
                         Modifier
-                            .hazeBlur(HazeInput.Sources(hazeState), HazeMaterials.ultraThin().then { blurEnabled(true) }),
+                            .background(MaterialTheme.colorScheme.background),
                     title = {
                         Text(
                             text = state.title,

@@ -448,8 +448,8 @@ fun LibraryScreen(
     }
     Column(
         Modifier
-            .background(Color.Transparent)
-            .hazeBlur(HazeInput.Sources(hazeState), HazeMaterials.ultraThin().then { blurEnabled(true) }).onGloballyPositioned { coordinates ->
+            .background(MaterialTheme.colorScheme.background)
+            .onGloballyPositioned { coordinates ->
                 topAppBarHeight = with(density) { coordinates.size.height.toDp() }
             },
     ) {
@@ -463,7 +463,7 @@ fun LibraryScreen(
             },
             colors =
                 TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
+                    containerColor = MaterialTheme.colorScheme.background,
                 ),
             navigationIcon = {
                 AnimatedVisibility(

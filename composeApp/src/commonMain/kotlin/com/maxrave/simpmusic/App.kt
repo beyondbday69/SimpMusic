@@ -470,7 +470,7 @@ fun App(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         AnimatedVisibility(
-                            isShowMiniPlayer && isLiquidGlassEnabled == DataStoreManager.FALSE,
+                            isShowMiniPlayer,
                             enter = fadeIn() + slideInVertically { it },
                             exit = fadeOut() + slideOutVertically { it },
                         ) {
@@ -490,35 +490,13 @@ fun App(
                                 },
                             )
                         }
-                        if (isTablet) {
-                            // Sleek modern floating dock in bottom center for tablets
-                            AppBottomDock(
-                                navController = navController,
-                                showAnalyticsTab = showAnalyticsTab,
-                                showMixForYouTab = showMixForYouTab,
-                            ) { klass ->
-                                viewModel.reloadDestination(klass)
-                            }
-                        } else if (isLiquidGlassEnabled == TRUE) {
-                            LiquidGlassAppBottomNavigationBar(
-                                navController = navController,
-                                backdrop = backdrop,
-                                viewModel = viewModel,
-                                onOpenNowPlaying = { isShowNowPlaylistScreen = true },
-                                isScrolledToTop = isScrolledToTop,
-                                showAnalyticsTab = showAnalyticsTab,
-                                showMixForYouTab = showMixForYouTab,
-                            ) { klass ->
-                                viewModel.reloadDestination(klass)
-                            }
-                        } else {
-                            AppBottomDock(
-                                navController = navController,
-                                showAnalyticsTab = showAnalyticsTab,
-                                showMixForYouTab = showMixForYouTab,
-                            ) { klass ->
-                                viewModel.reloadDestination(klass)
-                            }
+                        // Sleek modern floating dock with solid color rendering
+                        AppBottomDock(
+                            navController = navController,
+                            showAnalyticsTab = showAnalyticsTab,
+                            showMixForYouTab = showMixForYouTab,
+                        ) { klass ->
+                            viewModel.reloadDestination(klass)
                         }
                     }
                 }

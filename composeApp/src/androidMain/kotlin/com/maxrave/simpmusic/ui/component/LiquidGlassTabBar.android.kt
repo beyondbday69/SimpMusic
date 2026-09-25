@@ -197,64 +197,20 @@ fun LiquidGlassTabBar(
         // 1) Dark frosted glass capsule — the exact same glass the MiniPlayer uses, so the bottom
         // bar and the mini player read as one material (drawInteractiveGlass, no white veil).
         // barInteraction makes the whole capsule respond to a press (scale + touch glow) like iOS;
-        // it's observe-only, so tab taps and the blob drag keep working.
-        Box(Modifier.matchParentSize().drawInteractiveGlass(isDark, backdrop, layer, luminance, CapsuleShape, barInteraction))
+        // 1) Backing bar surface — solid color rendering
+        Box(Modifier.matchParentSize().clip(CapsuleShape).background(MaterialTheme.colorScheme.surfaceContainer))
 
-        // 2) Frosted blob selection indicator — slides behind the icons.
+        // 2) Selection indicator pill — slides behind the icons
         Box(
             Modifier
                 .graphicsLayer {
-                    // Per-tab slot start, no inset: the pill is exactly one tab wide, so any bias
-                    // here shifts it off its own tab (it used to be inset 4dp to match a pill that
-                    // was 8dp narrower than the slot).
                     translationX =
                         (if (isLtr) dampedDrag.value else (tabsCount - 1) - dampedDrag.value) * tabWidthPx +
                         BarInset.toPx()
-                }.drawBackdrop(
-                    backdrop = backdrop,
-                    shape = { CapsuleShape },
-                    effects = {
-                        // Luminance only drives the blur here (frosted pill); brightness/contrast stay
-                        // neutral and the "đục đen" darkening is applied in onDrawSurface.
-                        val l = (luminance * 2f - 1f).let { sign(it) * it * it }
-                        val progress = dampedDrag.pressProgress
-                        vibrancy()
-                        colorControls(
-                            brightness = 0.05f,
-                            contrast = 1f,
-                            saturation = 1.5f,
-                        )
-                        blur(
-                            // Stronger than the bar's blur so the active pill reads as a clearly
-                            // frosted surface (the previous amount was too weak / too close to the bar).
-                            (if (l > 0f) lerp(8f.dp.toPx(), 16f.dp.toPx(), l) else lerp(8f.dp.toPx(), 2f.dp.toPx(), -l)) +
-                                20f.dp.toPx(),
-                        )
-                        lens(10f.dp.toPx() * progress, 14f.dp.toPx() * progress, chromaticAberration = true)
-                    },
-                    highlight = { Highlight.Default.copy(alpha = 0.6f) },
-                    shadow = { Shadow(radius = 4f.dp, alpha = 0.4f) },
-                    innerShadow = {
-                        val progress = dampedDrag.pressProgress
-                        InnerShadow(radius = 8f.dp * progress, alpha = progress)
-                    },
-                    layerBlock = {
-                        scaleX = dampedDrag.scaleX
-                        scaleY = dampedDrag.scaleY
-                        val velocity = dampedDrag.velocity / 10f
-                        scaleX /= 1f - (velocity * 0.75f).fastCoerceIn(-0.2f, 0.2f)
-                        scaleY *= 1f - (velocity * 0.25f).fastCoerceIn(-0.2f, 0.2f)
-                    },
-                    onDrawSurface = {
-                        // Active pill sits a touch above the bar. Dark theme: "đục đen" (black veil that
-                        // scales with the backdrop). Light theme: only a faint grey so the pill stays
-                        // clearly lighter than a heavy slab — the highlight/shadow do the separating.
-                        val lumNorm = ((luminance - 0.3f) / 0.5f).coerceIn(0f, 1f)
-                        val darken =
-                            if (isDark) lerp(0.22f, 0.55f, lumNorm) else lerp(0.06f, 0.14f, lumNorm)
-                        drawRect(Color.Black.copy(alpha = darken))
-                    },
-                ).width(tabWidth)
+                }
+                .clip(CapsuleShape)
+                .background(MaterialTheme.colorScheme.primaryContainer)
+                .width(tabWidth)
                 .height(BlobHeight),
         )
 

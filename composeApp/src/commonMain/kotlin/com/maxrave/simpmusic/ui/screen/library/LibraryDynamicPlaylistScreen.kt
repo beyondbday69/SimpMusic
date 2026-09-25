@@ -636,10 +636,10 @@ fun LibraryDynamicPlaylistScreen(
                 },
                 modifier =
                     Modifier
-                        .hazeBlur(HazeInput.Sources(hazeState), HazeMaterials.ultraThin().then { blurEnabled(true) }),
+                        .background(MaterialTheme.colorScheme.background),
                 colors =
                     TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent,
+                        containerColor = MaterialTheme.colorScheme.background,
                     ),
             )
             // Drawn last inside the same Box, with an opaque colour, so it covers the normal bar

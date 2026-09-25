@@ -542,10 +542,10 @@ fun barBlurStyle(
     tintAlpha: Float,
 ): HazeBlurStyle =
     HazeBlurStyle {
-        blurEnabled(true)
-        blurRadius(24.dp)
+        blurEnabled(false)
+        blurRadius(0.dp)
         backgroundColor(tint)
-        colorEffects(listOf(HazeColorEffect.tint(tint.copy(alpha = tintAlpha))))
+        colorEffects(listOf(HazeColorEffect.tint(tint)))
     }
 
 /**

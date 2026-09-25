@@ -51,8 +51,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -677,9 +675,6 @@ internal fun BoxScope.AppleMusicArtworkBackdrop(
     // The palette still needs a bitmap, and it comes off this same load. One source, so the
     // frosted art and the tint over it cannot end up belonging to different songs.
     //
-    // The heavy blur radius is safe because the whole style is gated behind Android 12 for
-    // exactly this reason (isLyricsBlurSupported), and Crop + fillMaxSize means the artwork is
-    // scaled far past its own resolution — at this blur that costs nothing visually.
     if (!backdropUrl.isNullOrBlank()) {
         AsyncImage(
             model =
@@ -698,13 +693,11 @@ internal fun BoxScope.AppleMusicArtworkBackdrop(
                 val fallback = backdropUrl?.replace("maxresdefault", "hqdefault")
                 if (fallback != null && fallback != backdropUrl) backdropUrl = fallback
             },
-            modifier = Modifier.fillMaxSize().blur(BACKDROP_BLUR_RADIUS, BlurredEdgeTreatment.Unbounded),
+            modifier = Modifier.size(1.dp).alpha(0.001f),
         )
     }
-    // The tint still rides on top, but as a translucent wash rather than the whole background:
-    // it keeps the vertical darkening that makes the controls readable at the bottom, while the
-    // frosted artwork shows through it.
-    Box(modifier = Modifier.fillMaxSize().alpha(BACKDROP_TINT_ALPHA).background(backdropBrush))
+    // Solid dynamic color rendering from the track's palette: zero GPU blur passes
+    Box(modifier = Modifier.fillMaxSize().background(backdropBrush))
 }
 
 @Composable
@@ -1005,14 +998,7 @@ private fun AppleMusicArtworkPage(
     }
 }
 
-// Radius of the frosted cover art behind the page. Large enough that no detail of the artwork
-// survives as a shape — what is left is its colour and its broad light and dark areas, which is
-// precisely what Apple's background is.
-private val BACKDROP_BLUR_RADIUS = 80.dp
 
-// How much of the artwork-derived gradient sits over the frosted art. Enough to darken the page
-// towards the bottom so the transport stays readable; not so much that it hides the art again.
-private const val BACKDROP_TINT_ALPHA = 0.62f
 
 // How long the LYRICS tab waits for a track's lyrics before deciding the track has none. Long
 // enough to cover a normal fetch on a normal connection, short enough that a song with no lyrics

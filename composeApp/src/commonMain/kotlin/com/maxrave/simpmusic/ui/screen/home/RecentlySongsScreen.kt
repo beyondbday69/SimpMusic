@@ -234,7 +234,7 @@ fun RecentlySongsScreen(
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
-                    .hazeBlur(HazeInput.Sources(hazeState), HazeMaterials.ultraThin().then { blurEnabled(true) }),
+                    .background(MaterialTheme.colorScheme.background),
             title = {
                 Text(
                     text = stringResource(Res.string.recently_added),

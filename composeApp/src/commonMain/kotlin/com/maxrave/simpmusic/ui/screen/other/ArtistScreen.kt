@@ -360,7 +360,6 @@ fun ArtistScreen(
                                                     modifier =
                                                         Modifier
                                                             .fillMaxSize()
-                                                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
                                                             .drawWithContent {
                                                                 drawContent()
                                                                 drawRect(
@@ -372,7 +371,7 @@ fun ArtistScreen(
                                                                         ),
                                                                     blendMode = BlendMode.DstIn,
                                                                 )
-                                                            }.blur(32.dp),
+                                                            },
                                                 )
                                             }
                                             // Canvas (Spotify) plays AS the background when present;

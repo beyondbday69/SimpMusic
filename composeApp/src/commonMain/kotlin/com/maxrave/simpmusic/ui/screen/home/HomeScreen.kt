@@ -807,8 +807,7 @@ fun HomeScreen(
                             if (target) {
                                 Modifier.background(Color.Transparent)
                             } else {
-                                Modifier
-                                    .hazeBlur(HazeInput.Sources(hazeState), HazeMaterials.ultraThin().then { blurEnabled(true) })
+                                Modifier.background(MaterialTheme.colorScheme.background)
                             },
                         ).onGloballyPositioned { coordinates ->
                             topAppBarHeightPx = coordinates.size.height

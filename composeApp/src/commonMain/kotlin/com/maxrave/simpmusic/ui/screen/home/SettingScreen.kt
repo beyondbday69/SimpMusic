@@ -3417,10 +3417,7 @@ fun SettingScreen(
                         if (atTop) {
                             Modifier
                         } else {
-                            // The house recipe from AlbumScreen's bars, thinned: ultraThin's built-in
-                            // tint stacked on this page's dark ground read as a solid lid. 0.3 keeps
-                            // the blur doing the work and the tint only settling legibility.
-                            Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(settingBarTint, 0.3f))
+                            Modifier.background(settingBarTint)
                         },
                     ),
             colors =

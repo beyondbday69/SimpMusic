@@ -296,16 +296,9 @@ fun MiniPlayer(
         // the Card's own background draw, so the larger radius wins and silently becomes the
         // visible one.
         val miniPlayerShape = CircleShape
-        // Without glass the card follows the theme, not the playing artwork.
-        val cardColor =
-            if (isLiquidGlassEnabled == DataStoreManager.TRUE) {
-                Color.Transparent
-            } else {
-                // Same 85% as the bottom bar capsule, so the two floating surfaces read as one set.
-                MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.85f)
-            }
-        // The flat (default) card: round artwork and controls sitting in filled circles. Glass keeps its own look.
-        val isFlat = isLiquidGlassEnabled != DataStoreManager.TRUE
+        // Solid color rendering without blur/translucency for maximum performance
+        val cardColor = MaterialTheme.colorScheme.surfaceContainer
+        val isFlat = true
         Card(
             shape = miniPlayerShape,
             colors =
@@ -314,15 +307,8 @@ fun MiniPlayer(
                     disabledContainerColor = cardColor,
                 ),
             modifier =
-                modifier
-                    .then(
-                        if (isLiquidGlassEnabled == DataStoreManager.TRUE) {
-                            Modifier.liquidGlass(backdrop, layer, luminanceAnimation.value, RoundedCornerShape(16.dp))
-                        } else {
-                            Modifier
-                        },
-                    ).then(
-                        Modifier
+                modifier.then(
+                    Modifier
                             .clip(miniPlayerShape)
                             .offset { IntOffset(0, offsetY.value.roundToInt()) }
                             .clickable(
@@ -691,8 +677,8 @@ fun MiniPlayer(
         val density = LocalDensity.current
         Box(
             modifier
-                .liquidGlass(backdrop, layer, luminanceAnimation.value, capsuleShape, blurScale = 1.2f)
                 .clip(capsuleShape)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .clickable {
                     onClick()
                 },

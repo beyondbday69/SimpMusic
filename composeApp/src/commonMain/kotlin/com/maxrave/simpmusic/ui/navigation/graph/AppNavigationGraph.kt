@@ -26,11 +26,13 @@ import com.maxrave.simpmusic.ui.navigation.destination.home.AnalyticsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.home.HomeDestination
 import com.maxrave.simpmusic.ui.navigation.destination.home.WrappedDestination
 import com.maxrave.simpmusic.ui.theme.ForceDarkContent
+import com.maxrave.simpmusic.ui.navigation.destination.home.SettingsDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.LibraryDestination
 import com.maxrave.simpmusic.ui.navigation.destination.library.MixForYouDestination
 import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.navigation.destination.search.SearchDestination
 import com.maxrave.simpmusic.ui.screen.home.HomeScreen
+import com.maxrave.simpmusic.ui.screen.home.SettingScreen
 import com.maxrave.simpmusic.ui.screen.home.analytics.AnalyticsScreen
 import com.maxrave.simpmusic.ui.screen.home.wrapped.WrappedScreen
 import com.maxrave.simpmusic.ui.screen.library.LibraryScreen
@@ -46,6 +48,7 @@ private fun getTopLevelTabIndex(destination: NavDestination?): Int {
         destination.hierarchy.any { it.hasRoute(LibraryDestination::class) } -> 2
         destination.hierarchy.any { it.hasRoute(MixForYouDestination::class) } -> 3
         destination.hierarchy.any { it.hasRoute(AnalyticsDestination::class) } -> 4
+        destination.hierarchy.any { it.hasRoute(SettingsDestination::class) } -> 5
         else -> -1
     }
 }
@@ -63,30 +66,20 @@ fun AppNavigationGraph(
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
     val topLevelEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
-        val initialIdx = getTopLevelTabIndex(initialState.destination)
-        val targetIdx = getTopLevelTabIndex(targetState.destination)
-        if (initialIdx >= 0 && targetIdx >= 0 && initialIdx != targetIdx) {
-            val direction = if (targetIdx > initialIdx) 1 else -1
-            slideInHorizontally(
-                animationSpec = tween(180, easing = FastOutSlowInEasing),
-                initialOffsetX = { fullWidth -> (fullWidth * 0.08f * direction).toInt() },
-            ) + fadeIn(animationSpec = tween(160, easing = FastOutSlowInEasing))
-        } else {
-            fadeIn(animationSpec = tween(150, easing = FastOutSlowInEasing))
-        }
+        fadeIn(
+            animationSpec = tween(
+                durationMillis = 200,
+                easing = LinearOutSlowInEasing,
+            ),
+        )
     }
     val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
-        val initialIdx = getTopLevelTabIndex(initialState.destination)
-        val targetIdx = getTopLevelTabIndex(targetState.destination)
-        if (initialIdx >= 0 && targetIdx >= 0 && initialIdx != targetIdx) {
-            val direction = if (targetIdx > initialIdx) -1 else 1
-            slideOutHorizontally(
-                animationSpec = tween(160, easing = FastOutSlowInEasing),
-                targetOffsetX = { fullWidth -> (fullWidth * 0.08f * direction).toInt() },
-            ) + fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing))
-        } else {
-            fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing))
-        }
+        fadeOut(
+            animationSpec = tween(
+                durationMillis = 150,
+                easing = FastOutLinearInEasing,
+            ),
+        )
     }
 
     NavHost(
@@ -165,6 +158,17 @@ fun AppNavigationGraph(
                     innerPadding = innerPadding,
                 )
             }
+        }
+        composable<SettingsDestination>(
+            enterTransition = topLevelEnterTransition,
+            exitTransition = topLevelExitTransition,
+            popEnterTransition = topLevelEnterTransition,
+            popExitTransition = topLevelExitTransition,
+        ) {
+            SettingScreen(
+                navController = navController,
+                innerPadding = innerPadding,
+            )
         }
         // Reached only from the Analytics screen's entry banner, so it inherits that screen's
         // gate on local tracking. ForceDarkContent for a different reason than Analytics: the reel

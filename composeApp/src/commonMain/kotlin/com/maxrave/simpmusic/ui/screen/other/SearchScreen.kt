@@ -980,7 +980,7 @@ fun SearchScreen(
                             if (atTop) {
                                 Modifier.background(Color.Transparent)
                             } else {
-                                Modifier.hazeBlur(HazeInput.Sources(hazeState), HazeMaterials.ultraThin().then { blurEnabled(true) })
+                                Modifier.background(MaterialTheme.colorScheme.background)
                             },
                         ).windowInsetsPadding(WindowInsets.statusBars)
                         .padding(vertical = 10.dp),

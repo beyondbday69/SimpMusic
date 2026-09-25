@@ -77,42 +77,13 @@ fun Modifier.liquidGlass(
     shape: Shape = CircleShape,
     interactive: Boolean = true,
     highlight: Highlight = Highlight.Default,
-): Modifier {
-    // With the setting off, every glass surface falls back to the flat translucent pill the detail
-    // screens used before the migration (surfaceContainerHighest @ 80%) — shape and hit target
-    // unchanged, only the draw. Gated HERE, at the shared primitive, because none of the ~15 call
-    // sites across Album/Playlist/Artist/LocalPlaylist/Analytics ever read the setting themselves:
-    // the flag used to reach only the nav bar and the MiniPlayer, which branch before composing
-    // glass at all. Desktop never takes this path — AppTheme provides true there unconditionally.
-    if (!LocalLiquidGlassEnabled.current) {
-        return this
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.8f))
-    }
-    val isDark = LocalIsDarkTheme.current
-    val layer = rememberGraphicsLayer()
-    val interaction = rememberGlassInteraction()
-    return this.drawInteractiveGlass(
-        isDark = isDark,
-        backdrop = backdrop,
-        layer = layer,
-        luminanceAnimation = 0.5f,
-        shape = shape,
-        interaction = if (interactive) interaction else null,
-        highlight = highlight,
-    )
+    return this
+        .clip(shape)
+        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
 }
 
 /**
- * Overload of [liquidGlass] for surfaces that sample their own background luminance
- * (e.g. the MiniPlayer and the bottom bar capsule): the caller owns the [layer] the
- * glass records into and drives [luminanceAnimation], so the glass keeps adapting to
- * the content behind it — unlike the [liquidGlass] above, which uses a fixed
- * mid-luminance.
- *
- * [blurScale], [minScrim] and [maxScrim] forward to [drawInteractiveGlass]; their
- * defaults reproduce the shared look, so only a caller that wants a denser pane
- * (the Desktop capsule) has to name them.
+ * Overload of [liquidGlass] for surfaces that sample their own background luminance.
  */
 @Composable
 fun Modifier.liquidGlass(
@@ -125,22 +96,9 @@ fun Modifier.liquidGlass(
     minScrim: Float = 0.12f,
     maxScrim: Float = 0.5f,
 ): Modifier {
-    val isDark = LocalIsDarkTheme.current
-    val interaction = rememberGlassInteraction()
-    return this.drawInteractiveGlass(
-        isDark = isDark,
-        backdrop = backdrop,
-        layer = layer,
-        luminanceAnimation = luminanceAnimation,
-        shape = shape,
-        interaction = if (interactive) interaction else null,
-        // MiniPlayer (the only caller of this layer + luminance overload) is a wide surface, so the
-        // shared 1.12 press scale bulges too hard; use a gentler scale here.
-        pressedScale = 1.04f,
-        blurScale = blurScale,
-        minScrim = minScrim,
-        maxScrim = maxScrim,
-    )
+    return this
+        .clip(shape)
+        .background(MaterialTheme.colorScheme.surfaceContainerHighest)
 }
 
 /**
@@ -267,84 +225,8 @@ fun Modifier.drawInteractiveGlass(
     maxScrim: Float = 0.5f,
 ): Modifier =
     this
-        .drawBackdrop(
-            backdrop = backdrop,
-            shape = { shape },
-            // Kyant's own default is Highlight.Default, whose HighlightStyle.Default is a
-            // DIRECTIONAL rim (angle 45°, falloff 1f) — it lights one side rather than the
-            // whole outline. That reads well on an elongated pill, whose long edge catches
-            // the sweep, and is nearly invisible on a small circle. Pass Highlight.Plain for
-            // a uniform rim all the way round.
-            highlight = { highlight },
-            effects = {
-                val l = (luminanceAnimation * 2f - 1f).let { sign(it) * it * it }
-                val press = interaction?.pressProgress ?: 0f
-                vibrancy()
-                colorControls(
-                    // Neutral brightness/contrast: the old curve brightened + washed the glass out
-                    // to white on bright backgrounds ("đục trắng"). Darkening is done in onDrawSurface.
-                    brightness = 0.05f,
-                    contrast = 1f,
-                    saturation = 1.5f,
-                )
-                blur(
-                    (
-                        if (l > 0f) {
-                            lerp(8f.dp.toPx(), 16f.dp.toPx(), l)
-                        } else {
-                            lerp(8f.dp.toPx(), 2f.dp.toPx(), -l)
-                        }
-                    ) * blurScale + 2f.dp.toPx() * press,
-                )
-                // refractionHeight stays below the stadium inradius (minDimension / 2) so the
-                // top and bottom refraction never meet at the medial axis — that meeting point on
-                // a wide pill is what produced the dark horizontal seam. depthEffect is off to
-                // match the crisp Kyant demo look and avoid the radial discontinuity at the centre.
-                lens(size.minDimension / 4f + 2f.dp.toPx() * press, size.minDimension / 2f, false)
-            },
-            onDrawBackdrop = { drawBackdrop ->
-                drawBackdrop()
-                layer.record { drawBackdrop() }
-            },
-            onDrawSurface = {
-                // Stay "đục đen": darken more as the background brightens so the glass never washes
-                // out to white (shared by the bottom bar capsule, search FAB and detail-screen pills).
-                val darken = lerp(minScrim, maxScrim, ((luminanceAnimation - 0.3f) / 0.5f).coerceIn(0f, 1f))
-                drawRect((if (isDark) Color.Black else Color.White).copy(alpha = darken))
-                val press = interaction?.pressProgress ?: 0f
-                if (press > 0f) {
-                    drawRect(
-                        brush =
-                            Brush.radialGradient(
-                                colors =
-                                    listOf(
-                                        Color.White.copy(alpha = 0.18f * press),
-                                        Color.Transparent,
-                                    ),
-                                center = interaction?.touchPosition ?: Offset(size.width / 2f, size.height / 2f),
-                                radius = size.minDimension * 1.2f,
-                            ),
-                        blendMode = BlendMode.Plus,
-                    )
-                }
-            },
-            layerBlock =
-                if (interaction != null) {
-                    {
-                        val scale = lerp(1f, pressedScale, interaction.pressProgress)
-                        scaleX = scale
-                        scaleY = scale
-                    }
-                } else {
-                    null
-                },
-        ).then(
-            if (interaction != null) {
-                Modifier.pointerInput(interaction) { interaction.detectPress(this) }
-            } else {
-                Modifier
-            },
-        )
+        .clip(shape)
+        .background(if (isDark) Color(0xFF2B2B2B) else Color(0xFFE8E8E8))
 
 /**
  * Observe-only drag/press recogniser ported from Kyant's catalog
