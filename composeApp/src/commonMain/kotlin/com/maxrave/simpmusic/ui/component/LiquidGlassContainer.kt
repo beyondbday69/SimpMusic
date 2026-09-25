@@ -77,6 +77,7 @@ fun Modifier.liquidGlass(
     shape: Shape = CircleShape,
     interactive: Boolean = true,
     highlight: Highlight = Highlight.Default,
+): Modifier {
     return this
         .clip(shape)
         .background(MaterialTheme.colorScheme.surfaceContainerHighest)
