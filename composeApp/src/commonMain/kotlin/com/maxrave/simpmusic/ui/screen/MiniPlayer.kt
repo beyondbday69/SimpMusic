@@ -327,6 +327,7 @@ fun MiniPlayer(
                             .offset { IntOffset(0, offsetY.value.roundToInt()) }
                             .clickable(
                                 onClick = onClick,
+                            )
                             .pointerInput(Unit) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
