@@ -78,11 +78,6 @@ import com.maxrave.simpmusic.viewModel.AnalyticsViewModel
 import com.maxrave.simpmusic.viewModel.LibraryDynamicPlaylistViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import com.maxrave.simpmusic.ui.screen.home.analytics.formatNumericSpan
 import com.maxrave.simpmusic.ui.screen.home.analytics.labelRes
 import kotlinx.datetime.LocalDate
@@ -151,9 +146,6 @@ fun LibraryDynamicPlaylistScreen(
     var tempTopTracks by remember { mutableStateOf(analyticsUIState.topTracks.data ?: emptyList()) }
     var tempTopArtists by remember { mutableStateOf(analyticsUIState.topArtists.data ?: emptyList()) }
     var tempTopAlbums by remember { mutableStateOf(analyticsUIState.topAlbums.data ?: emptyList()) }
-    val hazeState =
-        rememberHazeState()
-
     // The other lists are observed from the database and are already loaded by the time this
     // screen opens; a recap is one month's ranking, so it can only be fetched once the route says
     // which month. Keyed on the route argument rather than the parsed type so re-entering the same
@@ -194,7 +186,7 @@ fun LibraryDynamicPlaylistScreen(
     }
 
     LazyColumn(
-        modifier = Modifier.hazeSource(hazeState),
+        modifier = Modifier,
         contentPadding = innerPadding,
     ) {
         item {

@@ -85,7 +85,6 @@ import coil3.request.crossfade
 import coil3.toBitmap
 import com.kyant.backdrop.highlight.Highlight
 import com.kmpalette.rememberPaletteState
-import com.maxrave.simpmusic.extension.barBlurStyle
 import com.maxrave.simpmusic.ui.component.DownloadingIndicator
 import com.maxrave.domain.data.entities.DownloadState
 import com.maxrave.domain.data.model.browse.album.Track
@@ -137,10 +136,6 @@ import com.maxrave.simpmusic.viewModel.PlaylistViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -303,8 +298,6 @@ fun PlaylistScreen(
         shouldHideTopBar = !firstItemVisible
     }
     val paletteState = rememberPaletteState()
-    val hazeState =
-        rememberHazeState()
     var bitmap by remember {
         mutableStateOf<ImageBitmap?>(null)
     }
@@ -361,14 +354,12 @@ fun PlaylistScreen(
                 val data = state.data
                 Logger.d(tag, "data: $data")
                 if (data == null) return@Crossfade
-                val hazeState =
-                    rememberHazeState()
                 LazyColumn(
                     modifier =
                         Modifier
                             .fillMaxWidth()
                             .background(mutedPaletteBg)
-                            .hazeSource(hazeState),
+                            ,
                     state = lazyState,
                 ) {
                     if (!showSearchBar) {
@@ -1173,7 +1164,7 @@ fun PlaylistScreen(
                         Modifier
                             .fillMaxWidth()
                             .onGloballyPositioned { searchBarHeightPx = it.size.height }
-                            .hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                            .background(mutedPaletteBg),
                     ) {
                         Row(
                             modifier =
@@ -1243,7 +1234,7 @@ fun PlaylistScreen(
                         },
                         onOpenActions = { showSelectionSheet = true },
                         modifier =
-                            Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                            Modifier.background(mutedPaletteBg),
                     )
                 }
                 if (showSelectionSheet) {
@@ -1373,7 +1364,7 @@ fun PlaylistScreen(
                                 containerColor = Color.Transparent,
                             ),
                         modifier =
-                            Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                            Modifier.background(mutedPaletteBg),
                     )
                 }
             }

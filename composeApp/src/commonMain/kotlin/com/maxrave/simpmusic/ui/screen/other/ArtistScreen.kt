@@ -95,7 +95,6 @@ import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.expect.ui.toImageBitmap
 import com.maxrave.simpmusic.extension.artworkScrimBrush
-import com.maxrave.simpmusic.extension.barBlurStyle
 import com.maxrave.simpmusic.extension.getColorFromPalette
 import com.maxrave.simpmusic.extension.getScreenSizeInfo
 import com.maxrave.simpmusic.extension.getStringBlocking
@@ -139,10 +138,6 @@ import com.maxrave.simpmusic.viewModel.ArtistScreenState
 import com.maxrave.simpmusic.viewModel.ArtistViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
@@ -238,8 +233,6 @@ fun ArtistScreen(
     // Accent color for the action buttons, sourced from the artist name-logo image's dominant
     // color (hidden catalog). Falls back to white until the logo loads (or if none exists).
     val artistAccent = artistLogo?.bgColorHex?.hexToColorOrNull() ?: Color.White
-
-    val hazeState = rememberHazeState()
     val lazyState = rememberLazyListState()
     val firstItemVisible by remember {
         derivedStateOf { lazyState.firstVisibleItemIndex == 0 }
@@ -268,7 +261,7 @@ fun ArtistScreen(
                             Modifier
                                 .fillMaxWidth()
                                 .background(mutedPaletteBg)
-                                .hazeSource(hazeState),
+                                ,
                         state = lazyState,
                     ) {
                         item(contentType = "header") {
@@ -653,7 +646,7 @@ fun ArtistScreen(
                                     containerColor = Color.Transparent,
                                 ),
                             modifier =
-                                Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                                Modifier.background(mutedPaletteBg),
                         )
                     }
                 }

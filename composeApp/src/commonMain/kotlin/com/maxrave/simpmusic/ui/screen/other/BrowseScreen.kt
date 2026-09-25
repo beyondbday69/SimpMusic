@@ -60,7 +60,6 @@ import com.maxrave.domain.utils.toTrack
 import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.extension.angledGradientBackground
 import com.maxrave.simpmusic.extension.artworkScrimBrush
-import com.maxrave.simpmusic.extension.barBlurStyle
 import com.maxrave.simpmusic.extension.rgbFactor
 import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.AmbientGlowHeight
@@ -78,10 +77,6 @@ import com.maxrave.simpmusic.ui.theme.desktopPanelDark
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.BrowseUIState
 import com.maxrave.simpmusic.viewModel.BrowseViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.http.Url
@@ -116,7 +111,6 @@ fun BrowseScreen(
     viewModel: BrowseViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val hazeState = rememberHazeState()
     val listState = rememberLazyListState()
     // Mix for you's bar rule: transparent only while pixel 0 is on screen.
     val isAtTop by remember {
@@ -178,7 +172,7 @@ fun BrowseScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .hazeSource(hazeState),
+                ,
         ) {
             // Drawn before the list and scrolled away with it, as on Mix for you: the draw-phase
             // translation tracks the first row and parks once it has passed.
@@ -300,7 +294,7 @@ fun BrowseScreen(
                     if (atTop) {
                         Modifier.background(Color.Transparent)
                     } else {
-                        Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(pageBackground, 0.3f))
+                        Modifier.background(pageBackground)
                     },
                 ),
             ) {

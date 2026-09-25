@@ -44,11 +44,6 @@ import com.maxrave.simpmusic.ui.navigation.destination.list.MoreAlbumsDestinatio
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.MoreAlbumsUIState
 import com.maxrave.simpmusic.viewModel.MoreAlbumsViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
 
@@ -62,8 +57,6 @@ fun MoreAlbumsScreen(
     viewModel: MoreAlbumsViewModel = koinViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val hazeState = rememberHazeState()
-
     LaunchedEffect(id, type) {
         Logger.w("MoreAlbumsScreen", "id: $id, type: $type")
         if (id != null) {
@@ -94,7 +87,7 @@ fun MoreAlbumsScreen(
                     modifier =
                         Modifier
                             .fillMaxSize()
-                            .hazeSource(state = hazeState),
+                            ,
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {

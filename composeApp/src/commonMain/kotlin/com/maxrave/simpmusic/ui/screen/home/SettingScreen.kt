@@ -114,7 +114,6 @@ import com.maxrave.simpmusic.expect.ui.fileSaverResult
 import com.maxrave.simpmusic.expect.ui.isLyricsBlurSupported
 import com.maxrave.simpmusic.expect.ui.isWallpaperDynamicColorSupported
 import com.maxrave.simpmusic.expect.ui.openEqResult
-import com.maxrave.simpmusic.extension.barBlurStyle
 import com.maxrave.simpmusic.extension.bytesToMB
 import com.maxrave.simpmusic.extension.displayString
 import com.maxrave.simpmusic.extension.isTwoLetterCode
@@ -159,10 +158,6 @@ import com.mohamedrejeb.calf.io.getPath
 import com.mohamedrejeb.calf.picker.FilePickerFileType
 import com.mohamedrejeb.calf.picker.FilePickerSelectionMode
 import com.mohamedrejeb.calf.picker.rememberFilePickerLauncher
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.collections.immutable.toImmutableList
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -593,10 +588,6 @@ fun SettingScreen(
     val castState by viewModel.castState.collectAsStateWithLifecycle()
 
     val isCheckingUpdate by sharedViewModel.isCheckingUpdate.collectAsStateWithLifecycle()
-
-    val hazeState =
-        rememberHazeState()
-
     val checkForUpdateSubtitle by remember {
         derivedStateOf {
             if (isCheckingUpdate) {
@@ -664,7 +655,7 @@ fun SettingScreen(
         modifier =
             Modifier
                 .padding(horizontal = 16.dp)
-                .hazeSource(hazeState),
+                ,
     ) {
         item(key = "user_interface") {
             Column {

@@ -45,11 +45,6 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.LogInViewModel
 import com.maxrave.simpmusic.viewModel.SettingsViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
@@ -67,7 +62,6 @@ fun SpotifyLoginScreen(
     hideBottomNavigation: () -> Unit,
     showBottomNavigation: () -> Unit,
 ) {
-    val hazeState = rememberHazeState()
     val spotifyStatus by viewModel.spotifyStatus.collectAsStateWithLifecycle()
 
     val fullSpotifyCookies by viewModel.fullSpotifyCookies.collectAsStateWithLifecycle()
@@ -104,7 +98,7 @@ fun SpotifyLoginScreen(
     val state = rememberWebViewState()
     val cookieManager = createWebViewCookieManager()
 
-    Box(modifier = Modifier.fillMaxSize().hazeSource(state = hazeState)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         Column {
             Spacer(
                 Modifier

@@ -157,11 +157,7 @@ import com.maxrave.simpmusic.viewModel.HomeViewModel.Companion.HOME_PARAMS_SLEEP
 import com.maxrave.simpmusic.viewModel.HomeViewModel.Companion.HOME_PARAMS_WORKOUT
 import com.maxrave.simpmusic.viewModel.ListState
 import com.maxrave.simpmusic.viewModel.SharedViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.http.Url
@@ -274,7 +270,7 @@ fun HomeScreen(
     }
     val animatedColor by animateColorAsState(topHeaderColor, tween(500))
     val mainHomeThumbnail by viewModel.mainHomeThumbnail.collectAsStateWithLifecycle()
-    val networkLoader = rememberNetworkLoader(HttpClient(CIO))
+    val networkLoader = rememberNetworkLoader(remember { HttpClient(CIO) })
     val dominantColorState =
         rememberDominantColorState(
             defaultColor = backgroundColor,
@@ -313,8 +309,6 @@ fun HomeScreen(
         mutableIntStateOf(0)
     }
 
-    val hazeState =
-        rememberHazeState()
 
     LaunchedEffect(scrollState) {
         snapshotFlow { scrollState.firstVisibleItemIndex }
@@ -531,9 +525,7 @@ fun HomeScreen(
 
     Box {
         PullToRefreshBox(
-            modifier =
-                Modifier
-                    .hazeSource(hazeState),
+            modifier = Modifier,
             state = pullToRefreshState,
             onRefresh = onRefresh,
             isRefreshing = isRefreshing,

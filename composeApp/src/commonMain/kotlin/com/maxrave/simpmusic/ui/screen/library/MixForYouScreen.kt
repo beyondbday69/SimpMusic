@@ -42,7 +42,6 @@ import com.kmpalette.rememberDominantColorState
 import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.extension.angledGradientBackground
 import com.maxrave.simpmusic.extension.artworkScrimBrush
-import com.maxrave.simpmusic.extension.barBlurStyle
 import com.maxrave.simpmusic.extension.copy
 import com.maxrave.simpmusic.extension.rgbFactor
 import com.maxrave.simpmusic.getPlatform
@@ -51,10 +50,6 @@ import com.maxrave.simpmusic.ui.component.GridLibraryPlaylist
 import com.maxrave.simpmusic.ui.theme.desktopPanelDark
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.LibraryViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.http.Url
@@ -84,7 +79,6 @@ fun MixForYouScreen(
 ) {
     val density = LocalDensity.current
     val mixForYou by viewModel.youTubeMixForYou.collectAsStateWithLifecycle()
-    val hazeState = rememberHazeState()
     val gridState = rememberLazyGridState()
     // Home's rule, verbatim: transparent only while pixel-0 is on screen. onScrolling is too
     // coarse for this — it stays "on top" through the whole first row. The frost itself is kept
@@ -137,7 +131,7 @@ fun MixForYouScreen(
         }
     }
 
-    Box(Modifier.hazeSource(hazeState)) {
+    Box(Modifier) {
         // Drawn before the grid, and it SCROLLS AWAY with it like Home's — the draw-phase
         // translation tracks the first row exactly and parks once it has passed; whatever remains
         // at the hand-off sits deep in the scrim tail, so the switch does not pop. Inside the haze
@@ -189,7 +183,7 @@ fun MixForYouScreen(
                         Modifier.background(Color.Transparent)
                     } else {
                         // AlbumScreen's bar recipe, thinned to 0.3 — see SettingScreen.
-                        Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(pageBackground, 0.3f))
+                        Modifier.background(pageBackground)
                     },
                 ).onGloballyPositioned { coordinates ->
                     topAppBarHeight = with(density) { coordinates.size.height.toDp() }

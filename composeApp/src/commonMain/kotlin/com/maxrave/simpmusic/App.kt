@@ -112,8 +112,7 @@ import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
+
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.TimeZone
@@ -207,8 +206,6 @@ fun App(
         mutableStateOf(false)
     }
 
-    val hazeState =
-        rememberHazeState()
 
     LaunchedEffect(intent) {
         val intent = intent ?: return@LaunchedEffect
@@ -552,7 +549,7 @@ fun App(
                                         } else {
                                             Modifier
                                         },
-                                    ).hazeSource(hazeState),
+                                    ),
                             ) {
                                 AppNavigationGraph(
                                     innerPadding = innerPadding,

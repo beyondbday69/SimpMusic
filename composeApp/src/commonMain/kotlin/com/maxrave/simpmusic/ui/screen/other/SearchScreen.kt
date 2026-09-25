@@ -140,11 +140,6 @@ import com.maxrave.simpmusic.viewModel.SearchViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
 import com.maxrave.simpmusic.viewModel.toStringRes
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
@@ -200,8 +195,6 @@ fun SearchScreen(
     val screenInfo = getScreenSizeInfo()
     val isMobilePortrait = getPlatform() == Platform.Android && screenInfo.wDP < screenInfo.hDP
     val moodGridColumns = if (isMobilePortrait) 2 else 4
-
-    val hazeState = rememberHazeState()
     val suggestionsState = rememberLazyListState()
     val historyState = rememberLazyListState()
     val moodGridState = rememberLazyGridState()
@@ -381,7 +374,7 @@ fun SearchScreen(
         // equal to the bar's measured height to keep its first item clear of it.
         Crossfade(
             targetState = searchUIType,
-            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+            modifier = Modifier.fillMaxSize(),
         ) {
             when (it) {
                 SearchUIType.SEARCH_SUGGESTIONS -> {

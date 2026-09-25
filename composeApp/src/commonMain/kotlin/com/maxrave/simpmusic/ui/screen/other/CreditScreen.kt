@@ -52,11 +52,6 @@ import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.utils.VersionManager
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import simpmusic.composeapp.generated.resources.*
@@ -67,7 +62,6 @@ fun CreditScreen(
     paddingValues: PaddingValues,
     navController: NavController,
 ) {
-    val hazeState = rememberHazeState()
     Column(
         modifier =
             Modifier
@@ -75,7 +69,7 @@ fun CreditScreen(
                 .padding(paddingValues)
                 .padding(top = 64.dp)
                 .verticalScroll(rememberScrollState())
-                .hazeSource(state = hazeState),
+                ,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.height(30.dp))

@@ -86,11 +86,6 @@ import com.maxrave.simpmusic.ui.navigation.destination.home.ListenTogetherDestin
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.LibraryViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
@@ -149,9 +144,6 @@ fun LibraryScreen(
     var showSelectionSheet by rememberSaveable { mutableStateOf(false) }
     var showSelectionAddToPlaylist by rememberSaveable { mutableStateOf(false) }
     val accountThumbnail by viewModel.accountThumbnail.collectAsStateWithLifecycle()
-    val hazeState =
-        rememberHazeState()
-
     var topAppBarHeight by remember {
         mutableStateOf(0.dp)
     }
@@ -214,7 +206,7 @@ fun LibraryScreen(
     }
 
     Crossfade(
-        modifier = Modifier.hazeSource(hazeState),
+        modifier = Modifier,
         targetState = currentFilter,
     ) { filter ->
         when (filter) {

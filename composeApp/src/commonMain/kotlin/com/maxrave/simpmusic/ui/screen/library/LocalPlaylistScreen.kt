@@ -49,7 +49,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import com.maxrave.simpmusic.extension.barBlurStyle
 import com.maxrave.simpmusic.ui.component.DownloadingIndicator
 import com.maxrave.simpmusic.ui.icon.Search
 import com.maxrave.simpmusic.ui.icon.Close
@@ -168,10 +167,6 @@ import com.maxrave.simpmusic.viewModel.LocalPlaylistViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
 import com.maxrave.simpmusic.viewModel.UIEvent
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -367,7 +362,6 @@ fun LocalPlaylistScreen(
         shouldHideTopBar = !firstItemVisible
     }
     val paletteState = rememberPaletteState()
-    val hazeState = rememberHazeState()
     var bitmap by remember {
         mutableStateOf<ImageBitmap?>(null)
     }
@@ -451,7 +445,7 @@ fun LocalPlaylistScreen(
             Modifier
                 .fillMaxWidth()
                 .background(mutedPaletteBg)
-                .hazeSource(hazeState)
+                
                 .pointerInput(changingOrder) {
                     if (!changingOrder) return@pointerInput
                     val onDrag: (change: androidx.compose.ui.input.pointer.PointerInputChange, offset: Offset) -> Unit =
@@ -1449,7 +1443,7 @@ fun LocalPlaylistScreen(
             },
             onOpenActions = { showSelectionSheet = true },
             modifier =
-                Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                Modifier.background(mutedPaletteBg),
         )
     }
     if (showSelectionSheet) {
@@ -1622,7 +1616,7 @@ fun LocalPlaylistScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                    .background(mutedPaletteBg),
             ) {
                 Row(
                     modifier =
@@ -1746,7 +1740,7 @@ fun LocalPlaylistScreen(
                     containerColor = Color.Transparent,
                 ),
             modifier =
-                Modifier.hazeBlur(HazeInput.Sources(hazeState), barBlurStyle(mutedPaletteBg, 0.55f)),
+                Modifier.background(mutedPaletteBg),
         )
     }
 }

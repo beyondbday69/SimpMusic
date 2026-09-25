@@ -55,11 +55,6 @@ import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.RecentlySongsViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
-import dev.chrisbanes.haze.HazeInput
-import dev.chrisbanes.haze.blur.hazeBlur
-import dev.chrisbanes.haze.blur.materials.HazeMaterials
-import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.rememberHazeState
 import kotlinx.coroutines.flow.map
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
@@ -76,8 +71,6 @@ fun RecentlySongsScreen(
     viewModel: RecentlySongsViewModel = koinViewModel(),
     sharedViewModel: SharedViewModel = koinInject(),
 ) {
-    val hazeState = rememberHazeState()
-
     val selectionState = rememberSongSelectionState()
     val selectionViewModel: SongSelectionViewModel = koinViewModel()
     var showSelectionSheet by rememberSaveable { mutableStateOf(false) }
@@ -92,7 +85,7 @@ fun RecentlySongsScreen(
             modifier =
                 Modifier
                     .fillMaxSize()
-                    .hazeSource(state = hazeState),
+                    ,
         ) {
             item {
                 Spacer(
