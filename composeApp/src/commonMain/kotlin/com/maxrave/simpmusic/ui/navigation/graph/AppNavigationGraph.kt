@@ -48,10 +48,10 @@ fun AppNavigationGraph(
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
     val topLevelEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
-        fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing))
+        EnterTransition.None
     }
     val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
-        fadeOut(animationSpec = tween(150, easing = FastOutLinearInEasing))
+        ExitTransition.None
     }
 
     NavHost(

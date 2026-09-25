@@ -27,8 +27,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -37,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.maxrave.simpmusic.ui.icon.Settings
 import com.maxrave.simpmusic.ui.icon.SimpIcons
@@ -53,8 +58,7 @@ import kotlin.reflect.KClass
 
 /**
  * A modern, clean floating bottom-center dock for phones, foldables, and tablets.
- * Provides quick access to all core navigation destinations and settings in a sleek,
- * elevated pill with lightweight, high-performance animations (60/120 FPS).
+ * Provides instant 0ms touch feedback and ultra-smooth switching without freeze/lag.
  */
 @Composable
 fun AppBottomDock(
@@ -78,14 +82,37 @@ fun AppBottomDock(
         }
 
     val currentDestination = currentBackStackEntry?.destination
-    val activeScreen = remember(currentDestination, bottomNavScreens) {
-        bottomNavScreens.firstOrNull { screen ->
+
+    // Immediate optimistic selection state for 0ms instantaneous touch response
+    var selectedOrdinal by rememberSaveable {
+        mutableIntStateOf(
+            when (startDestination) {
+                is HomeDestination -> BottomNavScreen.Home.ordinal
+                is SearchDestination -> BottomNavScreen.Search.ordinal
+                is LibraryDestination -> BottomNavScreen.Library.ordinal
+                is AnalyticsDestination -> BottomNavScreen.Analytics.ordinal
+                is MixForYouDestination -> BottomNavScreen.MixForYou.ordinal
+                else -> BottomNavScreen.Home.ordinal
+            }
+        )
+    }
+
+    // Keep optimistic state synchronized when destination changes from gestures or deep links
+    LaunchedEffect(currentDestination) {
+        val matching = bottomNavScreens.firstOrNull { screen ->
             currentDestination?.hierarchy?.any { it.hasRoute(screen.destination::class) } == true
-        } ?: bottomNavScreens.firstOrNull() ?: BottomNavScreen.Home
+        }
+        if (matching != null) {
+            if (selectedOrdinal != matching.ordinal) {
+                selectedOrdinal = matching.ordinal
+            }
+        } else if (currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true) {
+            selectedOrdinal = -1
+        }
     }
 
     val selectTab: (BottomNavScreen) -> Unit = { screen ->
-        if (activeScreen.ordinal == screen.ordinal) {
+        if (selectedOrdinal == screen.ordinal) {
             if (currentDestination?.hierarchy?.any {
                     it.hasRoute(screen.destination::class)
                 } == true
@@ -95,8 +122,10 @@ fun AppBottomDock(
                 navController.navigate(screen.destination)
             }
         } else {
+            // Immediate 0ms visual feedback on tap
+            selectedOrdinal = screen.ordinal
             navController.navigate(screen.destination) {
-                popUpTo(navController.graph.startDestinationId) {
+                popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
                 }
                 launchSingleTop = true
@@ -124,7 +153,7 @@ fun AppBottomDock(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             bottomNavScreens.forEach { screen ->
-                val selected = activeScreen.ordinal == screen.ordinal
+                val selected = selectedOrdinal == screen.ordinal
                 val indicatorColor by animateColorAsState(
                     targetValue =
                         if (selected) {
@@ -165,15 +194,15 @@ fun AppBottomDock(
                         }
                         AnimatedVisibility(
                             visible = selected,
-                            enter = fadeIn(tween(160, delayMillis = 30)) +
+                            enter = fadeIn(tween(140, delayMillis = 20)) +
                                 expandHorizontally(
                                     animationSpec = tween(180, easing = FastOutSlowInEasing),
                                     expandFrom = Alignment.Start,
                                     clip = true,
                                 ),
-                            exit = fadeOut(tween(120)) +
+                            exit = fadeOut(tween(100)) +
                                 shrinkHorizontally(
-                                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                    animationSpec = tween(160, easing = FastOutSlowInEasing),
                                     shrinkTowards = Alignment.Start,
                                     clip = true,
                                 ),
