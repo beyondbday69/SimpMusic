@@ -68,7 +68,7 @@ fun AppNavigationGraph(
     val topLevelEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
         fadeIn(
             animationSpec = tween(
-                durationMillis = 200,
+                durationMillis = 100,
                 easing = LinearOutSlowInEasing,
             ),
         )
@@ -76,7 +76,7 @@ fun AppNavigationGraph(
     val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
         fadeOut(
             animationSpec = tween(
-                durationMillis = 150,
+                durationMillis = 50,
                 easing = FastOutLinearInEasing,
             ),
         )
@@ -86,16 +86,16 @@ fun AppNavigationGraph(
         navController,
         startDestination = startDestination,
         enterTransition = {
-            fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 4 }
+            fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
         },
         exitTransition = {
-            fadeOut(animationSpec = tween(180)) + slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { -it / 4 }
+            fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
         },
         popEnterTransition = {
-            fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { -it / 4 }
+            fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
         },
         popExitTransition = {
-            fadeOut(animationSpec = tween(180)) + slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 4 }
+            fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
         },
     ) {
         // Bottom bar destinations with snappy, lightweight fade transitions
