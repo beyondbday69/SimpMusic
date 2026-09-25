@@ -2,11 +2,12 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -26,15 +27,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
@@ -57,7 +54,7 @@ import kotlin.reflect.KClass
 /**
  * A modern, clean floating bottom-center dock for phones, foldables, and tablets.
  * Provides quick access to all core navigation destinations and settings in a sleek,
- * elevated pill with interactive expanding indicator chips.
+ * elevated pill with lightweight, high-performance animations (60/120 FPS).
  */
 @Composable
 fun AppBottomDock(
@@ -70,38 +67,26 @@ fun AppBottomDock(
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
     val bottomNavScreens =
-        listOfNotNull(
-            BottomNavScreen.Home,
-            BottomNavScreen.Search,
-            BottomNavScreen.Library,
-            BottomNavScreen.MixForYou.takeIf { showMixForYouTab },
-            BottomNavScreen.Analytics.takeIf { showAnalyticsTab },
-        )
-
-    var selectedIndex by rememberSaveable {
-        mutableIntStateOf(
-            when (startDestination) {
-                is HomeDestination -> BottomNavScreen.Home.ordinal
-                is SearchDestination -> BottomNavScreen.Search.ordinal
-                is LibraryDestination -> BottomNavScreen.Library.ordinal
-                is AnalyticsDestination -> BottomNavScreen.Analytics.ordinal
-                is MixForYouDestination -> BottomNavScreen.MixForYou.ordinal
-                else -> BottomNavScreen.Home.ordinal
-            },
-        )
-    }
-
-    LaunchedEffect(showAnalyticsTab, showMixForYouTab) {
-        if ((!showAnalyticsTab && selectedIndex == BottomNavScreen.Analytics.ordinal) ||
-            (!showMixForYouTab && selectedIndex == BottomNavScreen.MixForYou.ordinal)
-        ) {
-            selectedIndex = BottomNavScreen.Home.ordinal
+        remember(showAnalyticsTab, showMixForYouTab) {
+            listOfNotNull(
+                BottomNavScreen.Home,
+                BottomNavScreen.Search,
+                BottomNavScreen.Library,
+                BottomNavScreen.MixForYou.takeIf { showMixForYouTab },
+                BottomNavScreen.Analytics.takeIf { showAnalyticsTab },
+            )
         }
+
+    val currentDestination = currentBackStackEntry?.destination
+    val activeScreen = remember(currentDestination, bottomNavScreens) {
+        bottomNavScreens.firstOrNull { screen ->
+            currentDestination?.hierarchy?.any { it.hasRoute(screen.destination::class) } == true
+        } ?: bottomNavScreens.firstOrNull() ?: BottomNavScreen.Home
     }
 
     val selectTab: (BottomNavScreen) -> Unit = { screen ->
-        if (selectedIndex == screen.ordinal) {
-            if (currentBackStackEntry?.destination?.hierarchy?.any {
+        if (activeScreen.ordinal == screen.ordinal) {
+            if (currentDestination?.hierarchy?.any {
                     it.hasRoute(screen.destination::class)
                 } == true
             ) {
@@ -110,7 +95,6 @@ fun AppBottomDock(
                 navController.navigate(screen.destination)
             }
         } else {
-            selectedIndex = screen.ordinal
             navController.navigate(screen.destination) {
                 popUpTo(navController.graph.startDestinationId) {
                     saveState = true
@@ -123,14 +107,14 @@ fun AppBottomDock(
 
     Surface(
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.92f),
+        color = MaterialTheme.colorScheme.surfaceContainer.copy(alpha = 0.95f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        shadowElevation = 10.dp,
+        shadowElevation = 8.dp,
+        tonalElevation = 2.dp,
         modifier =
             Modifier
                 .wrapContentWidth()
-                .height(60.dp)
-                .shadow(elevation = 12.dp, shape = CircleShape, clip = false),
+                .height(58.dp),
     ) {
         Row(
             modifier =
@@ -140,7 +124,7 @@ fun AppBottomDock(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             bottomNavScreens.forEach { screen ->
-                val selected = selectedIndex == screen.ordinal
+                val selected = activeScreen.ordinal == screen.ordinal
                 val indicatorColor by animateColorAsState(
                     targetValue =
                         if (selected) {
@@ -148,7 +132,7 @@ fun AppBottomDock(
                         } else {
                             Color.Transparent
                         },
-                    animationSpec = tween(250),
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
                     label = "dockIndicatorColor",
                 )
                 val contentColor by animateColorAsState(
@@ -158,37 +142,48 @@ fun AppBottomDock(
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                    animationSpec = tween(250),
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
                     label = "dockContentColor",
                 )
 
                 Box(
                     modifier =
                         Modifier
-                            .height(48.dp)
+                            .height(44.dp)
                             .clip(CircleShape)
                             .background(indicatorColor)
                             .clickable { selectTab(screen) }
-                            .padding(horizontal = 14.dp),
+                            .padding(horizontal = if (selected) 14.dp else 12.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         CompositionLocalProvider(LocalContentColor provides contentColor) {
                             screen.icon()
                         }
                         AnimatedVisibility(
                             visible = selected,
-                            enter = fadeIn(tween(200)) + slideInHorizontally(tween(200)),
-                            exit = fadeOut(tween(150)) + slideOutHorizontally(tween(150)),
+                            enter = fadeIn(tween(160, delayMillis = 30)) +
+                                expandHorizontally(
+                                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                    expandFrom = Alignment.Start,
+                                    clip = true,
+                                ),
+                            exit = fadeOut(tween(120)) +
+                                shrinkHorizontally(
+                                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                                    shrinkTowards = Alignment.Start,
+                                    clip = true,
+                                ),
                         ) {
                             Text(
                                 text = stringResource(screen.title),
                                 style = typo().labelMedium,
                                 color = contentColor,
                                 maxLines = 1,
+                                modifier = Modifier.padding(start = 2.dp),
                             )
                         }
                     }
@@ -198,14 +193,14 @@ fun AppBottomDock(
             VerticalDivider(
                 modifier =
                     Modifier
-                        .height(24.dp)
+                        .height(20.dp)
                         .padding(horizontal = 2.dp),
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
             )
 
             // Dedicated Settings access right in the dock
             val isSettingsSelected =
-                currentBackStackEntry?.destination?.hierarchy?.any {
+                currentDestination?.hierarchy?.any {
                     it.hasRoute(SettingsDestination::class)
                 } == true
             val settingsIndicator by animateColorAsState(
@@ -215,7 +210,7 @@ fun AppBottomDock(
                     } else {
                         Color.Transparent
                     },
-                animationSpec = tween(250),
+                animationSpec = tween(180, easing = FastOutSlowInEasing),
                 label = "settingsIndicatorColor",
             )
             val settingsContentColor by animateColorAsState(
@@ -225,14 +220,14 @@ fun AppBottomDock(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                animationSpec = tween(250),
+                animationSpec = tween(180, easing = FastOutSlowInEasing),
                 label = "settingsContentColor",
             )
 
             Box(
                 modifier =
                     Modifier
-                        .size(48.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
                         .background(settingsIndicator)
                         .clickable {

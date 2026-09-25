@@ -1,5 +1,12 @@
 package com.maxrave.simpmusic.ui.navigation.graph
 
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
@@ -8,6 +15,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
+import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -39,35 +47,57 @@ fun AppNavigationGraph(
     showNowPlayingSheet: () -> Unit = {},
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
+    val topLevelEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
+        fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing))
+    }
+    val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
+        fadeOut(animationSpec = tween(150, easing = FastOutLinearInEasing))
+    }
+
     NavHost(
         navController,
         startDestination = startDestination,
         enterTransition = {
-            fadeIn() + slideInHorizontally { -it }
+            fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 4 }
         },
         exitTransition = {
-            fadeOut() + slideOutHorizontally { it }
+            fadeOut(animationSpec = tween(180)) + slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { -it / 4 }
         },
         popEnterTransition = {
-            fadeIn() + slideInHorizontally { -it }
+            fadeIn(animationSpec = tween(220)) + slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { -it / 4 }
         },
         popExitTransition = {
-            fadeOut() + slideOutHorizontally { it }
+            fadeOut(animationSpec = tween(180)) + slideOutHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { it / 4 }
         },
     ) {
-        // Bottom bar destinations
-        composable<HomeDestination> {
+        // Bottom bar destinations with snappy, lightweight fade transitions
+        composable<HomeDestination>(
+            enterTransition = topLevelEnterTransition,
+            exitTransition = topLevelExitTransition,
+            popEnterTransition = topLevelEnterTransition,
+            popExitTransition = topLevelExitTransition,
+        ) {
             HomeScreen(
                 onScrolling = onScrolling,
                 navController = navController,
             )
         }
-        composable<SearchDestination> {
+        composable<SearchDestination>(
+            enterTransition = topLevelEnterTransition,
+            exitTransition = topLevelExitTransition,
+            popEnterTransition = topLevelEnterTransition,
+            popExitTransition = topLevelExitTransition,
+        ) {
             SearchScreen(
                 navController = navController,
             )
         }
-        composable<LibraryDestination> {
+        composable<LibraryDestination>(
+            enterTransition = topLevelEnterTransition,
+            exitTransition = topLevelExitTransition,
+            popEnterTransition = topLevelEnterTransition,
+            popExitTransition = topLevelExitTransition,
+        ) {
             LibraryScreen(
                 innerPadding = innerPadding,
                 navController = navController,
@@ -75,7 +105,12 @@ fun AppNavigationGraph(
             )
         }
         // Only reachable as a tab while signed in to YouTube
-        composable<MixForYouDestination> {
+        composable<MixForYouDestination>(
+            enterTransition = topLevelEnterTransition,
+            exitTransition = topLevelExitTransition,
+            popEnterTransition = topLevelEnterTransition,
+            popExitTransition = topLevelExitTransition,
+        ) {
             MixForYouScreen(
                 innerPadding = innerPadding,
                 navController = navController,
@@ -83,10 +118,12 @@ fun AppNavigationGraph(
             )
         }
         // Only reachable as a tab while local tracking is enabled.
-        // ForceDarkContent for the same reason as album/playlist/artist: the page background comes
-        // from the artwork via toImmersiveBackground(), which always lands dark, so the light
-        // theme's dark-on-light text and icons would be unreadable on it.
-        composable<AnalyticsDestination> {
+        composable<AnalyticsDestination>(
+            enterTransition = topLevelEnterTransition,
+            exitTransition = topLevelExitTransition,
+            popEnterTransition = topLevelEnterTransition,
+            popExitTransition = topLevelExitTransition,
+        ) {
             ForceDarkContent {
                 AnalyticsScreen(
                     navController = navController,
