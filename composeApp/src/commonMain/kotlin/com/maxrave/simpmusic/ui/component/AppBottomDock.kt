@@ -155,16 +155,7 @@ fun AppBottomDock(
                 .height(58.dp),
     ) {
         Row(
-            modifier =
-                Modifier
-                    .padding(horizontal = 8.dp, vertical = 6.dp)
-                    .animateContentSize(
-                        animationSpec =
-                            spring(
-                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                stiffness = Spring.StiffnessMediumLow,
-                            ),
-                    ),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
@@ -180,14 +171,9 @@ fun AppBottomDock(
                     label = "dockPressScale",
                 )
                 val iconScale by animateFloatAsState(
-                    targetValue = if (selected) 1.15f else 1.0f,
-                    animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
+                    targetValue = if (selected) 1.12f else 1.0f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
                     label = "dockIconScale",
-                )
-                val pillHorizontalPadding by animateDpAsState(
-                    targetValue = if (selected) 14.dp else 10.dp,
-                    animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
-                    label = "dockPillPadding",
                 )
                 val indicatorColor by animateColorAsState(
                     targetValue =
@@ -196,7 +182,7 @@ fun AppBottomDock(
                         } else {
                             Color.Transparent
                         },
-                    animationSpec = tween(220, easing = FastOutSlowInEasing),
+                    animationSpec = tween(180, easing = FastOutSlowInEasing),
                     label = "dockIndicatorColor",
                 )
                 val contentColor by animateColorAsState(
@@ -206,7 +192,7 @@ fun AppBottomDock(
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                    animationSpec = tween(200, easing = FastOutSlowInEasing),
+                    animationSpec = tween(160, easing = FastOutSlowInEasing),
                     label = "dockContentColor",
                 )
 
@@ -224,7 +210,7 @@ fun AppBottomDock(
                                 interactionSource = interactionSource,
                                 indication = ripple(bounded = true, radius = 24.dp),
                             ) { selectTab(screen) }
-                            .padding(horizontal = pillHorizontalPadding),
+                            .padding(horizontal = if (selected) 14.dp else 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
@@ -246,24 +232,16 @@ fun AppBottomDock(
                         AnimatedVisibility(
                             visible = selected,
                             enter =
-                                fadeIn(tween(160, delayMillis = 30)) +
+                                fadeIn(tween(140)) +
                                     expandHorizontally(
-                                        animationSpec =
-                                            spring(
-                                                dampingRatio = 0.8f,
-                                                stiffness = 380f,
-                                            ),
+                                        animationSpec = tween(160, easing = FastOutSlowInEasing),
                                         expandFrom = Alignment.Start,
                                         clip = true,
                                     ),
                             exit =
                                 fadeOut(tween(100)) +
                                     shrinkHorizontally(
-                                        animationSpec =
-                                            spring(
-                                                dampingRatio = 0.85f,
-                                                stiffness = 450f,
-                                            ),
+                                        animationSpec = tween(140, easing = FastOutSlowInEasing),
                                         shrinkTowards = Alignment.Start,
                                         clip = true,
                                     ),

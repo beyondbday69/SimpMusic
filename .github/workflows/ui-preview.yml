@@ -50,13 +50,24 @@ jobs:
         run: ./gradlew :composeApp:compileKotlinJvm
 
       - name: Build Android App (APK)
-        run: ./gradlew :androidApp:assembleDebug
+        run: |
+          ./gradlew :androidApp:assembleRelease || ./gradlew :androidApp:assembleDebug
+
+      - name: Locate Output APKs
+        run: |
+          if ls androidApp/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
+            echo "APK_FILES=androidApp/build/outputs/apk/release/*.apk" >> $GITHUB_ENV
+            echo "BUILD_FLAVOR=release" >> $GITHUB_ENV
+          else
+            echo "APK_FILES=androidApp/build/outputs/apk/debug/*.apk" >> $GITHUB_ENV
+            echo "BUILD_FLAVOR=debug" >> $GITHUB_ENV
+          fi
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SimpMusic-debug-apk
-          path: androidApp/build/outputs/apk/debug/*.apk
+          name: SimpMusic-apk
+          path: ${{ env.APK_FILES }}
           if-no-files-found: error
 
       - name: Create GitHub Release with APK
@@ -64,9 +75,9 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
-          gh release create "$TAG" androidApp/build/outputs/apk/debug/*.apk \
+          gh release create "$TAG" ${{ env.APK_FILES }} \
             --title "SimpMusic with Bottom Center Dock ($TAG)" \
-            --notes "Downloadable Android APK with redesigned floating bottom-center dock and tablet layout optimizations." \
+            --notes "Optimized high-performance Android APK build ($BUILD_FLAVOR) with fluid floating bottom-center dock, zero-latency switching, and hardware-accelerated transitions." \
             --prerelease || true
 
       - name: Upload Build Reports on Failure

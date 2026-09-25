@@ -173,7 +173,8 @@ fun NowPlayingScreen(
         }
     }
 
-    val dragProgress = (animatedOffsetY / (dismissThreshold * 2.5f)).coerceIn(0f, 1f)
+    val isDragging = animatedOffsetY > 0.5f
+    val dragProgress = if (isDragging) (animatedOffsetY / (dismissThreshold * 2.5f)).coerceIn(0f, 1f) else 0f
     val currentCorner = (32 * dragProgress).dp
     val currentScale = 1f - (dragProgress * 0.08f)
 
@@ -181,20 +182,22 @@ fun NowPlayingScreen(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = (1f - dragProgress * 0.5f).coerceIn(0f, 1f)))
+                .background(if (isDragging) Color.Black.copy(alpha = (1f - dragProgress * 0.5f).coerceIn(0f, 1f)) else Color.Black)
                 .nestedScroll(nestedScrollConnection)
                 .graphicsLayer {
                     translationY = animatedOffsetY.coerceAtLeast(0f)
-                    scaleX = currentScale
-                    scaleY = currentScale
-                    clip = true
-                    shape =
-                        RoundedCornerShape(
-                            topStart = currentCorner,
-                            topEnd = currentCorner,
-                            bottomStart = (16 * dragProgress).dp,
-                            bottomEnd = (16 * dragProgress).dp,
-                        )
+                    if (isDragging) {
+                        scaleX = currentScale
+                        scaleY = currentScale
+                        clip = true
+                        shape =
+                            RoundedCornerShape(
+                                topStart = currentCorner,
+                                topEnd = currentCorner,
+                                bottomStart = (16 * dragProgress).dp,
+                                bottomEnd = (16 * dragProgress).dp,
+                            )
+                    }
                 },
     ) {
         NowPlayingScreenContent(

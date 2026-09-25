@@ -9,8 +9,6 @@ import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -70,15 +68,11 @@ fun AppNavigationGraph(
         if (initialIdx >= 0 && targetIdx >= 0 && initialIdx != targetIdx) {
             val direction = if (targetIdx > initialIdx) 1 else -1
             slideInHorizontally(
-                animationSpec = tween(280, easing = FastOutSlowInEasing),
-                initialOffsetX = { fullWidth -> (fullWidth * 0.12f * direction).toInt() },
-            ) + fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
-                scaleIn(
-                    animationSpec = tween(280, easing = FastOutSlowInEasing),
-                    initialScale = 0.96f,
-                )
+                animationSpec = tween(180, easing = FastOutSlowInEasing),
+                initialOffsetX = { fullWidth -> (fullWidth * 0.08f * direction).toInt() },
+            ) + fadeIn(animationSpec = tween(160, easing = FastOutSlowInEasing))
         } else {
-            fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing))
+            fadeIn(animationSpec = tween(150, easing = FastOutSlowInEasing))
         }
     }
     val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
@@ -87,15 +81,11 @@ fun AppNavigationGraph(
         if (initialIdx >= 0 && targetIdx >= 0 && initialIdx != targetIdx) {
             val direction = if (targetIdx > initialIdx) -1 else 1
             slideOutHorizontally(
-                animationSpec = tween(260, easing = FastOutSlowInEasing),
-                targetOffsetX = { fullWidth -> (fullWidth * 0.12f * direction).toInt() },
-            ) + fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing)) +
-                scaleOut(
-                    animationSpec = tween(260, easing = FastOutSlowInEasing),
-                    targetScale = 0.96f,
-                )
+                animationSpec = tween(160, easing = FastOutSlowInEasing),
+                targetOffsetX = { fullWidth -> (fullWidth * 0.08f * direction).toInt() },
+            ) + fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing))
         } else {
-            fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            fadeOut(animationSpec = tween(140, easing = FastOutSlowInEasing))
         }
     }
 
