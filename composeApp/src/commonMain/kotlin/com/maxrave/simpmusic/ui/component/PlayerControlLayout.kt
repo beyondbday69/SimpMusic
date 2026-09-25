@@ -1,8 +1,13 @@
 package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -13,11 +18,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.maxrave.domain.mediaservice.handler.ControlState
@@ -56,6 +65,47 @@ fun PlayerControlLayout(
     val smallIcon = if (isSmallSize) 20.dp to 28.dp else 32.dp to 42.dp
     val mediumIcon = if (isSmallSize) 28.dp to 38.dp else 42.dp to 52.dp
     val bigIcon = if (isSmallSize) 38.dp to 48.dp else 72.dp to 96.dp
+
+    val shuffleInteractionSource = remember { MutableInteractionSource() }
+    val shufflePressed by shuffleInteractionSource.collectIsPressedAsState()
+    val shuffleScale by animateFloatAsState(
+        targetValue = if (shufflePressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "shuffle_scale",
+    )
+
+    val prevInteractionSource = remember { MutableInteractionSource() }
+    val prevPressed by prevInteractionSource.collectIsPressedAsState()
+    val prevScale by animateFloatAsState(
+        targetValue = if (prevPressed && controllerState.isPreviousAvailable) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "prev_scale",
+    )
+
+    val playPauseInteractionSource = remember { MutableInteractionSource() }
+    val playPausePressed by playPauseInteractionSource.collectIsPressedAsState()
+    val playPauseScale by animateFloatAsState(
+        targetValue = if (playPausePressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "play_pause_scale",
+    )
+
+    val nextInteractionSource = remember { MutableInteractionSource() }
+    val nextPressed by nextInteractionSource.collectIsPressedAsState()
+    val nextScale by animateFloatAsState(
+        targetValue = if (nextPressed && controllerState.isNextAvailable) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "next_scale",
+    )
+
+    val repeatInteractionSource = remember { MutableInteractionSource() }
+    val repeatPressed by repeatInteractionSource.collectIsPressedAsState()
+    val repeatScale by animateFloatAsState(
+        targetValue = if (repeatPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        label = "repeat_scale",
+    )
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceEvenly,
@@ -69,13 +119,17 @@ fun PlayerControlLayout(
             Box(
                 modifier =
                     Modifier
-                        .background(Color.Transparent)
                         .size(smallIcon.second)
                         .aspectRatio(1f)
-                        .clip(
-                            CircleShape,
-                        )
-                        .clickable {
+                        .graphicsLayer {
+                            scaleX = shuffleScale
+                            scaleY = shuffleScale
+                        }
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = shuffleInteractionSource,
+                            indication = ripple(bounded = false, radius = smallIcon.second / 2),
+                        ) {
                             onUIEvent(UIEvent.Shuffle)
                         },
                 contentAlignment = Alignment.Center,
@@ -103,16 +157,19 @@ fun PlayerControlLayout(
             Box(
                 modifier =
                     Modifier
-                        .background(Color.Transparent)
                         .size(mediumIcon.second)
                         .aspectRatio(1f)
-                        .clip(
-                            CircleShape,
-                        )
-                        .clickable {
-                            if (controllerState.isPreviousAvailable) {
-                                onUIEvent(UIEvent.Previous)
-                            }
+                        .graphicsLayer {
+                            scaleX = prevScale
+                            scaleY = prevScale
+                        }
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = prevInteractionSource,
+                            indication = ripple(bounded = false, radius = mediumIcon.second / 2),
+                            enabled = controllerState.isPreviousAvailable,
+                        ) {
+                            onUIEvent(UIEvent.Previous)
                         },
                 contentAlignment = Alignment.Center,
             ) {
@@ -128,13 +185,17 @@ fun PlayerControlLayout(
             Box(
                 modifier =
                     Modifier
-                        .background(Color.Transparent)
                         .size(bigIcon.second)
                         .aspectRatio(1f)
-                        .clip(
-                            CircleShape,
-                        )
-                        .clickable {
+                        .graphicsLayer {
+                            scaleX = playPauseScale
+                            scaleY = playPauseScale
+                        }
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = playPauseInteractionSource,
+                            indication = ripple(bounded = false, radius = bigIcon.second / 2),
+                        ) {
                             onUIEvent(UIEvent.PlayPause)
                         },
                 contentAlignment = Alignment.Center,
@@ -162,16 +223,19 @@ fun PlayerControlLayout(
             Box(
                 modifier =
                     Modifier
-                        .background(Color.Transparent)
                         .size(mediumIcon.second)
                         .aspectRatio(1f)
-                        .clip(
-                            CircleShape,
-                        )
-                        .clickable {
-                            if (controllerState.isNextAvailable) {
-                                onUIEvent(UIEvent.Next)
-                            }
+                        .graphicsLayer {
+                            scaleX = nextScale
+                            scaleY = nextScale
+                        }
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = nextInteractionSource,
+                            indication = ripple(bounded = false, radius = mediumIcon.second / 2),
+                            enabled = controllerState.isNextAvailable,
+                        ) {
+                            onUIEvent(UIEvent.Next)
                         },
                 contentAlignment = Alignment.Center,
             ) {
@@ -189,10 +253,15 @@ fun PlayerControlLayout(
                     Modifier
                         .size(smallIcon.second)
                         .aspectRatio(1f)
-                        .clip(
-                            CircleShape,
-                        )
-                        .clickable {
+                        .graphicsLayer {
+                            scaleX = repeatScale
+                            scaleY = repeatScale
+                        }
+                        .clip(CircleShape)
+                        .clickable(
+                            interactionSource = repeatInteractionSource,
+                            indication = ripple(bounded = false, radius = smallIcon.second / 2),
+                        ) {
                             onUIEvent(UIEvent.Repeat)
                         },
                 contentAlignment = Alignment.Center,

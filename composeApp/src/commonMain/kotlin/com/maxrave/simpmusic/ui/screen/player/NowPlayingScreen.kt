@@ -128,7 +128,10 @@ fun NowPlayingScreen(
     var dragOffsetY by remember { mutableFloatStateOf(0f) }
     val animatedOffsetY by animateFloatAsState(
         targetValue = dragOffsetY,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
         label = "sheetDismissOffset",
     )
     val density = LocalDensity.current
@@ -151,16 +154,17 @@ fun NowPlayingScreen(
                 available: Offset,
                 source: NestedScrollSource,
             ): Offset {
-                // When content is at top of scroll and user pulls downwards
+                // When content is at top of scroll and user pulls downwards with rubber-band resistance
                 if (available.y > 0 && source == NestedScrollSource.UserInput) {
-                    dragOffsetY = (dragOffsetY + available.y).coerceAtLeast(0f)
+                    val resistance = (1f - (dragOffsetY / 1600f)).coerceIn(0.4f, 1f)
+                    dragOffsetY = (dragOffsetY + available.y * resistance).coerceAtLeast(0f)
                     return Offset(0f, available.y)
                 }
                 return Offset.Zero
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (dragOffsetY > dismissThreshold || available.y > 800f) {
+                if (dragOffsetY > dismissThreshold || available.y > 600f) {
                     onDismiss()
                 }
                 dragOffsetY = 0f
@@ -169,15 +173,28 @@ fun NowPlayingScreen(
         }
     }
 
+    val dragProgress = (animatedOffsetY / (dismissThreshold * 2.5f)).coerceIn(0f, 1f)
+    val currentCorner = (32 * dragProgress).dp
+    val currentScale = 1f - (dragProgress * 0.08f)
+
     Box(
         modifier =
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Color.Black.copy(alpha = (1f - dragProgress * 0.5f).coerceIn(0f, 1f)))
                 .nestedScroll(nestedScrollConnection)
                 .graphicsLayer {
                     translationY = animatedOffsetY.coerceAtLeast(0f)
+                    scaleX = currentScale
+                    scaleY = currentScale
                     clip = true
+                    shape =
+                        RoundedCornerShape(
+                            topStart = currentCorner,
+                            topEnd = currentCorner,
+                            bottomStart = (16 * dragProgress).dp,
+                            bottomEnd = (16 * dragProgress).dp,
+                        )
                 },
     ) {
         NowPlayingScreenContent(

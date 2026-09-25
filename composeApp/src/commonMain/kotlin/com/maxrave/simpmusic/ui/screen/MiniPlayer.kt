@@ -6,12 +6,14 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -325,31 +327,43 @@ fun MiniPlayer(
                             .offset { IntOffset(0, offsetY.value.roundToInt()) }
                             .clickable(
                                 onClick = onClick,
-                            ).pointerInput(Unit) {
+                            .pointerInput(Unit) {
                                 detectVerticalDragGestures(
                                     onDragStart = {
                                     },
                                     onVerticalDrag = { change: PointerInputChange, dragAmount: Float ->
-                                        if (offsetY.value + dragAmount > 0) {
+                                        if (offsetY.value + dragAmount > 0f) {
+                                            change.consume()
                                             coroutineScope.launch {
-                                                change.consume()
-                                                offsetY.animateTo(offsetY.value + 2 * dragAmount)
-                                                Logger.w("MiniPlayer", "Dragged ${offsetY.value}")
+                                                val current = offsetY.value
+                                                val resistance = (1f - (current / 400f)).coerceIn(0.3f, 1f)
+                                                offsetY.snapTo(current + dragAmount * resistance)
                                             }
                                         }
                                     },
                                     onDragCancel = {
                                         coroutineScope.launch {
-                                            offsetY.animateTo(0f)
+                                            offsetY.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                ),
+                                            )
                                         }
                                     },
                                     onDragEnd = {
-                                        Logger.w("MiniPlayer", "Drag Ended")
                                         coroutineScope.launch {
-                                            if (offsetY.value > 70) {
+                                            if (offsetY.value > 70f) {
                                                 onClose()
                                             }
-                                            offsetY.animateTo(0f)
+                                            offsetY.animateTo(
+                                                targetValue = 0f,
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                ),
+                                            )
                                         }
                                     },
                                 )
@@ -377,32 +391,39 @@ fun MiniPlayer(
                                                 change: PointerInputChange,
                                                 dragAmount: Float,
                                                 ->
+                                                change.consume()
                                                 coroutineScope.launch {
-                                                    change.consume()
-                                                    offsetX.animateTo(offsetX.value + dragAmount * 2)
-                                                    Logger.w("MiniPlayer", "Dragged ${offsetX.value}")
+                                                    val current = offsetX.value
+                                                    val resistance = (1f - (kotlin.math.abs(current) / 600f)).coerceIn(0.3f, 1f)
+                                                    offsetX.snapTo(current + dragAmount * resistance)
                                                 }
                                             },
                                             onDragCancel = {
-                                                Logger.w("MiniPlayer", "Drag Cancelled")
                                                 coroutineScope.launch {
-                                                    if (offsetX.value > 200) {
-                                                        sharedViewModel.onUIEvent(UIEvent.Previous)
-                                                    } else if (offsetX.value < -120) {
-                                                        sharedViewModel.onUIEvent(UIEvent.Next)
-                                                    }
-                                                    offsetX.animateTo(0f)
+                                                    offsetX.animateTo(
+                                                        targetValue = 0f,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMediumLow,
+                                                        ),
+                                                    )
                                                 }
                                             },
                                             onDragEnd = {
-                                                Logger.w("MiniPlayer", "Drag Ended")
                                                 coroutineScope.launch {
-                                                    if (offsetX.value > 200) {
+                                                    val finalOffset = offsetX.value
+                                                    if (finalOffset > 160f) {
                                                         sharedViewModel.onUIEvent(UIEvent.Previous)
-                                                    } else if (offsetX.value < -120) {
+                                                    } else if (finalOffset < -120f) {
                                                         sharedViewModel.onUIEvent(UIEvent.Next)
                                                     }
-                                                    offsetX.animateTo(0f)
+                                                    offsetX.animateTo(
+                                                        targetValue = 0f,
+                                                        animationSpec = spring(
+                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                            stiffness = Spring.StiffnessMediumLow,
+                                                        ),
+                                                    )
                                                 }
                                             },
                                         )

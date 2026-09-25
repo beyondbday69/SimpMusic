@@ -2,6 +2,8 @@ package com.maxrave.simpmusic
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -604,14 +606,18 @@ fun App(
                                 isShowNowPlaylistScreen,
                                 enter =
                                     slideInHorizontally(
-                                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                                        animationSpec =
+                                            spring(
+                                                dampingRatio = Spring.DampingRatioLowBouncy,
+                                                stiffness = Spring.StiffnessMediumLow,
+                                            ),
                                         initialOffsetX = { it },
-                                    ) + fadeIn(animationSpec = tween(200)),
+                                    ) + fadeIn(animationSpec = tween(220)),
                                 exit =
                                     slideOutHorizontally(
-                                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                                         targetOffsetX = { it },
-                                    ) + fadeOut(animationSpec = tween(180)),
+                                    ) + fadeOut(animationSpec = tween(160)),
                             ) {
                                 Row(
                                     Modifier
@@ -669,14 +675,18 @@ fun App(
                     visible = isShowNowPlaylistScreen && !isTabletLandscape,
                     enter =
                         slideInVertically(
-                            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                            animationSpec =
+                                spring(
+                                    dampingRatio = Spring.DampingRatioLowBouncy,
+                                    stiffness = Spring.StiffnessMediumLow,
+                                ),
                             initialOffsetY = { it },
-                        ) + fadeIn(animationSpec = tween(150)),
+                        ) + fadeIn(animationSpec = tween(180)),
                     exit =
                         slideOutVertically(
-                            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                            animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                             targetOffsetY = { it },
-                        ) + fadeOut(animationSpec = tween(150)),
+                        ) + fadeOut(animationSpec = tween(160)),
                 ) {
                     BackHandler(enabled = isShowNowPlaylistScreen) {
                         isShowNowPlaylistScreen = false
