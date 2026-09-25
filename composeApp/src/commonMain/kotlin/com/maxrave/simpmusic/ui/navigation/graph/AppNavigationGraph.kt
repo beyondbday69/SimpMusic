@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavBackStackEntry
+import androidx.navigation.NavDestination
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -35,6 +38,18 @@ import com.maxrave.simpmusic.ui.screen.library.MixForYouScreen
 import com.maxrave.simpmusic.ui.screen.other.SearchScreen
 import com.maxrave.simpmusic.ui.screen.player.FullscreenPlayer
 
+private fun getTopLevelTabIndex(destination: NavDestination?): Int {
+    if (destination == null) return -1
+    return when {
+        destination.hierarchy.any { it.hasRoute(HomeDestination::class) } -> 0
+        destination.hierarchy.any { it.hasRoute(SearchDestination::class) } -> 1
+        destination.hierarchy.any { it.hasRoute(LibraryDestination::class) } -> 2
+        destination.hierarchy.any { it.hasRoute(MixForYouDestination::class) } -> 3
+        destination.hierarchy.any { it.hasRoute(AnalyticsDestination::class) } -> 4
+        else -> -1
+    }
+}
+
 @Composable
 @ExperimentalMaterial3Api
 @ExperimentalFoundationApi
@@ -48,10 +63,30 @@ fun AppNavigationGraph(
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
     val topLevelEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
-        EnterTransition.None
+        val initialIdx = getTopLevelTabIndex(initialState.destination)
+        val targetIdx = getTopLevelTabIndex(targetState.destination)
+        if (initialIdx >= 0 && targetIdx >= 0 && initialIdx != targetIdx) {
+            val direction = if (targetIdx > initialIdx) 1 else -1
+            slideInHorizontally(
+                animationSpec = tween(240, easing = FastOutSlowInEasing),
+                initialOffsetX = { fullWidth -> (fullWidth * 0.15f * direction).toInt() },
+            ) + fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing))
+        } else {
+            fadeIn(animationSpec = tween(200, easing = FastOutSlowInEasing))
+        }
     }
     val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
-        ExitTransition.None
+        val initialIdx = getTopLevelTabIndex(initialState.destination)
+        val targetIdx = getTopLevelTabIndex(targetState.destination)
+        if (initialIdx >= 0 && targetIdx >= 0 && initialIdx != targetIdx) {
+            val direction = if (targetIdx > initialIdx) -1 else 1
+            slideOutHorizontally(
+                animationSpec = tween(220, easing = FastOutSlowInEasing),
+                targetOffsetX = { fullWidth -> (fullWidth * 0.15f * direction).toInt() },
+            ) + fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+        } else {
+            fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+        }
     }
 
     NavHost(

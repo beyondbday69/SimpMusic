@@ -2,7 +2,12 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
@@ -11,6 +16,8 @@ import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -23,6 +30,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.ripple
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -148,12 +157,38 @@ fun AppBottomDock(
         Row(
             modifier =
                 Modifier
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+                    .animateContentSize(
+                        animationSpec =
+                            spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                    ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             bottomNavScreens.forEach { screen ->
                 val selected = selectedOrdinal == screen.ordinal
+                val interactionSource = remember { MutableInteractionSource() }
+                val isPressed by interactionSource.collectIsPressedAsState()
+
+                // Tactile bouncy press & select animations
+                val pressScale by animateFloatAsState(
+                    targetValue = if (isPressed) 0.90f else 1.0f,
+                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 450f),
+                    label = "dockPressScale",
+                )
+                val iconScale by animateFloatAsState(
+                    targetValue = if (selected) 1.15f else 1.0f,
+                    animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
+                    label = "dockIconScale",
+                )
+                val pillHorizontalPadding by animateDpAsState(
+                    targetValue = if (selected) 14.dp else 10.dp,
+                    animationSpec = spring(dampingRatio = 0.8f, stiffness = 380f),
+                    label = "dockPillPadding",
+                )
                 val indicatorColor by animateColorAsState(
                     targetValue =
                         if (selected) {
@@ -161,7 +196,7 @@ fun AppBottomDock(
                         } else {
                             Color.Transparent
                         },
-                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                    animationSpec = tween(220, easing = FastOutSlowInEasing),
                     label = "dockIndicatorColor",
                 )
                 val contentColor by animateColorAsState(
@@ -171,7 +206,7 @@ fun AppBottomDock(
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
-                    animationSpec = tween(180, easing = FastOutSlowInEasing),
+                    animationSpec = tween(200, easing = FastOutSlowInEasing),
                     label = "dockContentColor",
                 )
 
@@ -179,33 +214,59 @@ fun AppBottomDock(
                     modifier =
                         Modifier
                             .height(44.dp)
+                            .graphicsLayer {
+                                scaleX = pressScale
+                                scaleY = pressScale
+                            }
                             .clip(CircleShape)
                             .background(indicatorColor)
-                            .clickable { selectTab(screen) }
-                            .padding(horizontal = if (selected) 14.dp else 12.dp),
+                            .clickable(
+                                interactionSource = interactionSource,
+                                indication = ripple(bounded = true, radius = 24.dp),
+                            ) { selectTab(screen) }
+                            .padding(horizontal = pillHorizontalPadding),
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        CompositionLocalProvider(LocalContentColor provides contentColor) {
-                            screen.icon()
+                        Box(
+                            modifier =
+                                Modifier.graphicsLayer {
+                                    scaleX = iconScale
+                                    scaleY = iconScale
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                                screen.icon()
+                            }
                         }
                         AnimatedVisibility(
                             visible = selected,
-                            enter = fadeIn(tween(140, delayMillis = 20)) +
-                                expandHorizontally(
-                                    animationSpec = tween(180, easing = FastOutSlowInEasing),
-                                    expandFrom = Alignment.Start,
-                                    clip = true,
-                                ),
-                            exit = fadeOut(tween(100)) +
-                                shrinkHorizontally(
-                                    animationSpec = tween(160, easing = FastOutSlowInEasing),
-                                    shrinkTowards = Alignment.Start,
-                                    clip = true,
-                                ),
+                            enter =
+                                fadeIn(tween(160, delayMillis = 30)) +
+                                    expandHorizontally(
+                                        animationSpec =
+                                            spring(
+                                                dampingRatio = 0.8f,
+                                                stiffness = 380f,
+                                            ),
+                                        expandFrom = Alignment.Start,
+                                        clip = true,
+                                    ),
+                            exit =
+                                fadeOut(tween(100)) +
+                                    shrinkHorizontally(
+                                        animationSpec =
+                                            spring(
+                                                dampingRatio = 0.85f,
+                                                stiffness = 450f,
+                                            ),
+                                        shrinkTowards = Alignment.Start,
+                                        clip = true,
+                                    ),
                         ) {
                             Text(
                                 text = stringResource(screen.title),
@@ -232,6 +293,18 @@ fun AppBottomDock(
                 currentDestination?.hierarchy?.any {
                     it.hasRoute(SettingsDestination::class)
                 } == true
+            val settingsInteractionSource = remember { MutableInteractionSource() }
+            val isSettingsPressed by settingsInteractionSource.collectIsPressedAsState()
+            val settingsPressScale by animateFloatAsState(
+                targetValue = if (isSettingsPressed) 0.90f else 1.0f,
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = 450f),
+                label = "settingsPressScale",
+            )
+            val settingsIconScale by animateFloatAsState(
+                targetValue = if (isSettingsSelected) 1.15f else 1.0f,
+                animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
+                label = "settingsIconScale",
+            )
             val settingsIndicator by animateColorAsState(
                 targetValue =
                     if (isSettingsSelected) {
@@ -239,7 +312,7 @@ fun AppBottomDock(
                     } else {
                         Color.Transparent
                     },
-                animationSpec = tween(180, easing = FastOutSlowInEasing),
+                animationSpec = tween(220, easing = FastOutSlowInEasing),
                 label = "settingsIndicatorColor",
             )
             val settingsContentColor by animateColorAsState(
@@ -249,7 +322,7 @@ fun AppBottomDock(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                animationSpec = tween(180, easing = FastOutSlowInEasing),
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
                 label = "settingsContentColor",
             )
 
@@ -257,20 +330,36 @@ fun AppBottomDock(
                 modifier =
                     Modifier
                         .size(44.dp)
+                        .graphicsLayer {
+                            scaleX = settingsPressScale
+                            scaleY = settingsPressScale
+                        }
                         .clip(CircleShape)
                         .background(settingsIndicator)
-                        .clickable {
+                        .clickable(
+                            interactionSource = settingsInteractionSource,
+                            indication = ripple(bounded = true, radius = 22.dp),
+                        ) {
                             navController.navigate(SettingsDestination) {
                                 launchSingleTop = true
                             }
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
-                    Icon(
-                        imageVector = SimpIcons.Settings,
-                        contentDescription = stringResource(Res.string.settings),
-                    )
+                Box(
+                    modifier =
+                        Modifier.graphicsLayer {
+                            scaleX = settingsIconScale
+                            scaleY = settingsIconScale
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
+                        Icon(
+                            imageVector = SimpIcons.Settings,
+                            contentDescription = stringResource(Res.string.settings),
+                        )
+                    }
                 }
             }
         }
