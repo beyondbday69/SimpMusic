@@ -42,6 +42,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -1107,7 +1109,7 @@ fun SearchScreen(
                     visible = searchUIType == SearchUIType.SEARCH_RESULTS,
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
-                    Row(
+                    SingleChoiceSegmentedButtonRow(
                         modifier =
                             Modifier
                                 .widthIn(max = 720.dp)
@@ -1115,17 +1117,15 @@ fun SearchScreen(
                                 .padding(top = 10.dp)
                                 .padding(horizontal = 12.dp),
                     ) {
-                        SearchType.entries.forEach { id ->
+                        SearchType.entries.forEachIndexed { index, id ->
                             val isSelected = id == searchScreenState.searchType
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Chip(
-                                isAnimated = uiState is SearchScreenUIState.Loading,
-                                isSelected = isSelected,
-                                text = stringResource(id.toStringRes()),
+                            SegmentedButton(
+                                selected = isSelected,
+                                onClick = { searchViewModel.setSearchType(id) },
+                                shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(index = index, count = SearchType.entries.size)
                             ) {
-                                searchViewModel.setSearchType(id)
+                                Text(stringResource(id.toStringRes()))
                             }
-                            Spacer(modifier = Modifier.width(4.dp))
                         }
                     }
                 }
