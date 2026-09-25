@@ -9,27 +9,26 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -45,15 +44,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntRect
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
@@ -114,48 +119,73 @@ private const val FULLSCREEN_LYRICS_ENTER_MS = 300
 private const val FULLSCREEN_LYRICS_EXIT_MS = 220
 
 @OptIn(ExperimentalFoundationApi::class)
-@ExperimentalMaterial3Api
 @Composable
 fun NowPlayingScreen(
     sharedViewModel: SharedViewModel = koinInject(),
     navController: NavController,
     onDismiss: () -> Unit = {},
 ) {
-    val coroutineScope = rememberCoroutineScope()
-    val sheetState =
-        rememberModalBottomSheetState(
-            skipPartiallyExpanded = true,
-        )
+    var dragOffsetY by remember { mutableFloatStateOf(0f) }
+    val animatedOffsetY by animateFloatAsState(
+        targetValue = dragOffsetY,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "sheetDismissOffset",
+    )
+    val density = LocalDensity.current
+    val dismissThreshold = with(density) { 120.dp.toPx() }
 
-    val hideSheet: () -> Unit = {
-        coroutineScope.launch {
-            sheetState.hide()
-            onDismiss()
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                // If user dragged down and now scrolls back up, consume upward scroll first
+                if (available.y < 0 && dragOffsetY > 0f) {
+                    val consumed = available.y.coerceAtLeast(-dragOffsetY)
+                    dragOffsetY += consumed
+                    return Offset(0f, consumed)
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource,
+            ): Offset {
+                // When content is at top of scroll and user pulls downwards
+                if (available.y > 0 && source == NestedScrollSource.UserInput) {
+                    dragOffsetY = (dragOffsetY + available.y).coerceAtLeast(0f)
+                    return Offset(0f, available.y)
+                }
+                return Offset.Zero
+            }
+
+            override suspend fun onPreFling(available: Velocity): Velocity {
+                if (dragOffsetY > dismissThreshold || available.y > 800f) {
+                    onDismiss()
+                }
+                dragOffsetY = 0f
+                return Velocity.Zero
+            }
         }
     }
 
-    ModalBottomSheet(
+    Box(
         modifier =
             Modifier
-                .fillMaxHeight(),
-        onDismissRequest = {
-            onDismiss()
-        },
-        containerColor = Color.Black,
-        dragHandle = {},
-        scrimColor = Color.Black.copy(alpha = .5f),
-        sheetState = sheetState,
-        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
-        shape = RectangleShape,
+                .fillMaxSize()
+                .background(Color.Black)
+                .nestedScroll(nestedScrollConnection)
+                .graphicsLayer {
+                    translationY = animatedOffsetY.coerceAtLeast(0f)
+                    clip = true
+                },
     ) {
         NowPlayingScreenContent(
             sharedViewModel = sharedViewModel,
             navController = navController,
-            isExpanded = sheetState.currentValue == SheetValue.Expanded,
+            isExpanded = true,
             dismissIcon = SimpIcons.KeyboardArrowDown,
-            onDismiss = {
-                hideSheet()
-            },
+            onDismiss = onDismiss,
         )
     }
 }
@@ -472,23 +502,28 @@ fun NowPlayingScreenContent(
     }
 
     // Crossfade: RGB rainbow color cycling when transitioning between tracks
-    val infiniteTransition = rememberInfiniteTransition(label = "crossfadeRainbow")
-    val rainbowHue by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(1000, easing = LinearEasing),
-                repeatMode = RepeatMode.Restart,
-            ),
-        label = "rainbowHue",
-    )
-    val rainbowColor = hsvToColor(rainbowHue, 1f, 1f)
-    val sliderTrackColor by animateColorAsState(
-        targetValue = if (timelineState.isCrossfading) rainbowColor else Color.White,
-        animationSpec = tween(300),
-        label = "sliderCrossfadeColor",
-    )
+    val sliderTrackColor = if (timelineState.isCrossfading) {
+        val infiniteTransition = rememberInfiniteTransition(label = "crossfadeRainbow")
+        val rainbowHue by infiniteTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 360f,
+            animationSpec =
+                infiniteRepeatable(
+                    animation = tween(1000, easing = LinearEasing),
+                    repeatMode = RepeatMode.Restart,
+                ),
+            label = "rainbowHue",
+        )
+        val rainbowColor = hsvToColor(rainbowHue, 1f, 1f)
+        val animatedColor by animateColorAsState(
+            targetValue = rainbowColor,
+            animationSpec = tween(300),
+            label = "sliderCrossfadeColor",
+        )
+        animatedColor
+    } else {
+        Color.White
+    }
 
     // Show ControlLayout Or Show Artist Badge
     var showHideControlLayout by rememberSaveable {

@@ -1,19 +1,23 @@
 package com.maxrave.simpmusic
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.ui.graphics.graphicsLayer
+import com.maxrave.simpmusic.expect.BackHandler
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -593,16 +597,28 @@ fun App(
                             }
                         }
                         if (isTablet && isTabletLandscape && !isInFullscreen) {
+                            BackHandler(enabled = isShowNowPlaylistScreen) {
+                                isShowNowPlaylistScreen = false
+                            }
                             AnimatedVisibility(
                                 isShowNowPlaylistScreen,
-                                enter = expandHorizontally() + fadeIn(),
-                                exit = fadeOut() + shrinkHorizontally(),
+                                enter =
+                                    slideInHorizontally(
+                                        animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                                        initialOffsetX = { it },
+                                    ) + fadeIn(animationSpec = tween(200)),
+                                exit =
+                                    slideOutHorizontally(
+                                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                        targetOffsetX = { it },
+                                    ) + fadeOut(animationSpec = tween(180)),
                             ) {
                                 Row(
                                     Modifier
                                         .fillMaxHeight()
                                         .widthIn(min = 360.dp, max = 460.dp)
-                                        .fillMaxWidth(0.38f),
+                                        .fillMaxWidth(0.38f)
+                                        .graphicsLayer { clip = true },
                                 ) {
                                     Spacer(Modifier.width(8.dp))
                                     Box(
@@ -649,17 +665,45 @@ fun App(
                     }
                 }
 
-                if (isShowNowPlaylistScreen && !isTabletLandscape) {
+                AnimatedVisibility(
+                    visible = isShowNowPlaylistScreen && !isTabletLandscape,
+                    enter =
+                        slideInVertically(
+                            animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+                            initialOffsetY = { it },
+                        ) + fadeIn(animationSpec = tween(150)),
+                    exit =
+                        slideOutVertically(
+                            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                            targetOffsetY = { it },
+                        ) + fadeOut(animationSpec = tween(150)),
+                ) {
+                    BackHandler(enabled = isShowNowPlaylistScreen) {
+                        isShowNowPlaylistScreen = false
+                    }
                     ForceDarkContent {
                         if (isTablet) {
                             Box(
-                                Modifier.fillMaxSize(),
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(Color.Black.copy(alpha = 0.55f))
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                        onClick = { isShowNowPlaylistScreen = false },
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Box(
                                     Modifier
                                         .fillMaxHeight()
-                                        .widthIn(max = 600.dp),
+                                        .widthIn(max = 600.dp)
+                                        .clip(RoundedCornerShape(16.dp))
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                            onClick = {},
+                                        ),
                                 ) {
                                     NowPlayingScreen(
                                         navController = navController,
