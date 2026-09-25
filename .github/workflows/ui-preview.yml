@@ -66,7 +66,7 @@ jobs:
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: SimpMusic-apk
+          name: SimpMusic-arm64-apk
           path: ${{ env.APK_FILES }}
           if-no-files-found: error
 
@@ -76,8 +76,8 @@ jobs:
         run: |
           TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
           gh release create "$TAG" ${{ env.APK_FILES }} \
-            --title "SimpMusic with Bottom Center Dock ($TAG)" \
-            --notes "Optimized high-performance Android APK build ($BUILD_FLAVOR) with fluid floating bottom-center dock, zero-latency switching, and hardware-accelerated transitions." \
+            --title "SimpMusic ARM64 Release ($TAG)" \
+            --notes "Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, and smooth hardware-accelerated transitions." \
             --prerelease || true
 
       - name: Upload Build Reports on Failure
