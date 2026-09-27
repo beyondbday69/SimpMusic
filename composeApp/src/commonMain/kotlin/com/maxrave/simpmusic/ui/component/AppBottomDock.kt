@@ -161,8 +161,8 @@ fun AppBottomDock(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
-        shadowElevation = 8.dp,
-        tonalElevation = 2.dp,
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp,
         modifier =
             Modifier
                 .wrapContentWidth()

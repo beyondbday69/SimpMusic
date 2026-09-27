@@ -43,8 +43,8 @@ fun LoadingDialog(
                     shape = MaterialTheme.shapes.large,
                     color = rememberSurfaceDarkColors().container,
                     contentColor = rememberSurfaceDarkColors().content,
-                    tonalElevation = AlertDialogDefaults.TonalElevation,
-                    shadowElevation = 1.dp,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
                 ) {
                     Column(
                         Modifier.padding(

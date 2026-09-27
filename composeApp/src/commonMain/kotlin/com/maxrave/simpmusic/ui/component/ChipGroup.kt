@@ -1,7 +1,7 @@
 package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.ElevatedFilterChip
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -30,14 +30,14 @@ fun Chip(
         oneCircleDurationMillis = 2500,
     ) {
         CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides Dp.Unspecified) {
-            ElevatedFilterChip(
+            FilterChip(
                 shape = CircleShape,
                 // No shadow. An unselected chip has no fill, and a drop shadow under a see-through
                 // shape shows THROUGH it as a dark ring instead of sitting behind it. Naming
                 // `elevation` alone is enough: pressed, focused and hovered all default to it.
-                elevation = FilterChipDefaults.elevatedFilterChipElevation(elevation = 0.dp),
+                elevation = FilterChipDefaults.filterChipElevation(elevation = 0.dp),
                 colors =
-                    FilterChipDefaults.elevatedFilterChipColors(
+                    FilterChipDefaults.filterChipColors(
                         // Unselected chips have no fill at all. They mostly sit over artwork (Home)
                         // where a solid pill reads as a slab punched over the image; the outline
                         // below is what carries the shape now. The selected chip deliberately stays

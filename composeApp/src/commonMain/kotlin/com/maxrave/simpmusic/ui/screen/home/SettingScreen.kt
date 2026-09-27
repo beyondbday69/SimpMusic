@@ -2931,8 +2931,8 @@ fun SettingScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = MaterialTheme.shapes.large,
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
-                tonalElevation = AlertDialogDefaults.TonalElevation,
-                shadowElevation = 1.dp,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp,
             ) {
                 val googleAccounts by viewModel.googleAccounts.collectAsStateWithLifecycle(
                     minActiveState = Lifecycle.State.RESUMED,

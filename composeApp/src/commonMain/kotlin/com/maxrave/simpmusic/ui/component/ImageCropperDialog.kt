@@ -103,7 +103,7 @@ fun ImageCropperDialog(
             modifier = Modifier.fillMaxWidth().widthIn(max = MAX_DIALOG_WIDTH),
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
-            tonalElevation = 6.dp,
+            tonalElevation = 0.dp,
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(

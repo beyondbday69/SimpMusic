@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -48,7 +48,7 @@ import simpmusic.composeapp.generated.resources.wrapped_entry_title
  * five-cover mosaic and the year set as a display figure, which made the card taller than half a
  * phone screen — a banner competing with the page it sits on rather than an invitation into it.
  *
- * Built from the app's own vocabulary rather than a shape of its own: the shell is [ElevatedCard]
+ * Built from the app's own vocabulary rather than a shape of its own: the shell is [Card]
  * with `CardDefaults`, exactly as [LibraryTilingItem] draws a tappable card in Library; the cover
  * is a plain `AsyncImage` clipped the way every list row in the app clips one; colours are
  * `MaterialTheme.colorScheme` roles and type comes off [typo].
@@ -62,10 +62,10 @@ fun WrappedEntryCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ElevatedCard(
+    Card(
         modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
         shape = RoundedCornerShape(CARD_RADIUS),
-        elevation = CardDefaults.elevatedCardElevation(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         // `elevatedCardColors`' own container is `surfaceContainerLow`, which on the Analytics page
         // sits almost on top of the artwork-tinted background it is drawn over. One step up keeps
         // the card reading as an object there, and still as a card on the flat Library page.

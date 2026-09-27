@@ -332,8 +332,8 @@ fun InfoPlayerBottomSheet(
                     modifier = Modifier.fillMaxWidth(),
                     shape = MaterialTheme.shapes.large,
                     color = rememberSurfaceDarkColors().container,
-                    tonalElevation = AlertDialogDefaults.TonalElevation,
-                    shadowElevation = 1.dp,
+                    tonalElevation = 0.dp,
+                    shadowElevation = 0.dp,
                 ) {
                     Column(
                         Modifier.padding(

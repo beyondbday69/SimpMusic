@@ -55,7 +55,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
@@ -531,16 +531,7 @@ fun NowPlayingContentSpotify(
                                         modifier =
                                             Modifier
                                                 .align(Alignment.Center)
-                                                .background(Color.Transparent)
-                                                .shadow(
-                                                    elevation = 3.dp,
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    spotColor =
-                                                        state.spotShadowColor.copy(
-                                                            alpha = 0.6f,
-                                                        ),
-                                                    ambientColor = Color.Transparent,
-                                                ),
+                                                .background(Color.Transparent),
                                     ) {
                                         AsyncImage(
                                             model =
@@ -746,13 +737,7 @@ fun NowPlayingContentSpotify(
                                         modifier =
                                             Modifier
                                                 .align(Alignment.Center)
-                                                .background(Color.Transparent)
-                                                .shadow(
-                                                    elevation = 3.dp,
-                                                    shape = RoundedCornerShape(8.dp),
-                                                    spotColor = Color.Black.copy(alpha = 0.4f),
-                                                    ambientColor = Color.Transparent,
-                                                ),
+                                                .background(Color.Transparent),
                                     ) {
                                         AsyncImage(
                                             model =
@@ -1214,7 +1199,7 @@ fun NowPlayingContentSpotify(
                             visible = state.screenData.lyricsData != null,
                             modifier = Modifier.padding(top = 10.dp),
                         ) {
-                            ElevatedCard(
+                            Card(
                                 onClick = {},
                                 shape = RoundedCornerShape(8.dp),
                                 colors =
@@ -1361,7 +1346,7 @@ fun NowPlayingContentSpotify(
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         AnimatedVisibility(visible = state.screenData.songInfoData != null) {
-                            ElevatedCard(
+                            Card(
                                 onClick = {
                                     actions.onNavigateToArtist()
                                 },
@@ -1396,7 +1381,7 @@ fun NowPlayingContentSpotify(
                                             error = rememberHolderPainter(isVideo = true),
                                             contentDescription = null,
                                             contentScale = ContentScale.Crop,
-                                            // No explicit clip: the ElevatedCard already clips to
+                                            // No explicit clip: the Card already clips to
                                             // its 8.dp shape, so only the card's top corners round
                                             // and the image meets the panel below flush.
                                             modifier = Modifier.fillMaxSize(),
@@ -1448,7 +1433,7 @@ fun NowPlayingContentSpotify(
                         }
                         Spacer(modifier = Modifier.height(10.dp))
                         AnimatedVisibility(visible = state.screenData.songInfoData != null) {
-                            ElevatedCard(
+                            Card(
                                 onClick = {},
                                 shape = RoundedCornerShape(8.dp),
                                 colors =
@@ -1532,8 +1517,8 @@ fun NowPlayingContentSpotify(
             enter = fadeIn() + slideInVertically(),
             exit = fadeOut() + slideOutVertically(),
         ) {
-            ElevatedCard(
-                elevation = CardDefaults.elevatedCardElevation(10.dp),
+            Card(
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 shape = RectangleShape,
                 colors =
                     CardDefaults.elevatedCardColors(

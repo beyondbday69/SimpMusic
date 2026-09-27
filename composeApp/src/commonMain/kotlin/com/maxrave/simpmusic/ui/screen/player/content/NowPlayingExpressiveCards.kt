@@ -39,7 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -870,8 +870,8 @@ internal fun ExpressiveCollapsedToolbar(
         enter = fadeIn() + slideInVertically(),
         exit = fadeOut() + slideOutVertically(),
     ) {
-        ElevatedCard(
-            elevation = CardDefaults.elevatedCardElevation(10.dp),
+        Card(
+            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
             shape = RectangleShape,
             colors =
                 CardDefaults.elevatedCardColors(

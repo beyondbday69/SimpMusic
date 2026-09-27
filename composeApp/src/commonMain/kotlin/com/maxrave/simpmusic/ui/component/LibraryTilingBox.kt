@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -103,13 +103,13 @@ fun LibraryTilingItem(
     onClick: () -> Unit = {},
 ) {
     val title = stringResource(state.title)
-    ElevatedCard(
+    Card(
         modifier =
             Modifier.fillMaxWidth().clickable {
                 onClick.invoke()
             },
         shape = RoundedCornerShape(8.dp),
-        elevation = CardDefaults.elevatedCardElevation(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         colors =
             CardDefaults.elevatedCardColors().copy(
                 containerColor = state.containerColor,
