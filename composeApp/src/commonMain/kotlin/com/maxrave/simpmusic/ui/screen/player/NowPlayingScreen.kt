@@ -164,7 +164,7 @@ fun NowPlayingScreen(
             }
 
             override suspend fun onPreFling(available: Velocity): Velocity {
-                if (dragOffsetY > dismissThreshold || available.y > 600f) {
+                if (dragOffsetY > dismissThreshold || (dragOffsetY > 40f && available.y > 1000f)) {
                     onDismiss()
                 }
                 dragOffsetY = 0f
