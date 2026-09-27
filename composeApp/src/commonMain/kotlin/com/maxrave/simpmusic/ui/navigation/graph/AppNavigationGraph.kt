@@ -65,45 +65,43 @@ fun AppNavigationGraph(
     showNowPlayingSheet: () -> Unit = {},
     onScrolling: (onTop: Boolean) -> Unit = {},
 ) {
-    val topLevelEnterTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> EnterTransition) = {
-        fadeIn(
-            animationSpec = tween(
-                durationMillis = 100,
-                easing = LinearOutSlowInEasing,
-            ),
-        )
-    }
-    val topLevelExitTransition: (AnimatedContentTransitionScope<NavBackStackEntry>.() -> ExitTransition) = {
-        fadeOut(
-            animationSpec = tween(
-                durationMillis = 50,
-                easing = FastOutLinearInEasing,
-            ),
-        )
-    }
+
+
 
     NavHost(
         navController,
         startDestination = startDestination,
         enterTransition = {
-            fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
+            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
+                fadeIn(animationSpec = tween(300))
+            } else {
+                fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
+            }
         },
         exitTransition = {
-            fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
+            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
+                fadeOut(animationSpec = tween(300))
+            } else {
+                fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
+            }
         },
         popEnterTransition = {
-            fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
+            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
+                fadeIn(animationSpec = tween(300))
+            } else {
+                fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
+            }
         },
         popExitTransition = {
-            fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
+            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
+                fadeOut(animationSpec = tween(300))
+            } else {
+                fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
+            }
         },
     ) {
         // Bottom bar destinations with snappy, lightweight fade transitions
         composable<HomeDestination>(
-            enterTransition = topLevelEnterTransition,
-            exitTransition = topLevelExitTransition,
-            popEnterTransition = topLevelEnterTransition,
-            popExitTransition = topLevelExitTransition,
         ) {
             HomeScreen(
                 onScrolling = onScrolling,
@@ -111,20 +109,12 @@ fun AppNavigationGraph(
             )
         }
         composable<SearchDestination>(
-            enterTransition = topLevelEnterTransition,
-            exitTransition = topLevelExitTransition,
-            popEnterTransition = topLevelEnterTransition,
-            popExitTransition = topLevelExitTransition,
         ) {
             SearchScreen(
                 navController = navController,
             )
         }
         composable<LibraryDestination>(
-            enterTransition = topLevelEnterTransition,
-            exitTransition = topLevelExitTransition,
-            popEnterTransition = topLevelEnterTransition,
-            popExitTransition = topLevelExitTransition,
         ) {
             LibraryScreen(
                 innerPadding = innerPadding,
@@ -134,10 +124,6 @@ fun AppNavigationGraph(
         }
         // Only reachable as a tab while signed in to YouTube
         composable<MixForYouDestination>(
-            enterTransition = topLevelEnterTransition,
-            exitTransition = topLevelExitTransition,
-            popEnterTransition = topLevelEnterTransition,
-            popExitTransition = topLevelExitTransition,
         ) {
             MixForYouScreen(
                 innerPadding = innerPadding,
@@ -147,10 +133,6 @@ fun AppNavigationGraph(
         }
         // Only reachable as a tab while local tracking is enabled.
         composable<AnalyticsDestination>(
-            enterTransition = topLevelEnterTransition,
-            exitTransition = topLevelExitTransition,
-            popEnterTransition = topLevelEnterTransition,
-            popExitTransition = topLevelExitTransition,
         ) {
             ForceDarkContent {
                 AnalyticsScreen(
@@ -160,10 +142,6 @@ fun AppNavigationGraph(
             }
         }
         composable<SettingsDestination>(
-            enterTransition = topLevelEnterTransition,
-            exitTransition = topLevelExitTransition,
-            popEnterTransition = topLevelEnterTransition,
-            popExitTransition = topLevelExitTransition,
         ) {
             SettingScreen(
                 navController = navController,

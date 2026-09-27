@@ -236,7 +236,11 @@ fun AppBottomDock(
                             Modifier
                                 .height(44.dp)
                                 .onGloballyPositioned { coords ->
-                                    itemBounds = itemBounds + (screen.ordinal to coords.boundsInParent())
+                                    val bounds = coords.boundsInParent()
+                                    val current = itemBounds[screen.ordinal]
+                                    if (current == null || kotlin.math.abs(current.left - bounds.left) > 0.5f || kotlin.math.abs(current.width - bounds.width) > 0.5f) {
+                                        itemBounds = itemBounds + (screen.ordinal to bounds)
+                                    }
                                 }
                                 .graphicsLayer {
                                     scaleX = pressScale
@@ -334,7 +338,11 @@ fun AppBottomDock(
                         Modifier
                             .height(44.dp)
                             .onGloballyPositioned { coords ->
-                                itemBounds = itemBounds + (settingsOrdinal to coords.boundsInParent())
+                                val bounds = coords.boundsInParent()
+                                val current = itemBounds[settingsOrdinal]
+                                if (current == null || kotlin.math.abs(current.left - bounds.left) > 0.5f || kotlin.math.abs(current.width - bounds.width) > 0.5f) {
+                                    itemBounds = itemBounds + (settingsOrdinal to bounds)
+                                }
                             }
                             .graphicsLayer {
                                 scaleX = settingsPressScale
