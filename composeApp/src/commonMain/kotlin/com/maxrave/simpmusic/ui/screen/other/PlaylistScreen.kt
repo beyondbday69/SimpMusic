@@ -1094,8 +1094,7 @@ fun PlaylistScreen(
                                 if (index < filteredTrack.size - 1) {
                                     HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                                         modifier = Modifier.padding(start = 72.dp, end = 16.dp),
-                                        thickness = 0.5.dp,
-                                        ),
+                                        thickness = 0.5.dp
                                     )
                                 }
                             }

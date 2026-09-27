@@ -1693,7 +1693,6 @@ fun NowPlayingBottomSheet(
                                     .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)
-                                    .crossfade(550)
                                     .build(),
                             placeholder = rememberHolderPainter(),
                             error = rememberHolderPainter(),
@@ -1738,7 +1737,7 @@ fun NowPlayingBottomSheet(
                         }
                     }
                     Spacer(modifier = Modifier.height(5.dp))
-                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
+                    HorizontalDivider(color = Color.Transparent, 
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                         thickness = 1.dp,
                     )
