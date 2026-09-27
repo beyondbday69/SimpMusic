@@ -173,7 +173,7 @@ fun AppBottomDock(
         
         Box(contentAlignment = Alignment.CenterStart) {
             val selectedRect = itemBounds[selectedOrdinal] ?: androidx.compose.ui.geometry.Rect.Zero
-            val springSpec = spring<Dp>(dampingRatio = Spring.DampingRatioMediumBouncy)
+            val springSpec = spring<Dp>(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f)
             
             val animatedOffsetX by animateDpAsState(
                 targetValue = with(density) { selectedRect.left.toDp() },
@@ -271,14 +271,14 @@ fun AppBottomDock(
                                 enter =
                                     fadeIn(tween(140)) +
                                         expandHorizontally(
-                                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
                                             expandFrom = Alignment.Start,
                                             clip = true,
                                         ),
                                 exit =
                                     fadeOut(tween(100)) +
                                         shrinkHorizontally(
-                                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 400f),
                                             shrinkTowards = Alignment.Start,
                                             clip = true,
                                         ),
