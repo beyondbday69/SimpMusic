@@ -39,6 +39,9 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -47,6 +50,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onGloballyPositioned
+
+
+import androidx.compose.ui.unit.Dp
+
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -154,189 +163,206 @@ fun AppBottomDock(
                 .wrapContentWidth()
                 .height(58.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            bottomNavScreens.forEach { screen ->
-                val selected = selectedOrdinal == screen.ordinal
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
+        val density = LocalDensity.current
+        var itemBounds by remember { mutableStateOf(mapOf<Int, androidx.compose.ui.geometry.Rect>()) }
+        
+        Box(contentAlignment = Alignment.CenterStart) {
+            val selectedRect = itemBounds[selectedOrdinal] ?: androidx.compose.ui.geometry.Rect.Zero
+            val springSpec = spring<Dp>(dampingRatio = Spring.DampingRatioMediumBouncy)
+            
+            val animatedOffsetX by animateDpAsState(
+                targetValue = with(density) { selectedRect.left.toDp() },
+                animationSpec = springSpec,
+                label = "indicatorX"
+            )
+            val animatedWidth by animateDpAsState(
+                targetValue = with(density) { selectedRect.width.toDp() },
+                animationSpec = springSpec,
+                label = "indicatorWidth"
+            )
 
-                // Tactile bouncy press & select animations
-                val pressScale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.90f else 1.0f,
+            // Animated Liquid Background
+            if (selectedRect != androidx.compose.ui.geometry.Rect.Zero) {
+                Box(Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                    Box(
+                        Modifier
+                            .offset(x = animatedOffsetX)
+                            .width(animatedWidth)
+                            .height(44.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer)
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                bottomNavScreens.forEach { screen ->
+                    val selected = selectedOrdinal == screen.ordinal
+                    val interactionSource = remember { MutableInteractionSource() }
+                    val isPressed by interactionSource.collectIsPressedAsState()
+
+                    val pressScale by animateFloatAsState(
+                        targetValue = if (isPressed) 0.90f else 1.0f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 450f),
+                        label = "dockPressScale",
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selected) 1.12f else 1.0f,
+                        animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
+                        label = "dockIconScale",
+                    )
+                    val contentColor by animateColorAsState(
+                        targetValue =
+                            if (selected) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSurfaceVariant
+                            },
+                        animationSpec = tween(160, easing = FastOutSlowInEasing),
+                        label = "dockContentColor",
+                    )
+
+                    Box(
+                        modifier =
+                            Modifier
+                                .height(44.dp)
+                                .onGloballyPositioned { coords ->
+                                    itemBounds = itemBounds + (screen.ordinal to coords.boundsInParent())
+                                }
+                                .graphicsLayer {
+                                    scaleX = pressScale
+                                    scaleY = pressScale
+                                }
+                                .clip(CircleShape)
+                                .clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null,
+                                ) { selectTab(screen) }
+                                .padding(horizontal = if (selected) 14.dp else 10.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Box(
+                                modifier =
+                                    Modifier.graphicsLayer {
+                                        scaleX = iconScale
+                                        scaleY = iconScale
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                CompositionLocalProvider(LocalContentColor provides contentColor) {
+                                    screen.icon()
+                                }
+                            }
+                            AnimatedVisibility(
+                                visible = selected,
+                                enter =
+                                    fadeIn(tween(140)) +
+                                        expandHorizontally(
+                                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                            expandFrom = Alignment.Start,
+                                            clip = true,
+                                        ),
+                                exit =
+                                    fadeOut(tween(100)) +
+                                        shrinkHorizontally(
+                                            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
+                                            shrinkTowards = Alignment.Start,
+                                            clip = true,
+                                        ),
+                            ) {
+                                Text(
+                                    text = stringResource(screen.title),
+                                    style = typo().labelMedium,
+                                    color = contentColor,
+                                    maxLines = 1,
+                                    modifier = Modifier.padding(start = 2.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+
+                VerticalDivider(
+                    modifier =
+                        Modifier
+                            .height(20.dp)
+                            .padding(horizontal = 2.dp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                )
+
+                val isSettingsSelected = currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true
+                val settingsOrdinal = -1
+                val settingsInteractionSource = remember { MutableInteractionSource() }
+                val isSettingsPressed by settingsInteractionSource.collectIsPressedAsState()
+                
+                val settingsPressScale by animateFloatAsState(
+                    targetValue = if (isSettingsPressed) 0.90f else 1.0f,
                     animationSpec = spring(dampingRatio = 0.6f, stiffness = 450f),
-                    label = "dockPressScale",
+                    label = "settingsPressScale",
                 )
-                val iconScale by animateFloatAsState(
-                    targetValue = if (selected) 1.12f else 1.0f,
-                    animationSpec = spring(dampingRatio = 0.6f, stiffness = 400f),
-                    label = "dockIconScale",
+                val settingsIconScale by animateFloatAsState(
+                    targetValue = if (isSettingsSelected) 1.15f else 1.0f,
+                    animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
+                    label = "settingsIconScale",
                 )
-                val indicatorColor by animateColorAsState(
+                val settingsContentColor by animateColorAsState(
                     targetValue =
-                        if (selected) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            Color.Transparent
-                        },
-                    animationSpec = tween(180, easing = FastOutSlowInEasing),
-                    label = "dockIndicatorColor",
-                )
-                val contentColor by animateColorAsState(
-                    targetValue =
-                        if (selected) {
+                        if (isSettingsSelected) {
                             MaterialTheme.colorScheme.onPrimaryContainer
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
                         },
                     animationSpec = tween(160, easing = FastOutSlowInEasing),
-                    label = "dockContentColor",
+                    label = "settingsContentColor",
                 )
 
                 Box(
                     modifier =
                         Modifier
                             .height(44.dp)
+                            .onGloballyPositioned { coords ->
+                                itemBounds = itemBounds + (settingsOrdinal to coords.boundsInParent())
+                            }
                             .graphicsLayer {
-                                scaleX = pressScale
-                                scaleY = pressScale
+                                scaleX = settingsPressScale
+                                scaleY = settingsPressScale
                             }
                             .clip(CircleShape)
-                            .background(indicatorColor)
                             .clickable(
-                                interactionSource = interactionSource,
-                                indication = ripple(bounded = true, radius = 24.dp),
-                            ) { selectTab(screen) }
-                            .padding(horizontal = if (selected) 14.dp else 10.dp),
+                                interactionSource = settingsInteractionSource,
+                                indication = null,
+                            ) {
+                                if (isSettingsSelected) {
+                                    reloadDestinationIfNeeded(SettingsDestination::class)
+                                } else {
+                                    selectedOrdinal = settingsOrdinal
+                                    navController.navigate(SettingsDestination) {
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                }
+                            }
+                            .padding(horizontal = 10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        Box(
-                            modifier =
-                                Modifier.graphicsLayer {
-                                    scaleX = iconScale
-                                    scaleY = iconScale
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            CompositionLocalProvider(LocalContentColor provides contentColor) {
-                                screen.icon()
-                            }
-                        }
-                        AnimatedVisibility(
-                            visible = selected,
-                            enter =
-                                fadeIn(tween(140)) +
-                                    expandHorizontally(
-                                        animationSpec = tween(160, easing = FastOutSlowInEasing),
-                                        expandFrom = Alignment.Start,
-                                        clip = true,
-                                    ),
-                            exit =
-                                fadeOut(tween(100)) +
-                                    shrinkHorizontally(
-                                        animationSpec = tween(140, easing = FastOutSlowInEasing),
-                                        shrinkTowards = Alignment.Start,
-                                        clip = true,
-                                    ),
-                        ) {
-                            Text(
-                                text = stringResource(screen.title),
-                                style = typo().labelMedium,
-                                color = contentColor,
-                                maxLines = 1,
-                                modifier = Modifier.padding(start = 2.dp),
-                            )
-                        }
-                    }
-                }
-            }
-
-            VerticalDivider(
-                modifier =
-                    Modifier
-                        .height(20.dp)
-                        .padding(horizontal = 2.dp),
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
-            )
-
-            // Dedicated Settings access right in the dock
-            val isSettingsSelected =
-                currentDestination?.hierarchy?.any {
-                    it.hasRoute(SettingsDestination::class)
-                } == true
-            val settingsInteractionSource = remember { MutableInteractionSource() }
-            val isSettingsPressed by settingsInteractionSource.collectIsPressedAsState()
-            val settingsPressScale by animateFloatAsState(
-                targetValue = if (isSettingsPressed) 0.90f else 1.0f,
-                animationSpec = spring(dampingRatio = 0.6f, stiffness = 450f),
-                label = "settingsPressScale",
-            )
-            val settingsIconScale by animateFloatAsState(
-                targetValue = if (isSettingsSelected) 1.15f else 1.0f,
-                animationSpec = spring(dampingRatio = 0.55f, stiffness = 380f),
-                label = "settingsIconScale",
-            )
-            val settingsIndicator by animateColorAsState(
-                targetValue =
-                    if (isSettingsSelected) {
-                        MaterialTheme.colorScheme.primaryContainer
-                    } else {
-                        Color.Transparent
-                    },
-                animationSpec = tween(220, easing = FastOutSlowInEasing),
-                label = "settingsIndicatorColor",
-            )
-            val settingsContentColor by animateColorAsState(
-                targetValue =
-                    if (isSettingsSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                animationSpec = tween(200, easing = FastOutSlowInEasing),
-                label = "settingsContentColor",
-            )
-
-            Box(
-                modifier =
-                    Modifier
-                        .size(44.dp)
-                        .graphicsLayer {
-                            scaleX = settingsPressScale
-                            scaleY = settingsPressScale
-                        }
-                        .clip(CircleShape)
-                        .background(settingsIndicator)
-                        .clickable(
-                            interactionSource = settingsInteractionSource,
-                            indication = ripple(bounded = true, radius = 22.dp),
-                        ) {
-                            navController.navigate(SettingsDestination) {
-                                launchSingleTop = true
-                            }
-                        },
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier =
-                        Modifier.graphicsLayer {
+                    Box(
+                        modifier = Modifier.graphicsLayer {
                             scaleX = settingsIconScale
                             scaleY = settingsIconScale
                         },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
-                        Icon(
-                            imageVector = SimpIcons.Settings,
-                            contentDescription = stringResource(Res.string.settings),
-                        )
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
+                            Icon(SimpIcons.Settings, contentDescription = "Settings")
+                        }
                     }
                 }
             }
