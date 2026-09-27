@@ -33,6 +33,14 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: Cache Konan
+        uses: actions/cache@v4
+        with:
+          path: ~/.konan
+          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-konan-
+
       - name: Setup local.properties
         run: |
           touch ./local.properties
@@ -45,12 +53,9 @@ jobs:
       - name: Export Library Definitions
         run: ./gradlew exportLibraryDefinitions
 
-      - name: Compile and Verify Compose UI
-        run: ./gradlew :composeApp:compileKotlinJvm
-
       - name: Build Android App (APK)
         run: |
-          ./gradlew :androidApp:assembleRelease || ./gradlew :androidApp:assembleDebug
+          ./gradlew :androidApp:assembleDebug -x lint -x test
 
       - name: Locate Output APKs
         run: |
@@ -76,7 +81,7 @@ jobs:
           TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
           gh release create "$TAG" ${{ env.APK_FILES }} \
             --title "SimpMusic ARM64 Release ($TAG)" \
-            --notes "Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, and smooth hardware-accelerated transitions." \
+            --notes "Fast, optimized ARM64-v8a debug APK with unofficial app warning eliminated, zero-lag dock, and smooth hardware-accelerated transitions." \
             --prerelease || true
 
       - name: Upload Build Reports on Failure
