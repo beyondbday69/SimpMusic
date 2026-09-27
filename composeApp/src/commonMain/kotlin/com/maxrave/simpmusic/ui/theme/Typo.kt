@@ -48,21 +48,21 @@ fun typo(
             titleSmall =
                 TextStyle(
                     fontSize = 13.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = fontFamily,
                     color = titleColor,
                 ),
             titleMedium =
                 TextStyle(
                     fontSize = 18.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = fontFamily,
                     color = titleColor,
                 ),
             titleLarge =
                 TextStyle(
                     fontSize = 25.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = fontFamily,
                     color = titleColor,
                 ),
@@ -97,21 +97,21 @@ fun typo(
             headlineMedium =
                 TextStyle(
                     fontSize = 20.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = fontFamily,
                     color = bodyColor,
                 ),
             headlineLarge =
                 TextStyle(
                     fontSize = 23.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.Bold,
                     fontFamily = fontFamily,
                     color = bodyColor,
                 ),
             labelMedium =
                 TextStyle(
                     fontSize = 16.sp,
-                    fontWeight = FontWeight.Normal,
+                    fontWeight = FontWeight.SemiBold,
                     fontFamily = fontFamily,
                     color = bodyColor,
                 ),

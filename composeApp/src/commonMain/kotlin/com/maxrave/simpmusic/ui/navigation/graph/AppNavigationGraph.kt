@@ -1,16 +1,9 @@
 package com.maxrave.simpmusic.ui.navigation.graph
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -71,34 +64,10 @@ fun AppNavigationGraph(
     NavHost(
         navController,
         startDestination = startDestination,
-        enterTransition = {
-            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing))
-            } else {
-                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { it / 4 }
-            }
-        },
-        exitTransition = {
-            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
-            } else {
-                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { -it / 4 }
-            }
-        },
-        popEnterTransition = {
-            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing))
-            } else {
-                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { -it / 4 }
-            }
-        },
-        popExitTransition = {
-            if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
-            } else {
-                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { it / 4 }
-            }
-        },
+        enterTransition = { fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) },
+        exitTransition = { fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) },
+        popEnterTransition = { fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) },
+        popExitTransition = { fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) },
     ) {
         // Bottom bar destinations with snappy, lightweight fade transitions
         composable<HomeDestination>(
