@@ -351,7 +351,7 @@ fun FullscreenLyricsContent(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                    .Builder(LocalPlatformContext.current)
                                     .data(screenDataState.thumbnailURL)
                                     .crossfade(300)
                                     .diskCachePolicy(CachePolicy.ENABLED)
@@ -864,7 +864,7 @@ private fun FullscreenLyricsLandscape(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                    .Builder(LocalPlatformContext.current)
                                     .data(artworkUrl)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(artworkUrl)

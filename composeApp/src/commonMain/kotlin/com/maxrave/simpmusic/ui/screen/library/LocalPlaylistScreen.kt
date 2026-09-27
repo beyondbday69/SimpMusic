@@ -535,13 +535,12 @@ fun LocalPlaylistScreen(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                .Builder(LocalPlatformContext.current)
                                                 .data(uiState.thumbnail)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .memoryCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(uiState.thumbnail)
                                                 .memoryCacheKey(uiState.thumbnail)
-                                                .crossfade(false)
                                                 .build(),
                                         placeholder = painterPlaylistThumbnail(uiState.title, style = typo().labelMedium, 250.dp to 250.dp),
                                         error = painterPlaylistThumbnail(uiState.title, style = typo().labelMedium, 250.dp to 250.dp),
@@ -734,13 +733,12 @@ fun LocalPlaylistScreen(
                                         AsyncImage(
                                             model =
                                                 ImageRequest
-                                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                                    .Builder(LocalPlatformContext.current)
                                                     .data(uiState.thumbnail)
                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                     .memoryCachePolicy(CachePolicy.ENABLED)
                                                     .diskCacheKey(uiState.thumbnail)
                                                     .memoryCacheKey(uiState.thumbnail)
-                                                    .crossfade(false)
                                                     .build(),
                                             placeholder = painterPlaylistThumbnail(uiState.title, style = typo().labelMedium, 250.dp to 250.dp),
                                             error = painterPlaylistThumbnail(uiState.title, style = typo().labelMedium, 250.dp to 250.dp),
@@ -1399,10 +1397,10 @@ fun LocalPlaylistScreen(
                     Column(modifier = Modifier.animateItem()) {
                         content(Modifier)
                         if (index < trackPagingItems.itemCount - 1) {
-                            HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
+                            HorizontalDivider(
+                                color = androidx.compose.ui.graphics.Color.Transparent, 
                                 modifier = Modifier.padding(start = 72.dp, end = 16.dp),
                                 thickness = 0.5.dp,
-                                ),
                             )
                         }
                     }

@@ -165,7 +165,7 @@ fun HomeItem(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current).crossfade(true)
+                            .Builder(LocalPlatformContext.current)
                             .data(data.thumbnail?.lastOrNull()?.url)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(data.thumbnail?.lastOrNull()?.url)
@@ -438,7 +438,7 @@ fun HomeItemContentPlaylist(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
@@ -670,7 +670,7 @@ fun QuickPicksItem(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(data.thumbnails.lastOrNull()?.url)
                         .crossfade(550)
                         .diskCacheKey(data.thumbnails.lastOrNull()?.url)
@@ -791,7 +791,7 @@ fun HomeItemSong(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
@@ -890,7 +890,7 @@ fun HomeItemVideo(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
@@ -977,7 +977,7 @@ fun HomeItemArtist(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
@@ -1096,7 +1096,7 @@ fun ItemVideoChart(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
@@ -1207,7 +1207,7 @@ fun ItemArtistChart(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
@@ -1318,7 +1318,7 @@ fun ItemTrackChart(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)

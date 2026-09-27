@@ -215,7 +215,7 @@ internal fun ExpressiveArtworkCardPage(
                     AsyncImage(
                         model =
                             ImageRequest
-                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                .Builder(LocalPlatformContext.current)
                                 .data(state.screenData.canvasData?.url)
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .diskCacheKey(state.screenData.canvasData?.url)
@@ -305,7 +305,7 @@ internal fun ExpressiveArtworkCardPage(
                     AsyncImage(
                         model =
                             ImageRequest
-                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                .Builder(LocalPlatformContext.current)
                                 .data(artworkUrl)
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .diskCacheKey(artworkUrl + "BIGGER")
@@ -503,7 +503,7 @@ internal fun ExpressiveArtworkCardPage(
                     AsyncImage(
                         model =
                             ImageRequest
-                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                .Builder(LocalPlatformContext.current)
                                 .data(staticThumb)
                                 .diskCachePolicy(CachePolicy.ENABLED)
                                 .diskCacheKey(staticThumb)
@@ -704,7 +704,7 @@ internal fun ExpressiveBelowTheFold(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                    .Builder(LocalPlatformContext.current)
                                     .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)

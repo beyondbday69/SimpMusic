@@ -308,7 +308,7 @@ fun ArtistScreen(
                                             AsyncImage(
                                                 model =
                                                     ImageRequest
-                                                        .Builder(LocalPlatformContext.current).crossfade(true)
+                                                        .Builder(LocalPlatformContext.current)
                                                         .data(headerImageUrl)
                                                         .diskCachePolicy(CachePolicy.ENABLED)
                                                         .memoryCachePolicy(CachePolicy.ENABLED)

@@ -274,11 +274,11 @@ fun SongFullWidthItems(
                             AsyncImage(
                                 model =
                                     ImageRequest
-                                        .Builder(LocalPlatformContext.current).crossfade(true)
+                                        .Builder(LocalPlatformContext.current)
                                         .data(thumb)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .diskCacheKey(thumb)
-                                        .crossfade(true)
+                                        
                                         .build(),
                                 placeholder = rememberHolderPainter(),
                                 error = rememberHolderPainter(),
@@ -434,11 +434,11 @@ fun SuggestItems(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                    .Builder(LocalPlatformContext.current)
                                     .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)
-                                    .crossfade(true)
+                                    
                                     .build(),
                             placeholder = rememberHolderPainter(),
                             error = rememberHolderPainter(),
@@ -589,11 +589,11 @@ fun PlaylistFullWidthItems(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current).crossfade(true)
+                            .Builder(LocalPlatformContext.current)
                             .data(thumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumb)
-                            .crossfade(true)
+                            
                             .build(),
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),
@@ -711,11 +711,11 @@ fun ArtistFullWidthItems(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current).crossfade(true)
+                            .Builder(LocalPlatformContext.current)
                             .data(thumbnails)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumbnails)
-                            .crossfade(true)
+                            
                             .build(),
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),

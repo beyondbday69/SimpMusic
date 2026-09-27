@@ -175,7 +175,7 @@ fun LastfmLoginScreen(
                         )
 
                         Spacer(Modifier.height(28.dp))
-                        HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, )
+                        HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent)
                         Spacer(Modifier.height(20.dp))
 
                         // Last resort when the redirect never reaches the app at all: no handler

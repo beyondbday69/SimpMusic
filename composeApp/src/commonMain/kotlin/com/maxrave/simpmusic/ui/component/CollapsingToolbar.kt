@@ -243,11 +243,11 @@ private fun Header(
         AsyncImage(
             model =
                 ImageRequest
-                    .Builder(LocalPlatformContext.current).crossfade(true)
+                    .Builder(LocalPlatformContext.current)
                     .data(imageUrl)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCacheKey(imageUrl)
-                    .crossfade(true)
+                    
                     .build(),
             onSuccess = {
                 onImageLoaded(

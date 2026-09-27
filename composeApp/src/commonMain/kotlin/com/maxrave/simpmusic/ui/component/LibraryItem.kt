@@ -271,11 +271,11 @@ fun LibraryItem(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                .Builder(LocalPlatformContext.current)
                                                 .data(item.canvasThumbUrl)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(item.canvasThumbUrl)
-                                                .crossfade(true)
+                                                
                                                 .build(),
                                         placeholder = rememberHolderPainter(),
                                         error = rememberHolderPainter(),

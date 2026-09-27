@@ -219,11 +219,11 @@ fun PodcastScreen(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                .Builder(LocalPlatformContext.current)
                                                 .data(data.thumbnail.lastOrNull()?.url)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(data.thumbnail.lastOrNull()?.url)
-                                                .crossfade(true)
+                                                
                                                 .build(),
                                         placeholder = rememberHolderPainter(),
                                         error = rememberHolderPainter(),
@@ -260,11 +260,11 @@ fun PodcastScreen(
                                                     AsyncImage(
                                                         model =
                                                             ImageRequest
-                                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                                .Builder(LocalPlatformContext.current)
                                                                 .data(data.authorThumbnail)
                                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                                 .diskCacheKey(data.authorThumbnail)
-                                                                .crossfade(true)
+                                                                
                                                                 .build(),
                                                         placeholder = rememberHolderPainter(),
                                                         error = rememberHolderPainter(),

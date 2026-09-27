@@ -414,9 +414,8 @@ fun MiniPlayer(
                                 AsyncImage(
                                     model =
                                         ImageRequest
-                                            .Builder(LocalPlatformContext.current).crossfade(true)
+                                            .Builder(LocalPlatformContext.current)
                                             .data(songEntity?.thumbnails)
-                                            .crossfade(550)
                                             .build(),
                                     placeholder = rememberHolderPainter(),
                                     error = rememberHolderPainter(),
@@ -685,9 +684,9 @@ fun MiniPlayer(
                         sharedViewModel.onUIEvent(it)
                     }
                 }
-                VerticalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
+                VerticalDivider(
+                    color = Color.Transparent, 
                     modifier = Modifier.height(28.dp).padding(horizontal = 14.dp),
-                    ),
                 )
                 // The whole track cluster is the hover target, not the progress line itself:
                 // pointing anywhere near the title thickens the slider and reveals the
@@ -758,9 +757,8 @@ fun MiniPlayer(
                             AsyncImage(
                                 model =
                                     ImageRequest
-                                        .Builder(LocalPlatformContext.current).crossfade(true)
+                                        .Builder(LocalPlatformContext.current)
                                         .data(songEntity?.thumbnails)
-                                        .crossfade(550)
                                         .build(),
                                 placeholder = rememberHolderPainter(),
                                 error = rememberHolderPainter(),
@@ -931,9 +929,9 @@ fun MiniPlayer(
                         },
                     )
                 }
-                VerticalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
+                VerticalDivider(
+                    color = Color.Transparent, 
                     modifier = Modifier.height(28.dp).padding(horizontal = 14.dp),
-                    ),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // 40dp cell to sit on the IconButton grid, and size 32 on purpose:

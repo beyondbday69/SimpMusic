@@ -792,7 +792,7 @@ private fun ArtworkImage(
     AsyncImage(
         model =
             ImageRequest
-                .Builder(LocalPlatformContext.current).crossfade(true)
+                .Builder(LocalPlatformContext.current)
                 .data(url)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .diskCacheKey(url ?: "")

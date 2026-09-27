@@ -3008,7 +3008,7 @@ fun SettingScreen(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                .Builder(LocalPlatformContext.current)
                                                 .data(it.thumbnailUrl)
                                                 .crossfade(550)
                                                 .build(),

@@ -657,11 +657,11 @@ internal fun ExpressiveTrackInfoRow(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(state.screenData.thumbnailURL)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(state.screenData.thumbnailURL + "BIGGER")
-                        .crossfade(true)
+                        
                         .build(),
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),

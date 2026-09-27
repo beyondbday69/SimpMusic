@@ -243,11 +243,11 @@ fun NotificationItem(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current).crossfade(true)
+                            .Builder(LocalPlatformContext.current)
                             .data(thumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumb)
-                            .crossfade(true)
+                            
                             .build(),
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),
@@ -388,11 +388,11 @@ fun ItemAlbumNotification(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(thumbnail)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumbnail)
-                        .crossfade(true)
+                        
                         .build(),
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),

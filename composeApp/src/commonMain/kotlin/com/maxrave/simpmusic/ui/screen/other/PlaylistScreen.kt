@@ -395,7 +395,7 @@ fun PlaylistScreen(
                                                     AsyncImage(
                                                         model =
                                                             ImageRequest
-                                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                                .Builder(LocalPlatformContext.current)
                                                                 .data(data.thumbnail)
                                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -573,7 +573,7 @@ fun PlaylistScreen(
                                                         AsyncImage(
                                                             model =
                                                                 ImageRequest
-                                                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                                                    .Builder(LocalPlatformContext.current)
                                                                     .data(data.thumbnail)
                                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                                     .memoryCachePolicy(CachePolicy.ENABLED)

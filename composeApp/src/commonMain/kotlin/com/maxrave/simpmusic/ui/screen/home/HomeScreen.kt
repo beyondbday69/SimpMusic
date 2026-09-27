@@ -958,11 +958,11 @@ fun AccountLayout(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(url)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(url)
-                        .crossfade(true)
+                        
                         .build(),
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),

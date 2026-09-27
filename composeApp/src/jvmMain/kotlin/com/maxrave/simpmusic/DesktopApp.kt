@@ -498,7 +498,7 @@ fun runDesktopApp(args: Array<String> = emptyArray()) {
                 val context = LocalPlatformContext.current
                 setSingletonImageLoaderFactory {
                     ImageLoader
-                        .Builder(context).crossfade(true)
+                        .Builder(context)
                         .components {
                             add(
                                 OkHttpNetworkFetcherFactory(
@@ -515,7 +515,7 @@ fun runDesktopApp(args: Array<String> = emptyArray()) {
                                 .directory(FileSystem.SYSTEM_TEMPORARY_DIRECTORY / "image_cache")
                                 .maxSizeBytes(512L * 1024 * 1024)
                                 .build(),
-                        ).crossfade(true)
+                        )
                         .build()
                 }
                 App(

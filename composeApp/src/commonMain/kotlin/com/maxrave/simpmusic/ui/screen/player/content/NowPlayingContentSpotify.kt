@@ -426,7 +426,7 @@ fun NowPlayingContentSpotify(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current).crossfade(true)
+                                                .Builder(LocalPlatformContext.current)
                                                 .data(state.screenData.canvasData?.url)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(state.screenData.canvasData?.url)
@@ -536,7 +536,7 @@ fun NowPlayingContentSpotify(
                                         AsyncImage(
                                             model =
                                                 ImageRequest
-                                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                                    .Builder(LocalPlatformContext.current)
                                                     .data(artworkUrl)
                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                     .diskCacheKey(artworkUrl + "BIGGER")
@@ -742,7 +742,7 @@ fun NowPlayingContentSpotify(
                                         AsyncImage(
                                             model =
                                                 ImageRequest
-                                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                                    .Builder(LocalPlatformContext.current)
                                                     .data(staticThumb)
                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                     .diskCacheKey(staticThumb)
@@ -1371,7 +1371,7 @@ fun NowPlayingContentSpotify(
                                         AsyncImage(
                                             model =
                                                 ImageRequest
-                                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                                    .Builder(LocalPlatformContext.current)
                                                     .data(thumb)
                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                     .diskCacheKey(thumb)
@@ -1691,11 +1691,11 @@ internal fun NowPlayingTrackInfoRow(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current).crossfade(true)
+                        .Builder(LocalPlatformContext.current)
                         .data(state.screenData.thumbnailURL)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(state.screenData.thumbnailURL + "BIGGER")
-                        .crossfade(true)
+                        
                         .build(),
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),

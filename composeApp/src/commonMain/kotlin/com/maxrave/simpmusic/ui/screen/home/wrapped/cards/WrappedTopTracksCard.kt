@@ -86,7 +86,7 @@ fun WrappedTopTracksCard(
                     // The app's own rule rather than a 1dp Box with a hand-mixed alpha on it:
                     // `outlineVariant` is the role a divider is supposed to be drawn in, and it
                     // moves with the artwork-seeded scheme the way everything else on the card does.
-                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, )
+                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent)
                     Spacer(Modifier.height(18.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
                         runnersUp.forEach { track -> RunnerUpRow(track) }

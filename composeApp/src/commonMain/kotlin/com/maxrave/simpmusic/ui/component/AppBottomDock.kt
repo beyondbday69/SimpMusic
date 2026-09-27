@@ -238,7 +238,7 @@ fun AppBottomDock(
                                 .onGloballyPositioned { coords ->
                                     val bounds = coords.boundsInParent()
                                     val current = itemBounds[screen.ordinal]
-                                    if (current == null || kotlin.math.abs(current.left - bounds.left) > 0.5f || kotlin.math.abs(current.width - bounds.width) > 0.5f) {
+                                    if (current == null || kotlin.math.abs(current.left - bounds.left) > 1.5f || kotlin.math.abs(current.width - bounds.width) > 1.5f) {
                                         itemBounds = itemBounds + (screen.ordinal to bounds)
                                     }
                                 }
@@ -340,7 +340,7 @@ fun AppBottomDock(
                             .onGloballyPositioned { coords ->
                                 val bounds = coords.boundsInParent()
                                 val current = itemBounds[settingsOrdinal]
-                                if (current == null || kotlin.math.abs(current.left - bounds.left) > 0.5f || kotlin.math.abs(current.width - bounds.width) > 0.5f) {
+                                if (current == null || kotlin.math.abs(current.left - bounds.left) > 1.5f || kotlin.math.abs(current.width - bounds.width) > 1.5f) {
                                     itemBounds = itemBounds + (settingsOrdinal to bounds)
                                 }
                             }

@@ -1689,7 +1689,7 @@ fun NowPlayingBottomSheet(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current).crossfade(true)
+                                    .Builder(LocalPlatformContext.current)
                                     .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)
@@ -1979,7 +1979,7 @@ fun ActionButton(
             Text(
                 text = if (text != null) stringResource(text) else textString ?: "",
                 style = typo().labelSmall,
-                ) textColor ?: c.content else c.disabled,
+                color = if (enable) textColor ?: c.content else c.disabled,
                 modifier =
                     Modifier
                         .padding(start = 10.dp)
