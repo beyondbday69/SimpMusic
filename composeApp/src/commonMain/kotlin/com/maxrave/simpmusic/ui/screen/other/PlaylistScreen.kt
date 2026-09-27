@@ -395,7 +395,7 @@ fun PlaylistScreen(
                                                     AsyncImage(
                                                         model =
                                                             ImageRequest
-                                                                .Builder(LocalPlatformContext.current)
+                                                                .Builder(LocalPlatformContext.current).crossfade(true)
                                                                 .data(data.thumbnail)
                                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -573,7 +573,7 @@ fun PlaylistScreen(
                                                         AsyncImage(
                                                             model =
                                                                 ImageRequest
-                                                                    .Builder(LocalPlatformContext.current)
+                                                                    .Builder(LocalPlatformContext.current).crossfade(true)
                                                                     .data(data.thumbnail)
                                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                                     .memoryCachePolicy(CachePolicy.ENABLED)
@@ -1092,10 +1092,10 @@ fun PlaylistScreen(
                                     )
                                 }
                                 if (index < filteredTrack.size - 1) {
-                                    HorizontalDivider(
+                                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                                         modifier = Modifier.padding(start = 72.dp, end = 16.dp),
                                         thickness = 0.5.dp,
-                                        color = Color.White.copy(alpha = 0.12f),
+                                        ),
                                     )
                                 }
                             }

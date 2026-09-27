@@ -160,7 +160,7 @@ fun AppBottomDock(
     Surface(
         shape = CircleShape,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
+        border = null,
         shadowElevation = 0.dp,
         tonalElevation = 0.dp,
         modifier =
@@ -299,12 +299,12 @@ fun AppBottomDock(
                     }
                 }
 
-                VerticalDivider(
+                VerticalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                     modifier =
                         Modifier
                             .height(20.dp)
                             .padding(horizontal = 2.dp),
-                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
+                    
                 )
 
                 val isSettingsSelected = currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true

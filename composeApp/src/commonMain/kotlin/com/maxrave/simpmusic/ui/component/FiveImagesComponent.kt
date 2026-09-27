@@ -154,7 +154,7 @@ private fun MosaicTile(
         AsyncImage(
             model =
                 ImageRequest
-                    .Builder(LocalPlatformContext.current)
+                    .Builder(LocalPlatformContext.current).crossfade(true)
                     .data(image.imageUrl)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCacheKey(image.imageUrl)

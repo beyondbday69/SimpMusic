@@ -271,7 +271,7 @@ fun LibraryItem(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current)
+                                                .Builder(LocalPlatformContext.current).crossfade(true)
                                                 .data(item.canvasThumbUrl)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(item.canvasThumbUrl)

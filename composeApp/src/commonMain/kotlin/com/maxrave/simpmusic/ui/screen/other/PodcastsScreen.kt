@@ -219,7 +219,7 @@ fun PodcastScreen(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current)
+                                                .Builder(LocalPlatformContext.current).crossfade(true)
                                                 .data(data.thumbnail.lastOrNull()?.url)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(data.thumbnail.lastOrNull()?.url)
@@ -260,7 +260,7 @@ fun PodcastScreen(
                                                     AsyncImage(
                                                         model =
                                                             ImageRequest
-                                                                .Builder(LocalPlatformContext.current)
+                                                                .Builder(LocalPlatformContext.current).crossfade(true)
                                                                 .data(data.authorThumbnail)
                                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                                 .diskCacheKey(data.authorThumbnail)

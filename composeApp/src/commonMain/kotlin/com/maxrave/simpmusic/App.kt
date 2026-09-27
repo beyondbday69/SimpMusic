@@ -577,14 +577,14 @@ fun App(
                                 isShowNowPlaylistScreen,
                                 enter =
                                     slideInHorizontally(
-                                        animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                                        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
                                         initialOffsetX = { it },
-                                    ) + fadeIn(animationSpec = tween(180)),
+                                    ) + fadeIn(animationSpec = tween(300)),
                                 exit =
                                     slideOutHorizontally(
-                                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
                                         targetOffsetX = { it },
-                                    ) + fadeOut(animationSpec = tween(140)),
+                                    ) + fadeOut(animationSpec = tween(300)),
                             ) {
                                 Row(
                                     Modifier
@@ -642,14 +642,14 @@ fun App(
                     visible = isShowNowPlaylistScreen && !isTabletLandscape,
                     enter =
                         slideInVertically(
-                            animationSpec = tween(durationMillis = 240, easing = FastOutSlowInEasing),
+                            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
                             initialOffsetY = { it },
-                        ) + fadeIn(animationSpec = tween(180)),
+                        ) + fadeIn(animationSpec = tween(300)),
                     exit =
                         slideOutVertically(
-                            animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
                             targetOffsetY = { it },
-                        ) + fadeOut(animationSpec = tween(140)),
+                        ) + fadeOut(animationSpec = tween(300)),
                 ) {
                     BackHandler(enabled = isShowNowPlaylistScreen) {
                         isShowNowPlaylistScreen = false

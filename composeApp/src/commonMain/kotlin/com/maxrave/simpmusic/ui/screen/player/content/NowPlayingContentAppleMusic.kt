@@ -578,7 +578,7 @@ private fun AppleMusicMainView(
                                 AsyncImage(
                                     model =
                                         ImageRequest
-                                            .Builder(LocalPlatformContext.current)
+                                            .Builder(LocalPlatformContext.current).crossfade(true)
                                             .data(state.screenData.thumbnailURL)
                                             .diskCachePolicy(CachePolicy.ENABLED)
                                             .diskCacheKey(state.screenData.thumbnailURL)
@@ -679,7 +679,7 @@ internal fun BoxScope.AppleMusicArtworkBackdrop(
         AsyncImage(
             model =
                 ImageRequest
-                    .Builder(LocalPlatformContext.current)
+                    .Builder(LocalPlatformContext.current).crossfade(true)
                     .data(backdropUrl)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCacheKey(backdropUrl + "BIGGER")
@@ -781,7 +781,7 @@ private fun AppleMusicArtworkPage(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(LocalPlatformContext.current).crossfade(true)
                             .data(artworkUrl)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(artworkUrl + "BIGGER")
@@ -940,7 +940,7 @@ private fun AppleMusicArtworkPage(
                             AsyncImage(
                                 model =
                                     ImageRequest
-                                        .Builder(LocalPlatformContext.current)
+                                        .Builder(LocalPlatformContext.current).crossfade(true)
                                         .data(state.screenData.canvasData?.url)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .diskCacheKey(state.screenData.canvasData?.url)
@@ -981,7 +981,7 @@ private fun AppleMusicArtworkPage(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(LocalPlatformContext.current).crossfade(true)
                             .data(staticThumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(staticThumb)

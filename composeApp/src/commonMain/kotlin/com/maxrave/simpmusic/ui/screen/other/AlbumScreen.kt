@@ -255,7 +255,7 @@ fun AlbumScreen(
                                                 AsyncImage(
                                                     model =
                                                         ImageRequest
-                                                            .Builder(LocalPlatformContext.current)
+                                                            .Builder(LocalPlatformContext.current).crossfade(true)
                                                             .data(uiState.thumbnail)
                                                             .diskCachePolicy(CachePolicy.ENABLED)
                                                             .memoryCachePolicy(CachePolicy.ENABLED)
@@ -411,7 +411,7 @@ fun AlbumScreen(
                                                     AsyncImage(
                                                         model =
                                                             ImageRequest
-                                                                .Builder(LocalPlatformContext.current)
+                                                                .Builder(LocalPlatformContext.current).crossfade(true)
                                                                 .data(uiState.thumbnail)
                                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -874,10 +874,10 @@ fun AlbumScreen(
                                     modifier = Modifier,
                                 )
                                 if (index < uiState.trackCount - 1) {
-                                    HorizontalDivider(
+                                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                                         modifier = Modifier.padding(start = 72.dp, end = 16.dp),
                                         thickness = 0.5.dp,
-                                        color = Color.White.copy(alpha = 0.12f),
+                                        ),
                                     )
                                 }
                             }

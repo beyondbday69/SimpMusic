@@ -57,7 +57,7 @@ fun PodcastEpisodeFullWidthItem(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(LocalPlatformContext.current).crossfade(true)
                             .data(episode.thumbnail.lastOrNull()?.url)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(episode.thumbnail.lastOrNull()?.url)

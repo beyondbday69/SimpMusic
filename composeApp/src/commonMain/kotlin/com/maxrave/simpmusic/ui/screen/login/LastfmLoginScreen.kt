@@ -175,7 +175,7 @@ fun LastfmLoginScreen(
                         )
 
                         Spacer(Modifier.height(28.dp))
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, )
                         Spacer(Modifier.height(20.dp))
 
                         // Last resort when the redirect never reaches the app at all: no handler
@@ -185,8 +185,7 @@ fun LastfmLoginScreen(
                         Text(
                             text = stringResource(Res.string.lastfm_paste_callback_title),
                             style = typo().labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                            )
                         Spacer(Modifier.height(10.dp))
                         OutlinedTextField(
                             value = callbackInput,

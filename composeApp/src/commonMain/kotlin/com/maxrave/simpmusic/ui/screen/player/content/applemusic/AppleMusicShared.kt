@@ -350,7 +350,7 @@ internal fun AppleMusicCompactHeader(
         AsyncImage(
             model =
                 ImageRequest
-                    .Builder(LocalPlatformContext.current)
+                    .Builder(LocalPlatformContext.current).crossfade(true)
                     .data(state.screenData.thumbnailURL)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCacheKey(state.screenData.thumbnailURL)

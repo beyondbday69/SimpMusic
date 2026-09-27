@@ -414,7 +414,7 @@ fun MiniPlayer(
                                 AsyncImage(
                                     model =
                                         ImageRequest
-                                            .Builder(LocalPlatformContext.current)
+                                            .Builder(LocalPlatformContext.current).crossfade(true)
                                             .data(songEntity?.thumbnails)
                                             .crossfade(550)
                                             .build(),
@@ -685,9 +685,9 @@ fun MiniPlayer(
                         sharedViewModel.onUIEvent(it)
                     }
                 }
-                VerticalDivider(
+                VerticalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                     modifier = Modifier.height(28.dp).padding(horizontal = 14.dp),
-                    color = textColor.copy(alpha = 0.2f),
+                    ),
                 )
                 // The whole track cluster is the hover target, not the progress line itself:
                 // pointing anywhere near the title thickens the slider and reveals the
@@ -758,7 +758,7 @@ fun MiniPlayer(
                             AsyncImage(
                                 model =
                                     ImageRequest
-                                        .Builder(LocalPlatformContext.current)
+                                        .Builder(LocalPlatformContext.current).crossfade(true)
                                         .data(songEntity?.thumbnails)
                                         .crossfade(550)
                                         .build(),
@@ -931,9 +931,9 @@ fun MiniPlayer(
                         },
                     )
                 }
-                VerticalDivider(
+                VerticalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                     modifier = Modifier.height(28.dp).padding(horizontal = 14.dp),
-                    color = textColor.copy(alpha = 0.2f),
+                    ),
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     // 40dp cell to sit on the IconButton grid, and size 32 on purpose:

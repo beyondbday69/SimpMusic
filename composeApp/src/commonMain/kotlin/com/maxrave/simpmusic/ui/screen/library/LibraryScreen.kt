@@ -467,7 +467,7 @@ fun LibraryScreen(
                     AsyncImage(
                         model =
                             ImageRequest
-                                .Builder(LocalPlatformContext.current)
+                                .Builder(LocalPlatformContext.current).crossfade(true)
                                 .data(accountThumbnail)
                                 .crossfade(550)
                                 .build(),

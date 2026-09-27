@@ -86,7 +86,7 @@ fun WrappedTopTracksCard(
                     // The app's own rule rather than a 1dp Box with a hand-mixed alpha on it:
                     // `outlineVariant` is the role a divider is supposed to be drawn in, and it
                     // moves with the artwork-seeded scheme the way everything else on the card does.
-                    HorizontalDivider()
+                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, )
                     Spacer(Modifier.height(18.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(13.dp)) {
                         runnersUp.forEach { track -> RunnerUpRow(track) }
@@ -134,9 +134,7 @@ private fun LeaderRow(track: WrappedTrack) {
             style =
                 MaterialTheme.typography.titleLarge.copy(
                     fontSize = LEADER_RANK_SIZE,
-                    color = MaterialTheme.colorScheme.primary,
-                    lineHeight = 0.78.em,
-                ),
+                    ),
         )
         // Lifted off the numeral's baseline: the digit has no descender, so aligning the two blocks
         // flush would leave the title sitting visibly lower than the number it belongs to.

@@ -73,30 +73,30 @@ fun AppNavigationGraph(
         startDestination = startDestination,
         enterTransition = {
             if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeIn(animationSpec = tween(300))
+                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing))
             } else {
-                fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
+                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { it / 4 }
             }
         },
         exitTransition = {
             if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeOut(animationSpec = tween(300))
+                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
             } else {
-                fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
+                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { -it / 4 }
             }
         },
         popEnterTransition = {
             if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeIn(animationSpec = tween(300))
+                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing))
             } else {
-                fadeIn(animationSpec = tween(150)) + slideInHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { -it / 4 }
+                fadeIn(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { -it / 4 }
             }
         },
         popExitTransition = {
             if (getTopLevelTabIndex(initialState.destination) != -1 && getTopLevelTabIndex(targetState.destination) != -1) {
-                fadeOut(animationSpec = tween(300))
+                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing))
             } else {
-                fadeOut(animationSpec = tween(100)) + slideOutHorizontally(animationSpec = tween(150, easing = FastOutSlowInEasing)) { it / 4 }
+                fadeOut(animationSpec = tween(300, easing = FastOutSlowInEasing)) + slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { it / 4 }
             }
         },
     ) {

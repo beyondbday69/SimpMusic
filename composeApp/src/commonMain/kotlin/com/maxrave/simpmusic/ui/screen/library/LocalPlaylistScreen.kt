@@ -535,7 +535,7 @@ fun LocalPlaylistScreen(
                                     AsyncImage(
                                         model =
                                             ImageRequest
-                                                .Builder(LocalPlatformContext.current)
+                                                .Builder(LocalPlatformContext.current).crossfade(true)
                                                 .data(uiState.thumbnail)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .memoryCachePolicy(CachePolicy.ENABLED)
@@ -734,7 +734,7 @@ fun LocalPlaylistScreen(
                                         AsyncImage(
                                             model =
                                                 ImageRequest
-                                                    .Builder(LocalPlatformContext.current)
+                                                    .Builder(LocalPlatformContext.current).crossfade(true)
                                                     .data(uiState.thumbnail)
                                                     .diskCachePolicy(CachePolicy.ENABLED)
                                                     .memoryCachePolicy(CachePolicy.ENABLED)
@@ -1264,8 +1264,8 @@ fun LocalPlaylistScreen(
                                             }
                                         }
                                         Spacer(modifier = Modifier.size(12.dp))
-                                        HorizontalDivider(
-                                            color = Color.Gray,
+                                        HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
+                                            
                                             thickness = 0.5.dp,
                                         )
                                         Spacer(modifier = Modifier.size(8.dp))
@@ -1298,8 +1298,7 @@ fun LocalPlaylistScreen(
                                                             uiState.filterState.displayNameRes(),
                                                         ),
                                                 style = typo().bodySmall,
-                                                color = Color.White,
-                                            )
+                                                )
                                         }
                                         Spacer(Modifier.weight(1f))
                                         AnimatedVisibility(
@@ -1400,10 +1399,10 @@ fun LocalPlaylistScreen(
                     Column(modifier = Modifier.animateItem()) {
                         content(Modifier)
                         if (index < trackPagingItems.itemCount - 1) {
-                            HorizontalDivider(
+                            HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                                 modifier = Modifier.padding(start = 72.dp, end = 16.dp),
                                 thickness = 0.5.dp,
-                                color = Color.White.copy(alpha = 0.12f),
+                                ),
                             )
                         }
                     }
@@ -1692,7 +1691,7 @@ fun LocalPlaylistScreen(
                         // Required, no default — the paged list passes it down through `mod`.
                         modifier = Modifier,
                     )
-                    HorizontalDivider(modifier = Modifier.padding(start = 72.dp, end = 16.dp))
+                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, modifier = Modifier.padding(start = 72.dp, end = 16.dp))
                 }
             }
         }

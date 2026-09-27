@@ -243,7 +243,7 @@ fun NotificationItem(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(LocalPlatformContext.current).crossfade(true)
                             .data(thumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumb)
@@ -388,7 +388,7 @@ fun ItemAlbumNotification(
             AsyncImage(
                 model =
                     ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                        .Builder(LocalPlatformContext.current).crossfade(true)
                         .data(thumbnail)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumbnail)

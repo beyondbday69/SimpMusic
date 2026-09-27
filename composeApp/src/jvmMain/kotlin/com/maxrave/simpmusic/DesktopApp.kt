@@ -498,7 +498,7 @@ fun runDesktopApp(args: Array<String> = emptyArray()) {
                 val context = LocalPlatformContext.current
                 setSingletonImageLoaderFactory {
                     ImageLoader
-                        .Builder(context)
+                        .Builder(context).crossfade(true)
                         .components {
                             add(
                                 OkHttpNetworkFetcherFactory(

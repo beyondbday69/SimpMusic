@@ -1689,7 +1689,7 @@ fun NowPlayingBottomSheet(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current)
+                                    .Builder(LocalPlatformContext.current).crossfade(true)
                                     .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)
@@ -1738,7 +1738,7 @@ fun NowPlayingBottomSheet(
                         }
                     }
                     Spacer(modifier = Modifier.height(5.dp))
-                    HorizontalDivider(
+                    HorizontalDivider(color = androidx.compose.ui.graphics.Color.Transparent, 
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
                         thickness = 1.dp,
                     )
@@ -1979,7 +1979,7 @@ fun ActionButton(
             Text(
                 text = if (text != null) stringResource(text) else textString ?: "",
                 style = typo().labelSmall,
-                color = if (enable) textColor ?: c.content else c.disabled,
+                ) textColor ?: c.content else c.disabled,
                 modifier =
                     Modifier
                         .padding(start = 10.dp)

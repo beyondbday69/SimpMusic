@@ -47,7 +47,7 @@ internal fun WrappedArtwork(
     AsyncImage(
         model =
             ImageRequest
-                .Builder(LocalPlatformContext.current)
+                .Builder(LocalPlatformContext.current).crossfade(true)
                 .data(url)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .diskCacheKey(url ?: "")

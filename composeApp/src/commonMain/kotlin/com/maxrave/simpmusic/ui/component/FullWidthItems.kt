@@ -274,7 +274,7 @@ fun SongFullWidthItems(
                             AsyncImage(
                                 model =
                                     ImageRequest
-                                        .Builder(LocalPlatformContext.current)
+                                        .Builder(LocalPlatformContext.current).crossfade(true)
                                         .data(thumb)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .diskCacheKey(thumb)
@@ -434,7 +434,7 @@ fun SuggestItems(
                         AsyncImage(
                             model =
                                 ImageRequest
-                                    .Builder(LocalPlatformContext.current)
+                                    .Builder(LocalPlatformContext.current).crossfade(true)
                                     .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)
@@ -589,7 +589,7 @@ fun PlaylistFullWidthItems(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(LocalPlatformContext.current).crossfade(true)
                             .data(thumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumb)
@@ -711,7 +711,7 @@ fun ArtistFullWidthItems(
                 AsyncImage(
                     model =
                         ImageRequest
-                            .Builder(LocalPlatformContext.current)
+                            .Builder(LocalPlatformContext.current).crossfade(true)
                             .data(thumbnails)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumbnails)

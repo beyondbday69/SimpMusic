@@ -243,7 +243,7 @@ private fun Header(
         AsyncImage(
             model =
                 ImageRequest
-                    .Builder(LocalPlatformContext.current)
+                    .Builder(LocalPlatformContext.current).crossfade(true)
                     .data(imageUrl)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCacheKey(imageUrl)
