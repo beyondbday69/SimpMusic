@@ -371,7 +371,8 @@ fun MiniPlayer(
                                 trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                 stroke = ringStroke,
                                 trackStroke = ringStroke,
-                                amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
+                                amplitude = { p -> if (p > 0f && isPlaying) 0.35f else 0f },
+                                wavelength = 36.dp,
                             )
                             val context = LocalPlatformContext.current
                             AsyncImage(
@@ -467,7 +468,8 @@ fun MiniPlayer(
                                             trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                                             stroke = ringStroke,
                                             trackStroke = ringStroke,
-                                            amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
+                                            amplitude = { p -> if (p > 0f && isPlaying) 0.35f else 0f },
+                                            wavelength = 36.dp,
                                         )
                                         val context = LocalPlatformContext.current
                                         AsyncImage(

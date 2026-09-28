@@ -4,6 +4,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,10 +66,66 @@ fun AppNavigationGraph(
     NavHost(
         navController,
         startDestination = startDestination,
-        enterTransition = { fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) },
-        exitTransition = { fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) },
-        popEnterTransition = { fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing)) },
-        popExitTransition = { fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing)) },
+        enterTransition = {
+            val initialTab = getTopLevelTabIndex(initialState.destination)
+            val targetTab = getTopLevelTabIndex(targetState.destination)
+            if (initialTab != -1 && targetTab != -1) {
+                if (targetTab > initialTab) {
+                    slideInHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { it / 3 } +
+                        fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing))
+                } else {
+                    slideInHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { -it / 3 } +
+                        fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing))
+                }
+            } else {
+                fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing))
+            }
+        },
+        exitTransition = {
+            val initialTab = getTopLevelTabIndex(initialState.destination)
+            val targetTab = getTopLevelTabIndex(targetState.destination)
+            if (initialTab != -1 && targetTab != -1) {
+                if (targetTab > initialTab) {
+                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { -it / 3 } +
+                        fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
+                } else {
+                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { it / 3 } +
+                        fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
+                }
+            } else {
+                fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            }
+        },
+        popEnterTransition = {
+            val initialTab = getTopLevelTabIndex(initialState.destination)
+            val targetTab = getTopLevelTabIndex(targetState.destination)
+            if (initialTab != -1 && targetTab != -1) {
+                if (targetTab > initialTab) {
+                    slideInHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { it / 3 } +
+                        fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing))
+                } else {
+                    slideInHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { -it / 3 } +
+                        fadeIn(animationSpec = tween(260, easing = FastOutSlowInEasing))
+                }
+            } else {
+                fadeIn(animationSpec = tween(220, easing = FastOutSlowInEasing))
+            }
+        },
+        popExitTransition = {
+            val initialTab = getTopLevelTabIndex(initialState.destination)
+            val targetTab = getTopLevelTabIndex(targetState.destination)
+            if (initialTab != -1 && targetTab != -1) {
+                if (targetTab > initialTab) {
+                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { -it / 3 } +
+                        fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
+                } else {
+                    slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { it / 3 } +
+                        fadeOut(animationSpec = tween(200, easing = FastOutSlowInEasing))
+                }
+            } else {
+                fadeOut(animationSpec = tween(180, easing = FastOutSlowInEasing))
+            }
+        },
     ) {
         // Bottom bar destinations with snappy, lightweight fade transitions
         composable<HomeDestination>(

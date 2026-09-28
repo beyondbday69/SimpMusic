@@ -101,6 +101,9 @@ fun AppBottomDock(
             }
         )
     }
+    var previousOrdinal by rememberSaveable {
+        mutableIntStateOf(selectedOrdinal)
+    }
 
     // Keep optimistic state synchronized when destination changes from gestures or deep links
     LaunchedEffect(currentDestination) {
@@ -109,10 +112,14 @@ fun AppBottomDock(
         }
         if (matching != null) {
             if (selectedOrdinal != matching.ordinal) {
+                previousOrdinal = selectedOrdinal
                 selectedOrdinal = matching.ordinal
             }
         } else if (currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true) {
-            selectedOrdinal = -1
+            if (selectedOrdinal != -1) {
+                previousOrdinal = selectedOrdinal
+                selectedOrdinal = -1
+            }
         }
     }
 
@@ -128,6 +135,7 @@ fun AppBottomDock(
             }
         } else {
             // Immediate 0ms visual feedback on tap
+            previousOrdinal = selectedOrdinal
             selectedOrdinal = screen.ordinal
             navController.navigate(screen.destination) {
                 popUpTo(navController.graph.findStartDestination().id) {
@@ -141,6 +149,10 @@ fun AppBottomDock(
 
     // Cache typo once per composition — avoids re-allocating Typography on every item in the loop
     val labelStyle = typo().labelMedium
+
+    val currentScreenIndex = bottomNavScreens.indexOfFirst { it.ordinal == selectedOrdinal }.let { if (it == -1) bottomNavScreens.size else it }
+    val previousScreenIndex = bottomNavScreens.indexOfFirst { it.ordinal == previousOrdinal }.let { if (it == -1) bottomNavScreens.size else it }
+    val isMovingForward = currentScreenIndex >= previousScreenIndex
 
     Surface(
         shape = CircleShape,
@@ -162,6 +174,7 @@ fun AppBottomDock(
                 AppBottomDockItem(
                     screen = screen,
                     selected = selected,
+                    isMovingForward = isMovingForward,
                     labelStyle = labelStyle,
                     onSelect = selectTab
                 )
@@ -208,6 +221,7 @@ fun AppBottomDock(
                             if (isSettingsSelected) {
                                 reloadDestinationIfNeeded(SettingsDestination::class)
                             } else {
+                                previousOrdinal = selectedOrdinal
                                 selectedOrdinal = -1
                                 navController.navigate(SettingsDestination) {
                                     launchSingleTop = true
@@ -230,6 +244,7 @@ fun AppBottomDock(
 private fun AppBottomDockItem(
     screen: BottomNavScreen,
     selected: Boolean,
+    isMovingForward: Boolean,
     labelStyle: androidx.compose.ui.text.TextStyle,
     onSelect: (BottomNavScreen) -> Unit
 ) {
@@ -253,6 +268,8 @@ private fun AppBottomDockItem(
     )
 
     val pillColor = MaterialTheme.colorScheme.primaryContainer
+    val expandFrom = if (isMovingForward) Alignment.Start else Alignment.End
+    val shrinkTowards = if (isMovingForward) Alignment.Start else Alignment.End
     Box(
         modifier =
             Modifier
@@ -283,14 +300,14 @@ private fun AppBottomDockItem(
                     fadeIn(tween(160)) +
                         expandHorizontally(
                             animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
-                            expandFrom = Alignment.Start,
+                            expandFrom = expandFrom,
                             clip = true,
                         ),
                 exit =
                     fadeOut(tween(120)) +
                         shrinkHorizontally(
                             animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
-                            shrinkTowards = Alignment.Start,
+                            shrinkTowards = shrinkTowards,
                             clip = true,
                         ),
             ) {

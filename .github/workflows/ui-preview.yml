@@ -55,16 +55,16 @@ jobs:
 
       - name: Build Android App (APK)
         run: |
-          ./gradlew :androidApp:assembleRelease -x lint -x test
+          ./gradlew :androidApp:assembleDebug -x lint -x test
 
       - name: Locate Output APKs
         run: |
-          if ls androidApp/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
-            echo "APK_FILES=androidApp/build/outputs/apk/release/*.apk" >> $GITHUB_ENV
-            echo "BUILD_FLAVOR=release" >> $GITHUB_ENV
-          else
+          if ls androidApp/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
             echo "APK_FILES=androidApp/build/outputs/apk/debug/*.apk" >> $GITHUB_ENV
             echo "BUILD_FLAVOR=debug" >> $GITHUB_ENV
+          else
+            echo "APK_FILES=androidApp/build/outputs/apk/release/*.apk" >> $GITHUB_ENV
+            echo "BUILD_FLAVOR=release" >> $GITHUB_ENV
           fi
 
       - name: Upload Android APK Artifact
