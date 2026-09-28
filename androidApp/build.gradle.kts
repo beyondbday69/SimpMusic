@@ -187,18 +187,18 @@ sentry {
     ignoredFlavors.set(setOf("foss"))
     ignoredBuildTypes.set(setOf("debug"))
     autoInstallation.enabled = false
-    if (isFullBuild) {
-        val token =
-            try {
-                println("Full build detected, enabling Sentry Auth Token")
-                val properties = Properties()
-                properties.load(rootProject.file("local.properties").inputStream())
-                properties.getProperty("SENTRY_AUTH_TOKEN")
-            } catch (e: Exception) {
-                println("Failed to load SENTRY_AUTH_TOKEN from local.properties: ${e.message}")
-                null
-            }
-        authToken.set(token ?: "")
+    val token =
+        try {
+            val properties = Properties()
+            properties.load(rootProject.file("local.properties").inputStream())
+            properties.getProperty("SENTRY_AUTH_TOKEN")
+        } catch (e: Exception) {
+            null
+        }
+
+    if (isFullBuild && !token.isNullOrBlank()) {
+        println("Full build detected with Sentry Auth Token, enabling Proguard Mapping upload")
+        authToken.set(token)
         includeProguardMapping.set(true)
         autoUploadProguardMapping.set(true)
     } else {
