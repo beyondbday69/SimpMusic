@@ -72,6 +72,7 @@ fun AppBottomDock(
     showAnalyticsTab: Boolean = false,
     showMixForYouTab: Boolean = false,
     reloadDestinationIfNeeded: (KClass<*>) -> Unit = { _ -> },
+    onItemClick: () -> Unit = {},
 ) {
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
 
@@ -124,6 +125,7 @@ fun AppBottomDock(
     }
 
     val selectTab: (BottomNavScreen) -> Unit = { screen ->
+        onItemClick()
         if (selectedOrdinal == screen.ordinal) {
             if (currentDestination?.hierarchy?.any {
                     it.hasRoute(screen.destination::class)
@@ -218,6 +220,7 @@ fun AppBottomDock(
                             interactionSource = settingsInteractionSource,
                             indication = null,
                         ) {
+                            onItemClick()
                             if (isSettingsSelected) {
                                 reloadDestinationIfNeeded(SettingsDestination::class)
                             } else {

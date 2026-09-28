@@ -80,9 +80,7 @@ import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import com.maxrave.simpmusic.extension.copy
 import com.maxrave.simpmusic.ui.component.AppBottomDock
-import com.maxrave.simpmusic.ui.component.AppBottomNavigationBar
 import com.maxrave.simpmusic.ui.component.AppNavigationRail
-import com.maxrave.simpmusic.ui.component.LiquidGlassAppBottomNavigationBar
 import com.maxrave.simpmusic.ui.icon.ArrowForwardIos
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.home.AnalyticsDestination
@@ -485,7 +483,7 @@ fun App(
                 if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
             bottomBar = {
                 AnimatedVisibility(
-                    visible = isNavBarVisible && !isInFullscreen && !isShowNowPlaylistScreen,
+                    visible = isNavBarVisible && !isInFullscreen,
                     enter =
                         fadeIn(animationSpec = tween(260)) +
                             slideInVertically(
@@ -523,7 +521,8 @@ fun App(
                             navController = navController,
                             showAnalyticsTab = showAnalyticsTab,
                             showMixForYouTab = showMixForYouTab,
-                            reloadDestinationIfNeeded = reloadDestination
+                            reloadDestinationIfNeeded = reloadDestination,
+                            onItemClick = { isShowNowPlaylistScreen = false },
                         )
                     }
                 }
