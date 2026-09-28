@@ -466,13 +466,11 @@ fun LibraryScreen(
                 ) {
                     AsyncImage(
                         model =
-                            remember(accountThumbnail) {
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(accountThumbnail)
+                            ImageRequest
+                                .Builder(LocalPlatformContext.current)
+                                .data(accountThumbnail)
                                 
-                        .size(coil3.size.Size.ORIGINAL)
-                        .build()
-                },
+                                .build(),
                         placeholder = rememberVectorPainter(SimpIcons.PeopleAlt),
                         error = rememberVectorPainter(SimpIcons.PeopleAlt),
                         contentDescription = null,

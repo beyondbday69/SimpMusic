@@ -158,7 +158,7 @@ private fun MosaicTile(
                     .data(image.imageUrl)
                     .diskCachePolicy(CachePolicy.ENABLED)
                     .diskCacheKey(image.imageUrl)
-                    .crossfade(550)
+                    
                     .build(),
             contentDescription = "",
             contentScale = ContentScale.Crop,

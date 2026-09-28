@@ -796,7 +796,7 @@ private fun ArtworkImage(
                 .data(url)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .diskCacheKey(url ?: "")
-                .crossfade(550)
+                
                 .build(),
         contentDescription = "",
         contentScale = ContentScale.Crop,

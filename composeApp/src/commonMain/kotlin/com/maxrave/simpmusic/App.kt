@@ -77,6 +77,7 @@ import com.maxrave.simpmusic.expect.currentOrientation
 import com.maxrave.simpmusic.expect.openUrl
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
+import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import com.maxrave.simpmusic.extension.copy
 import com.maxrave.simpmusic.ui.component.AppBottomDock
 import com.maxrave.simpmusic.ui.component.AppBottomNavigationBar
@@ -230,6 +231,10 @@ fun App(
     }
 
     var shouldShowUpdateDialog by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var isScrolledToTop by rememberSaveable {
         mutableStateOf(false)
     }
 

@@ -785,7 +785,7 @@ private fun AppleMusicArtworkPage(
                             .data(artworkUrl)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(artworkUrl + "BIGGER")
-                            .crossfade(550)
+                            
                             .build(),
                     contentDescription = "",
                     onSuccess = { actions.onArtworkBitmap(it.result.image.toImageBitmap()) },
@@ -944,7 +944,7 @@ private fun AppleMusicArtworkPage(
                                         .data(state.screenData.canvasData?.url)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .diskCacheKey(state.screenData.canvasData?.url)
-                                        .crossfade(550)
+                                        
                                         .build(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,

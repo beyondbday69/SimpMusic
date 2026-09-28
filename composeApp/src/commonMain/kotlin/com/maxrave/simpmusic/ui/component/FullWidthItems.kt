@@ -273,16 +273,13 @@ fun SongFullWidthItems(
                             val thumb = track?.thumbnails?.lastOrNull()?.url ?: songEntity?.thumbnails
                             AsyncImage(
                                 model =
-                                    remember(thumb) {
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(thumb)
+                                    ImageRequest
+                                        .Builder(LocalPlatformContext.current)
+                                        .data(thumb)
                                         .diskCachePolicy(CachePolicy.ENABLED)
                                         .diskCacheKey(thumb)
                                         
-                                        
-                        .size(coil3.size.Size.ORIGINAL)
-                        .build()
-                },
+                                        .build(),
                                 placeholder = rememberHolderPainter(),
                                 error = rememberHolderPainter(),
                                 contentDescription = null,
@@ -436,16 +433,13 @@ fun SuggestItems(
                         val thumb = track.thumbnails?.lastOrNull()?.url
                         AsyncImage(
                             model =
-                                remember(thumb) {
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(thumb)
+                                ImageRequest
+                                    .Builder(LocalPlatformContext.current)
+                                    .data(thumb)
                                     .diskCachePolicy(CachePolicy.ENABLED)
                                     .diskCacheKey(thumb)
                                     
-                                    
-                        .size(coil3.size.Size.ORIGINAL)
-                        .build()
-                },
+                                    .build(),
                             placeholder = rememberHolderPainter(),
                             error = rememberHolderPainter(),
                             contentDescription = null,
@@ -594,16 +588,13 @@ fun PlaylistFullWidthItems(
             Box(modifier = Modifier.size(48.dp)) {
                 AsyncImage(
                     model =
-                        remember(thumb) {
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(thumb)
+                        ImageRequest
+                            .Builder(LocalPlatformContext.current)
+                            .data(thumb)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumb)
                             
-                            
-                        .size(coil3.size.Size.ORIGINAL)
-                        .build()
-                },
+                            .build(),
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),
                     contentDescription = null,
@@ -719,16 +710,13 @@ fun ArtistFullWidthItems(
             Box(modifier = Modifier.size(48.dp)) {
                 AsyncImage(
                     model =
-                        remember(thumbnails) {
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(thumbnails)
+                        ImageRequest
+                            .Builder(LocalPlatformContext.current)
+                            .data(thumbnails)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(thumbnails)
                             
-                            
-                        .size(coil3.size.Size.ORIGINAL)
-                        .build()
-                },
+                            .build(),
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),
                     contentDescription = null,

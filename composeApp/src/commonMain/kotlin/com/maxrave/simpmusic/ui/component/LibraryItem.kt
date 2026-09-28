@@ -243,7 +243,7 @@ fun LibraryItem(
                                 top = 10.dp,
                             ),
                         ) {
-                            items(state.data, key = { it.hashCode() }, contentType = { "library" }) { item ->
+                            items(state.data) { item ->
                                 val song = item as? SongEntity ?: return@items
                                 Box(
                                     Modifier
@@ -270,16 +270,13 @@ fun LibraryItem(
                                 ) {
                                     AsyncImage(
                                         model =
-                                            remember(item.canvasThumbUrl) {
-                    ImageRequest.Builder(LocalPlatformContext.current)
-                        .data(item.canvasThumbUrl)
+                                            ImageRequest
+                                                .Builder(LocalPlatformContext.current)
+                                                .data(item.canvasThumbUrl)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(item.canvasThumbUrl)
                                                 
-                                                
-                        .size(coil3.size.Size.ORIGINAL)
-                        .build()
-                },
+                                                .build(),
                                         placeholder = rememberHolderPainter(),
                                         error = rememberHolderPainter(),
                                         contentDescription = null,
@@ -345,7 +342,7 @@ fun LibraryItem(
                     } else {
                         if (state.data.isNotEmpty()) {
                             LazyRow {
-                                items(items = state.data, key = { it.hashCode() }, contentType = { "playlist" }) { item ->
+                                items(items = state.data) { item ->
                                     Box(modifier = Modifier.animateItem()) {
                                         HomeItemContentPlaylist(
                                             onClick = {

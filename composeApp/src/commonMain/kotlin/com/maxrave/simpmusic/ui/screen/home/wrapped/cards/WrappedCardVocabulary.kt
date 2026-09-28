@@ -51,7 +51,7 @@ internal fun WrappedArtwork(
                 .data(url)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .diskCacheKey(url ?: "")
-                .crossfade(550)
+                
                 .build(),
         contentDescription = null,
         contentScale = ContentScale.Crop,
