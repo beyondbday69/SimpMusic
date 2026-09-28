@@ -93,6 +93,7 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
@@ -505,13 +506,26 @@ fun NowPlayingContentSpotify(
                                         .height(middleLayoutPaddingDp.dp)
                                         .fillMaxWidth(),
                             )
+                            val morphProgress = LocalNowPlayingMorphProgress.current
+                            val artworkBoundsHolder = LocalNowPlayingArtworkBounds.current
+                            val isMorphing = morphProgress in 0.001f..0.96f
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 20.dp)
-                                        .alpha(if (pageHasCanvas) 0f else 1f)
-                                        .aspectRatio(1f),
+                                        .alpha(
+                                            if (pageHasCanvas) 0f
+                                            else if (isMorphing) 0f
+                                            else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
+                                            else 1f
+                                        )
+                                        .aspectRatio(1f)
+                                        .onGloballyPositioned { coordinates ->
+                                            if (isCurrentArtworkPage) {
+                                                artworkBoundsHolder?.value = coordinates.boundsInRoot()
+                                            }
+                                        },
                             ) {
                                 if (isCurrentArtworkPage) {
                                     // Live artwork (drives palette extraction via setBitmap).

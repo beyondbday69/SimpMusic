@@ -3,6 +3,7 @@ package com.maxrave.simpmusic
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -42,6 +43,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -52,12 +54,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalPlatformContext
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
@@ -67,6 +75,9 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.window.core.layout.WindowSizeClass.Companion.WIDTH_DP_MEDIUM_LOWER_BOUND
+import coil3.compose.AsyncImage
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import coil3.toUri
 import com.maxrave.domain.data.player.GenericMediaItem
 import com.maxrave.domain.manager.DataStoreManager
@@ -81,6 +92,7 @@ import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import com.maxrave.simpmusic.extension.copy
 import com.maxrave.simpmusic.ui.component.AppBottomDock
 import com.maxrave.simpmusic.ui.component.AppNavigationRail
+import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.ui.icon.ArrowForwardIos
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.home.AnalyticsDestination
@@ -99,6 +111,8 @@ import com.maxrave.simpmusic.ui.screen.MiniPlayer
 import com.maxrave.simpmusic.ui.screen.other.UnofficialBuildScreen
 import com.maxrave.simpmusic.ui.screen.player.NowPlayingScreen
 import com.maxrave.simpmusic.ui.screen.player.NowPlayingScreenContent
+import com.maxrave.simpmusic.ui.screen.player.content.LocalNowPlayingArtworkBounds
+import com.maxrave.simpmusic.ui.screen.player.content.LocalNowPlayingMorphProgress
 import com.maxrave.simpmusic.ui.theme.AppTheme
 import com.maxrave.simpmusic.ui.theme.ForceDarkContent
 import com.maxrave.simpmusic.ui.theme.desktopPanelDark
@@ -138,6 +152,9 @@ import simpmusic.composeapp.generated.resources.update_message
 import simpmusic.composeapp.generated.resources.version_format
 import simpmusic.composeapp.generated.resources.yes
 import kotlin.time.ExperimentalTime
+import kotlin.math.PI
+import kotlin.math.roundToInt
+import kotlin.math.sin
 import kotlin.reflect.KClass
 
 @Composable
@@ -146,22 +163,13 @@ fun AppMiniPlayer(
     isTablet: Boolean,
     backdrop: PlatformBackdrop,
     onClick: () -> Unit,
-    onClose: () -> Unit
+    onClose: () -> Unit,
+    onArtworkPositioned: ((Rect) -> Unit)? = null,
 ) {
     AnimatedVisibility(
         visible = isShowMiniPlayer,
-        enter =
-            fadeIn(animationSpec = tween(260)) +
-                slideInVertically(
-                    animationSpec = tween(320, easing = FastOutSlowInEasing),
-                    initialOffsetY = { it },
-                ),
-        exit =
-            fadeOut(animationSpec = tween(200)) +
-                slideOutVertically(
-                    animationSpec = tween(280, easing = FastOutSlowInEasing),
-                    targetOffsetY = { it },
-                ),
+        enter = fadeIn(animationSpec = tween(240)),
+        exit = fadeOut(animationSpec = tween(180)),
     ) {
         MiniPlayer(
             modifier = Modifier.padding(bottom = 6.dp),
@@ -169,6 +177,7 @@ fun AppMiniPlayer(
             backdrop = backdrop,
             onClick = onClick,
             onClose = onClose,
+            onArtworkPositioned = onArtworkPositioned,
         )
     }
 }
@@ -225,6 +234,8 @@ fun App(
     var isShowNowPlaylistScreen by rememberSaveable {
         mutableStateOf(false)
     }
+    val miniPlayerArtworkBoundsState = remember { mutableStateOf<Rect?>(null) }
+    val nowPlayingArtworkBoundsState = remember { mutableStateOf<Rect?>(null) }
 
     // Fullscreen
     var isInFullscreen by rememberSaveable {
@@ -459,6 +470,17 @@ fun App(
     val isTablet = windowSize.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isTabletLandscape = isTablet && currentOrientation() == Orientation.LANDSCAPE
 
+    val morphProgress by animateFloatAsState(
+        targetValue = if (isShowNowPlaylistScreen && !isTabletLandscape) 1f else 0f,
+        animationSpec =
+            tween(
+                durationMillis = if (isShowNowPlaylistScreen) 340 else 280,
+                easing = FastOutSlowInEasing,
+            ),
+        label = "nowPlayingMorphProgress",
+    )
+    val isMorphActive = isShowNowPlaylistScreen || morphProgress > 0.001f
+
     AppTheme(
         themeMode = themeMode,
         themeColorSource = themeColorSource,
@@ -478,41 +500,47 @@ fun App(
         val desktopWindow = if (isLightScheme) desktopWindowLight else desktopWindowDark
         val desktopPanel =
             if (isLightScheme) MaterialTheme.colorScheme.surfaceContainer else desktopPanelDark
-        Scaffold(
-            containerColor =
-                if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
-            bottomBar = {
-                AnimatedVisibility(
-                    visible = isNavBarVisible && !isInFullscreen,
-                    enter =
-                        fadeIn(animationSpec = tween(260)) +
-                            slideInVertically(
-                                animationSpec = tween(320, easing = FastOutSlowInEasing),
-                                initialOffsetY = { it },
-                            ),
-                    exit =
-                        fadeOut(animationSpec = tween(200)) +
-                            slideOutVertically(
-                                animationSpec = tween(280, easing = FastOutSlowInEasing),
-                                targetOffsetY = { it },
-                            ),
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        AppMiniPlayer(
-                            isShowMiniPlayer = isShowMiniPlayer && !isShowNowPlaylistScreen,
-                            isTablet = isTablet,
-                            backdrop = backdrop,
-                            onClick = { isShowNowPlaylistScreen = true },
-                            onClose = {
-                                viewModel.stopPlayer()
-                                viewModel.isServiceRunning = false
-                            }
-                        )
+        CompositionLocalProvider(
+            LocalNowPlayingMorphProgress provides morphProgress,
+            LocalNowPlayingArtworkBounds provides nowPlayingArtworkBoundsState,
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                Scaffold(
+                    containerColor =
+                        if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
+                    bottomBar = {
+                        AnimatedVisibility(
+                            visible = isNavBarVisible && !isInFullscreen,
+                            enter =
+                                fadeIn(animationSpec = tween(260)) +
+                                    slideInVertically(
+                                        animationSpec = tween(320, easing = FastOutSlowInEasing),
+                                        initialOffsetY = { it },
+                                    ),
+                            exit =
+                                fadeOut(animationSpec = tween(200)) +
+                                    slideOutVertically(
+                                        animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                        targetOffsetY = { it },
+                                    ),
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                            ) {
+                                AppMiniPlayer(
+                                    isShowMiniPlayer = isShowMiniPlayer && !isShowNowPlaylistScreen,
+                                    isTablet = isTablet,
+                                    backdrop = backdrop,
+                                    onClick = { isShowNowPlaylistScreen = true },
+                                    onClose = {
+                                        viewModel.stopPlayer()
+                                        viewModel.isServiceRunning = false
+                                    },
+                                    onArtworkPositioned = { miniPlayerArtworkBoundsState.value = it },
+                                )
                         // Sleek modern floating dock with solid color rendering
                         val reloadDestination = remember(viewModel) {
                             { klass: KClass<*> -> viewModel.reloadDestination(klass) }
@@ -667,28 +695,18 @@ fun App(
                     }
                 }
 
-                AnimatedVisibility(
-                    visible = isShowNowPlaylistScreen && !isTabletLandscape,
-                    enter =
-                        slideInVertically(
-                            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-                            initialOffsetY = { it },
-                        ) + fadeIn(animationSpec = tween(300)),
-                    exit =
-                        slideOutVertically(
-                            animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
-                            targetOffsetY = { it },
-                        ) + fadeOut(animationSpec = tween(300)),
-                ) {
+                if (isMorphActive && !isTabletLandscape) {
                     BackHandler(enabled = isShowNowPlaylistScreen) {
                         isShowNowPlaylistScreen = false
                     }
+                    val contentAlpha = ((morphProgress - 0.06f) / 0.94f).coerceIn(0f, 1f)
                     ForceDarkContent {
                         if (isTablet) {
                             Box(
                                 Modifier
                                     .fillMaxSize()
-                                    .background(Color.Black.copy(alpha = 0.55f))
+                                    .graphicsLayer { alpha = contentAlpha }
+                                    .background(Color.Black.copy(alpha = 0.55f * contentAlpha))
                                     .clickable(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
@@ -715,10 +733,16 @@ fun App(
                                 }
                             }
                         } else {
-                            NowPlayingScreen(
-                                navController = navController,
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer { alpha = contentAlpha },
                             ) {
-                                isShowNowPlaylistScreen = false
+                                NowPlayingScreen(
+                                    navController = navController,
+                                ) {
+                                    isShowNowPlaylistScreen = false
+                                }
                             }
                         }
                     }
@@ -967,6 +991,80 @@ fun App(
                     )
                 }
             },
+                )
+                val currentArtworkUrl =
+                    nowPlayingDataState.value?.songEntity?.thumbnails
+                        ?: nowPlayingDataState.value?.mediaItem?.metadata?.artworkUri
+                MorphingArtworkOverlay(
+                    artworkUrl = currentArtworkUrl,
+                    progress = morphProgress,
+                    fromBounds = miniPlayerArtworkBoundsState.value,
+                    toBounds = nowPlayingArtworkBoundsState.value,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MorphingArtworkOverlay(
+    artworkUrl: String?,
+    progress: Float,
+    fromBounds: Rect?,
+    toBounds: Rect?,
+) {
+    if (progress !in 0.001f..0.999f || fromBounds == null || toBounds == null || fromBounds.width <= 0f || toBounds.width <= 0f) {
+        return
+    }
+
+    val density = LocalDensity.current
+    val currentLeft = lerp(fromBounds.left, toBounds.left, progress)
+    val currentTop = lerp(fromBounds.top, toBounds.top, progress)
+    val currentWidth = lerp(fromBounds.width, toBounds.width, progress)
+    val currentHeight = lerp(fromBounds.height, toBounds.height, progress)
+
+    // Corner radius: from half the miniplayer size (circle) to 28.dp rounded card
+    val startRadius = fromBounds.width / 2f
+    val targetRadius = with(density) { 28.dp.toPx() }
+    val currentRadius = lerp(startRadius, targetRadius, progress)
+    val shape = RoundedCornerShape(with(density) { currentRadius.toDp() })
+
+    // Parabolic elevation peaking at mid-flight for tactile physical lift
+    val elevationDp = (sin(progress * PI.toFloat()) * 16f).coerceAtLeast(0f).dp
+
+    // Cross-fade opacity at the end of the flight (0.96 to 1.0) so handoff to resting card is perfectly seamless
+    val alpha = if (progress >= 0.96f) ((1f - progress) / 0.04f).coerceIn(0f, 1f) else 1f
+
+    Box(
+        modifier =
+            Modifier
+                .offset { IntOffset(currentLeft.roundToInt(), currentTop.roundToInt()) }
+                .size(
+                    width = with(density) { currentWidth.toDp() },
+                    height = with(density) { currentHeight.toDp() },
+                ).shadow(
+                    elevation = elevationDp,
+                    shape = shape,
+                    clip = false,
+                ).clip(shape)
+                .graphicsLayer { this.alpha = alpha },
+    ) {
+        AsyncImage(
+            model =
+                ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(artworkUrl)
+                    .diskCachePolicy(CachePolicy.ENABLED)
+                    .diskCacheKey(artworkUrl)
+                    .build(),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            placeholder = rememberHolderPainter(),
+            error = rememberHolderPainter(),
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
+
+private fun lerp(start: Float, stop: Float, fraction: Float): Float =
+    start + (stop - start) * fraction
+

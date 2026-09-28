@@ -93,10 +93,12 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.input.pointer.PointerInputChange
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onGloballyPositioned
+import com.maxrave.simpmusic.ui.screen.player.content.LocalNowPlayingMorphProgress
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -168,6 +170,7 @@ fun MiniPlayer(
     onClose: () -> Unit,
     onClick: () -> Unit,
     onOpenFullscreenLyrics: () -> Unit = {},
+    onArtworkPositioned: ((Rect) -> Unit)? = null,
 ) {
     val isLiquidGlassEnabled by sharedViewModel.getEnableLiquidGlass().collectAsStateWithLifecycle(DataStoreManager.FALSE)
     val controllerState by sharedViewModel.controllerState.collectAsStateWithLifecycle()
@@ -360,11 +363,19 @@ fun MiniPlayer(
                 ) {
                     // Unified persistent artwork with wavy or classic circular progress ring
                     // Centered precisely: start padding 7dp + 44dp size + 7dp end = 58dp
+                    val morphProgress = LocalNowPlayingMorphProgress.current
                     Box(
                         modifier =
                             Modifier
                                 .padding(start = 7.dp)
-                                .size(44.dp),
+                                .size(44.dp)
+                                .onGloballyPositioned { coordinates ->
+                                    onArtworkPositioned?.invoke(coordinates.boundsInRoot())
+                                }
+                                .graphicsLayer {
+                                    // Fade out resting circle smoothly as the morph takes flight
+                                    alpha = if (morphProgress > 0.04f) 0f else 1f
+                                },
                         contentAlignment = Alignment.Center,
                     ) {
                         val density = LocalDensity.current

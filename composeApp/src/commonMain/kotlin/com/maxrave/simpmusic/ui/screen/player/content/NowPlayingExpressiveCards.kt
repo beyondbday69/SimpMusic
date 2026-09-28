@@ -66,6 +66,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
@@ -279,15 +281,28 @@ internal fun ExpressiveArtworkCardPage(
             )
             // While the canvas covers the page the card hides (alpha 0) but keeps its
             // layout slot occupied — Classic's exact approach, so nothing below moves.
+            val morphProgress = LocalNowPlayingMorphProgress.current
+            val artworkBoundsHolder = LocalNowPlayingArtworkBounds.current
+            val isMorphing = morphProgress in 0.001f..0.96f
             Box(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
-                        .alpha(if (pageHasCanvas) 0f else 1f)
+                        .alpha(
+                            if (pageHasCanvas) 0f
+                            else if (isMorphing) 0f
+                            else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
+                            else 1f
+                        )
                         .aspectRatio(cardAspectRatio)
                         .clip(ArtworkCardShape)
-                        .background(colorScheme.surfaceContainer),
+                        .background(colorScheme.surfaceContainer)
+                        .onGloballyPositioned { coordinates ->
+                            if (isCurrentArtworkPage) {
+                                artworkBoundsHolder?.value = coordinates.boundsInRoot()
+                            }
+                        },
             ) {
                 if (isCurrentArtworkPage) {
                     // Live artwork — kept composed even under canvas/video (alpha 0) so
