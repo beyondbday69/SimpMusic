@@ -55,16 +55,16 @@ jobs:
 
       - name: Build Android App (APK)
         run: |
-          ./gradlew :androidApp:assembleDebug -x lint -x test
+          ./gradlew :androidApp:assembleRelease -x lint -x test
 
       - name: Locate Output APKs
         run: |
-          if ls androidApp/build/outputs/apk/debug/*.apk 1> /dev/null 2>&1; then
-            echo "APK_FILES=androidApp/build/outputs/apk/debug/*.apk" >> $GITHUB_ENV
-            echo "BUILD_FLAVOR=debug" >> $GITHUB_ENV
-          else
+          if ls androidApp/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
             echo "APK_FILES=androidApp/build/outputs/apk/release/*.apk" >> $GITHUB_ENV
             echo "BUILD_FLAVOR=release" >> $GITHUB_ENV
+          else
+            echo "APK_FILES=androidApp/build/outputs/apk/debug/*.apk" >> $GITHUB_ENV
+            echo "BUILD_FLAVOR=debug" >> $GITHUB_ENV
           fi
 
       - name: Upload Android APK Artifact
@@ -81,7 +81,7 @@ jobs:
           TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
           gh release create "$TAG" ${{ env.APK_FILES }} \
             --title "SimpMusic ARM64 Release ($TAG)" \
-            --notes "Fast, optimized ARM64-v8a debug APK with unofficial app warning eliminated, zero-lag dock, and smooth hardware-accelerated transitions." \
+            --notes "Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, wavy progress bar, and smooth hardware-accelerated transitions." \
             --prerelease || true
 
       - name: Upload Build Reports on Failure

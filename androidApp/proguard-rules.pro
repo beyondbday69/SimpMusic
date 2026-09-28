@@ -225,3 +225,10 @@
 -dontwarn io.sentry.instrumentation.file.SentryFileOutputStream$Factory
 -dontwarn io.sentry.okhttp.SentryOkHttpEventListener
 -dontwarn io.sentry.okhttp.SentryOkHttpInterceptor
+
+# Coil 3
+-keep class coil3.** { *; }
+-dontwarn coil3.**
+-keep class * implements coil3.fetch.Fetcher$Factory { *; }
+-keep class * implements coil3.decode.Decoder$Factory { *; }
+-keep class * implements coil3.intercept.Interceptor { *; }
