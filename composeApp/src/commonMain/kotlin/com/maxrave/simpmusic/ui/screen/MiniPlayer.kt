@@ -166,7 +166,7 @@ fun MiniPlayer(
 ) {
     val isLiquidGlassEnabled by sharedViewModel.getEnableLiquidGlass().collectAsStateWithLifecycle(DataStoreManager.FALSE)
     val controllerState by sharedViewModel.controllerState.collectAsStateWithLifecycle()
-    val timelineState by sharedViewModel.timeline.collectAsStateWithLifecycle()
+    val timelineStateState = sharedViewModel.timeline.collectAsStateWithLifecycle()
 
     val layer = rememberGraphicsLayer()
     val luminanceAnimation = remember { Animatable(0f) }
@@ -205,22 +205,9 @@ fun MiniPlayer(
         remember {
             mutableStateOf(false)
         }
-    val (progress, setProgress) =
-        remember {
-            mutableFloatStateOf(0f)
-        }
-    val (isCrossfading, setIsCrossfading) =
-        remember {
-            mutableStateOf(false)
-        }
-
+    val progressState = remember { mutableFloatStateOf(0f) }
+    val (isCrossfading, setIsCrossfading) = remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-
-    val animatedProgress by animateFloatAsState(
-        targetValue = progress,
-        animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec,
-        label = "",
-    )
 
     val offsetX = remember { Animatable(initialValue = 0f) }
     val offsetY = remember { Animatable(0f) }
@@ -256,7 +243,7 @@ fun MiniPlayer(
                         } else {
                             0f
                         }
-                    setProgress(prog)
+                    progressState.floatValue = prog
                 }
             }
         job1.join()
@@ -400,7 +387,7 @@ fun MiniPlayer(
                                     // Progress rides a ring around the artwork: wavy while playing, flat when paused.
                                     val ringStroke = Stroke(width = with(LocalDensity.current) { 3.dp.toPx() }, cap = StrokeCap.Round)
                                     CircularWavyProgressIndicator(
-                                        progress = { animatedProgress },
+                                        progress = { progressState.floatValue },
                                         modifier = Modifier.fillMaxSize(),
                                         color = MaterialTheme.colorScheme.primary,
                                         trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -411,12 +398,14 @@ fun MiniPlayer(
                                         amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
                                     )
                                 }
+                                val context = LocalPlatformContext.current
                                 AsyncImage(
-                                    model =
+                                    model = remember(songEntity?.thumbnails) {
                                         ImageRequest
-                                            .Builder(LocalPlatformContext.current)
+                                            .Builder(context)
                                             .data(songEntity?.thumbnails)
-                                            .build(),
+                                            .build()
+                                    },
                                     placeholder = rememberHolderPainter(),
                                     error = rememberHolderPainter(),
                                     contentDescription = null,
@@ -572,7 +561,7 @@ fun MiniPlayer(
                                 ).align(Alignment.BottomCenter),
                     ) {
                         LinearProgressIndicator(
-                            progress = { animatedProgress },
+                            progress = { progressState.floatValue },
                             modifier =
                                 Modifier
                                     .fillMaxWidth()
@@ -623,14 +612,16 @@ fun MiniPlayer(
         var showQueueBottomSheet by rememberSaveable {
             mutableStateOf(false)
         }
-        LaunchedEffect(key1 = timelineState, key2 = isSliding) {
+        LaunchedEffect(key1 = sharedViewModel.timeline, key2 = isSliding) {
             if (!isSliding) {
-                sliderValue =
-                    if (timelineState.total > 0L) {
-                        timelineState.current.toFloat() * 100 / timelineState.total.toFloat()
-                    } else {
-                        0f
-                    }
+                sharedViewModel.timeline.collect { timeline ->
+                    sliderValue =
+                        if (timeline.total > 0L) {
+                            timeline.current.toFloat() * 100 / timeline.total.toFloat()
+                        } else {
+                            0f
+                        }
+                }
             }
         }
         if (showQueueBottomSheet) {
@@ -754,12 +745,14 @@ fun MiniPlayer(
                                     .hoverable(artworkInteraction),
                             contentAlignment = Alignment.Center,
                         ) {
+                            val context = LocalPlatformContext.current
                             AsyncImage(
-                                model =
+                                model = remember(songEntity?.thumbnails) {
                                     ImageRequest
-                                        .Builder(LocalPlatformContext.current)
+                                        .Builder(context)
                                         .data(songEntity?.thumbnails)
-                                        .build(),
+                                        .build()
+                                },
                                 placeholder = rememberHolderPainter(),
                                 error = rememberHolderPainter(),
                                 contentDescription = null,
@@ -841,7 +834,7 @@ fun MiniPlayer(
                                 // pointer is over the capsule — a crossfade cue nobody sees
                                 // unless they happen to be hovering is no cue at all.
                                 AnimatedVisibility(
-                                    visible = timelineState.isCrossfading,
+                                    visible = timelineStateState.value.isCrossfading,
                                     enter = fadeIn(),
                                     exit = fadeOut(),
                                 ) {
@@ -886,7 +879,7 @@ fun MiniPlayer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
                         Text(
-                            text = formatDuration((timelineState.total * (sliderValue / 100f)).roundToLong()),
+                            text = formatDuration((timelineStateState.value.total * (sliderValue / 100f)).roundToLong()),
                             style = scrubberDigits,
                             color = textColor.copy(alpha = 0.7f),
                             maxLines = 1,
@@ -897,7 +890,7 @@ fun MiniPlayer(
                             text =
                                 "−" +
                                     formatDuration(
-                                        (timelineState.total * (1f - sliderValue / 100f)).roundToLong(),
+                                        (timelineStateState.value.total * (1f - sliderValue / 100f)).roundToLong(),
                                     ),
                             style = scrubberDigits,
                             color = textColor.copy(alpha = 0.7f),

@@ -164,13 +164,15 @@ fun HomeItem(
             ) {
                 AsyncImage(
                     model =
-                        ImageRequest
-                            .Builder(LocalPlatformContext.current)
-                            .data(data.thumbnail?.lastOrNull()?.url)
+                        remember(data.thumbnail?.lastOrNull() {
+                    ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(data.thumbnail?.lastOrNull()?.url)
                             .diskCachePolicy(CachePolicy.ENABLED)
                             .diskCacheKey(data.thumbnail?.lastOrNull()?.url)
-                            .crossfade(550)
-                            .build(),
+                            
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                     contentDescription = "",
                     placeholder = rememberHolderPainter(),
                     error = rememberHolderPainter(),
@@ -217,7 +219,7 @@ fun HomeItem(
             state = lazyListState,
             flingBehavior = snapperFlingBehavior,
         ) {
-            items(data.contents) { temp ->
+            items(data.contents, key = { it.hashCode() }, contentType = { "content" }) { temp ->
                 if (temp != null) {
                     HomeContentCard(
                         temp = temp,
@@ -437,13 +439,15 @@ fun HomeItemContentPlaylist(
                 }
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder =
                     when (data) {
                         is LocalPlaylistEntity -> {
@@ -669,13 +673,15 @@ fun QuickPicksItem(
         ) {
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(data.thumbnails.lastOrNull() {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(data.thumbnails.lastOrNull()?.url)
-                        .crossfade(550)
                         .diskCacheKey(data.thumbnails.lastOrNull()?.url)
                         .diskCachePolicy(CachePolicy.ENABLED)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(),
                 contentDescription = stringResource(Res.string.description),
                 contentScale = ContentScale.Crop,
@@ -779,7 +785,7 @@ fun HomeItemSong(
                     .padding(start = 10.dp, top = 10.dp, end = 10.dp, bottom = 6.dp)
                     .heightIn(min = 230.dp),
         ) {
-            val thumb =
+            val thumb = remember(data) {
                 data.thumbnails.lastOrNull()?.url?.let {
                     if (it.contains("w120")) {
                         Regex("([wh])120").replace(it, "$1544")
@@ -787,16 +793,19 @@ fun HomeItemSong(
                         it
                     }
                 }
+            }
             Logger.w("AsyncImage", "HomeItemSong: $thumb")
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,
@@ -889,13 +898,15 @@ fun HomeItemVideo(
             Logger.w("AsyncImage", "HomeItemSong: $thumb")
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(isVideo = true),
                 error = rememberHolderPainter(isVideo = true),
                 contentDescription = null,
@@ -976,13 +987,15 @@ fun HomeItemArtist(
             Logger.w("AsyncImage", "HomeItemSong: $thumb")
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,
@@ -1095,13 +1108,15 @@ fun ItemVideoChart(
             Logger.w("AsyncImage", "HomeItemSong: $thumb")
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(isVideo = true),
                 error = rememberHolderPainter(isVideo = true),
                 contentDescription = null,
@@ -1206,13 +1221,15 @@ fun ItemArtistChart(
             Logger.w("AsyncImage", "HomeItemSong: $thumb")
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,
@@ -1317,13 +1334,15 @@ fun ItemTrackChart(
             Logger.w("AsyncImage", "HomeItemSong: $thumb")
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(thumb) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(thumb)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(thumb)
-                        .crossfade(550)
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,
@@ -1416,7 +1435,7 @@ fun MoodAndGenresContentItem(
                     is Item -> (data).contents
                     else -> listOf()
                 }
-            items(itemList) { item ->
+            items(itemList, key = { it.hashCode() }, contentType = { "content" }) { item ->
                 HomeItemContentPlaylist(onClick = {
                     // The "Songs" shelf mixes tracks into a list that is otherwise all playlists,
                     // so route by videoId: a track starts its radio, everything else opens a page.

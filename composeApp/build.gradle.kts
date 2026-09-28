@@ -37,6 +37,13 @@ compose.resources {
     generateResClass = always
 }
 
+composeCompiler {
+    enableStrongSkippingMode = true
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    metricsDestination = layout.buildDirectory.dir("compose_compiler")
+}
+
+
 kotlin {
     compilerOptions {
         freeCompilerArgs.add("-Xwhen-guards")

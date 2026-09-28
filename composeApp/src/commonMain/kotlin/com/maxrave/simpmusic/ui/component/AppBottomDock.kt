@@ -159,80 +159,12 @@ fun AppBottomDock(
         ) {
             bottomNavScreens.forEach { screen ->
                 val selected = selectedOrdinal == screen.ordinal
-                val interactionSource = remember { MutableInteractionSource() }
-                val isPressed by interactionSource.collectIsPressedAsState()
-
-                // graphicsLayer-only — NO layout passes triggered on animation frames
-                val pressScale by animateFloatAsState(
-                    targetValue = if (isPressed) 0.92f else 1.0f,
-                    animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
-                    label = "dockPressScale",
+                AppBottomDockItem(
+                    screen = screen,
+                    selected = selected,
+                    labelStyle = labelStyle,
+                    onSelect = selectTab
                 )
-                val contentColor by animateColorAsState(
-                    targetValue =
-                        if (selected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                        },
-                    animationSpec = tween(200, easing = FastOutSlowInEasing),
-                    label = "dockContentColor",
-                )
-
-                // Selected background pill — uses background() not a floating Box with offset,
-                // so it is part of normal layout and does NOT trigger parent recomposition.
-                val pillColor = MaterialTheme.colorScheme.primaryContainer
-                Box(
-                    modifier =
-                        Modifier
-                            .height(44.dp)
-                            .clip(CircleShape)
-                            .background(if (selected) pillColor else androidx.compose.ui.graphics.Color.Transparent)
-                            .graphicsLayer {
-                                scaleX = pressScale
-                                scaleY = pressScale
-                            }
-                            .clickable(
-                                interactionSource = interactionSource,
-                                indication = null,
-                            ) { selectTab(screen) }
-                            .padding(horizontal = if (selected) 14.dp else 10.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        CompositionLocalProvider(LocalContentColor provides contentColor) {
-                            screen.icon()
-                        }
-                        AnimatedVisibility(
-                            visible = selected,
-                            enter =
-                                fadeIn(tween(160)) +
-                                    expandHorizontally(
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
-                                        expandFrom = Alignment.Start,
-                                        clip = true,
-                                    ),
-                            exit =
-                                fadeOut(tween(120)) +
-                                    shrinkHorizontally(
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
-                                        shrinkTowards = Alignment.Start,
-                                        clip = true,
-                                    ),
-                        ) {
-                            Text(
-                                text = stringResource(screen.title),
-                                style = labelStyle,
-                                color = contentColor,
-                                maxLines = 1,
-                                modifier = Modifier.padding(start = 2.dp),
-                            )
-                        }
-                    }
-                }
             }
 
             // Settings tab separator (invisible spacing)
@@ -289,6 +221,86 @@ fun AppBottomDock(
                 CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
                     Icon(SimpIcons.Settings, contentDescription = "Settings")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppBottomDockItem(
+    screen: BottomNavScreen,
+    selected: Boolean,
+    labelStyle: androidx.compose.ui.text.TextStyle,
+    onSelect: (BottomNavScreen) -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.92f else 1.0f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
+        label = "dockPressScale",
+    )
+    val contentColor by animateColorAsState(
+        targetValue =
+            if (selected) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "dockContentColor",
+    )
+
+    val pillColor = MaterialTheme.colorScheme.primaryContainer
+    Box(
+        modifier =
+            Modifier
+                .height(44.dp)
+                .clip(CircleShape)
+                .background(if (selected) pillColor else androidx.compose.ui.graphics.Color.Transparent)
+                .graphicsLayer {
+                    scaleX = pressScale
+                    scaleY = pressScale
+                }
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                ) { onSelect(screen) }
+                .padding(horizontal = if (selected) 14.dp else 10.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor) {
+                screen.icon()
+            }
+            AnimatedVisibility(
+                visible = selected,
+                enter =
+                    fadeIn(tween(160)) +
+                        expandHorizontally(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
+                            expandFrom = Alignment.Start,
+                            clip = true,
+                        ),
+                exit =
+                    fadeOut(tween(120)) +
+                        shrinkHorizontally(
+                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
+                            shrinkTowards = Alignment.Start,
+                            clip = true,
+                        ),
+            ) {
+                Text(
+                    text = stringResource(screen.title),
+                    style = labelStyle,
+                    color = contentColor,
+                    maxLines = 1,
+                    modifier = Modifier.padding(start = 2.dp),
+                )
             }
         }
     }

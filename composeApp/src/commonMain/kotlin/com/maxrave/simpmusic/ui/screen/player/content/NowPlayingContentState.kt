@@ -83,7 +83,7 @@ internal fun String?.toAudioCodecLabel(): String? {
 class NowPlayingContentState(
     val screenData: NowPlayingScreenData,
     val controllerState: ControlState,
-    val timelineState: TimeLine,
+    val timelineStateState: androidx.compose.runtime.State<TimeLine>,
     val timelineFlow: StateFlow<TimeLine>,
     val likeStatus: Boolean,
     val castState: GenericCastState,
@@ -96,11 +96,11 @@ class NowPlayingContentState(
     val endColor: Animatable<Color, AnimationVector4D>,
     val spotShadowColor: Color,
     val gradientOffset: GradientOffset,
-    val sliderTrackColor: Color,
-    val sliderValue: Float,
-    val currentLyricLineIndex: Int,
+    val sliderTrackColorState: androidx.compose.runtime.State<Color>,
+    val sliderValueState: androidx.compose.runtime.State<Float>,
+    val currentLyricLineIndexState: androidx.compose.runtime.State<Int>,
     val showControlLayout: Boolean,
-    val controlLayoutAlpha: Float,
+    val controlLayoutAlphaState: androidx.compose.runtime.State<Float>,
     val showHideMiddleLayout: Boolean,
     val shouldShowToolbar: Boolean,
     val isInPipMode: Boolean,
@@ -109,7 +109,13 @@ class NowPlayingContentState(
     val dismissIcon: ImageVector,
     /** Current track's audio codec ("OPUS"/"AAC"), or null while unknown — see [toAudioCodecLabel]. */
     val audioCodecLabel: String? = null,
-)
+) {
+    val timelineState: TimeLine get() = timelineStateState.value
+    val sliderTrackColor: Color get() = sliderTrackColorState.value
+    val sliderValue: Float get() = sliderValueState.value
+    val currentLyricLineIndex: Int get() = currentLyricLineIndexState.value
+    val controlLayoutAlpha: Float get() = controlLayoutAlphaState.value
+}
 
 /**
  * Everything a Now Playing content layer can do. All callbacks land in the shell, which owns

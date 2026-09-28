@@ -139,6 +139,33 @@ import simpmusic.composeapp.generated.resources.update_message
 import simpmusic.composeapp.generated.resources.version_format
 import simpmusic.composeapp.generated.resources.yes
 import kotlin.time.ExperimentalTime
+import kotlin.reflect.KClass
+
+@Composable
+fun AppMiniPlayer(
+    isShowMiniPlayer: Boolean,
+    isTablet: Boolean,
+    backdrop: PlatformBackdrop,
+    onClick: () -> Unit,
+    onClose: () -> Unit
+) {
+    AnimatedVisibility(
+        isShowMiniPlayer,
+        enter = fadeIn() + slideInVertically { it },
+        exit = fadeOut() + slideOutVertically { it },
+    ) {
+        MiniPlayer(
+            Modifier
+                .height(60.dp)
+                .widthIn(max = 560.dp)
+                .fillMaxWidth(if (isTablet) 0.65f else 0.94f)
+                .padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
+            backdrop = backdrop,
+            onClick = onClick,
+            onClose = onClose,
+        )
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalTime::class, ExperimentalFoundationApi::class)
 @Composable
@@ -152,8 +179,8 @@ fun App(
     val navController = rememberNavController()
     val isDesktopShell = getPlatform() == Platform.Desktop
 
-    val sleepTimerState by viewModel.sleepTimerState.collectAsStateWithLifecycle()
-    val nowPlayingData by viewModel.nowPlayingState.collectAsStateWithLifecycle()
+    val sleepTimerStateState = viewModel.sleepTimerState.collectAsStateWithLifecycle()
+    val nowPlayingDataState = viewModel.nowPlayingState.collectAsStateWithLifecycle()
     val updateData by viewModel.updateResponse.collectAsStateWithLifecycle()
     val intent by viewModel.intent.collectAsStateWithLifecycle()
     val showNotificationPermissionDialog by viewModel.showNotificationPermissionDialog.collectAsStateWithLifecycle()
@@ -183,7 +210,7 @@ fun App(
     // guess to be wrong, and no saved copy to disagree with the source.
     val isShowMiniPlayer by remember {
         derivedStateOf {
-            val item = nowPlayingData?.mediaItem
+            val item = nowPlayingDataState.value?.mediaItem
             item != null && item != GenericMediaItem.EMPTY
         }
     }
@@ -379,56 +406,46 @@ fun App(
         }
     }
 
-    val navBackStackEntry by navController.currentBackStackEntryAsState()
-    LaunchedEffect(navBackStackEntry) {
-        Logger.d("MainActivity", "Current destination: ${navBackStackEntry?.destination?.route}")
-        if (navBackStackEntry?.destination?.route?.contains("FullscreenDestination") == true) {
-            isShowNowPlaylistScreen = false
-        }
-        // Wrapped counts as fullscreen for the same reason the video player does: it is a
-        // full-bleed reel, and the rail and the mini player would sit on top of the card the user
-        // is meant to be reading — and on top of every card captured as a share image.
-        isInFullscreen = navBackStackEntry?.destination?.hierarchy?.any {
-            it.hasRoute(FullscreenDestination::class) || it.hasRoute(WrappedDestination::class)
-        } == true
-    }
-    LaunchedEffect(showAnalyticsTab) {
-        // Turning tracking off removes the Analytics tab, so leaving the user standing on it would
-        // strand them on a screen no tab points at anymore.
-        if (!showAnalyticsTab &&
-            navBackStackEntry?.destination?.hierarchy?.any {
-                it.hasRoute(AnalyticsDestination::class)
-            } == true
-        ) {
-            navController.navigate(HomeDestination) {
-                popUpTo(navController.graph.startDestinationId) {
-                    saveState = true
+    LaunchedEffect(navController) {
+        navController.currentBackStackEntryFlow.collect { entry ->
+            Logger.d("MainActivity", "Current destination: ${entry.destination.route}")
+            if (entry.destination.route?.contains("FullscreenDestination") == true) {
+                isShowNowPlaylistScreen = false
+            }
+            isInFullscreen = entry.destination.hierarchy.any {
+                it.hasRoute(FullscreenDestination::class) || it.hasRoute(WrappedDestination::class)
+            }
+            
+            if (!showAnalyticsTab &&
+                entry.destination.hierarchy.any {
+                    it.hasRoute(AnalyticsDestination::class)
                 }
-                launchSingleTop = true
-                restoreState = true
+            ) {
+                navController.navigate(HomeDestination) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
+            }
+            
+            if (!showMixForYouTab &&
+                entry.destination.hierarchy.any {
+                    it.hasRoute(MixForYouDestination::class)
+                }
+            ) {
+                navController.navigate(HomeDestination) {
+                    popUpTo(navController.graph.startDestinationId) {
+                        saveState = true
+                    }
+                    launchSingleTop = true
+                    restoreState = true
+                }
             }
         }
     }
-    LaunchedEffect(showMixForYouTab) {
-        // Same for signing out of YouTube: the Mix for you tab goes away, so nobody may be left
-        // standing on a screen that has no mixes to show and no tab pointing at it.
-        if (!showMixForYouTab &&
-            navBackStackEntry?.destination?.hierarchy?.any {
-                it.hasRoute(MixForYouDestination::class)
-            } == true
-        ) {
-            navController.navigate(HomeDestination) {
-                popUpTo(navController.graph.startDestinationId) {
-                    saveState = true
-                }
-                launchSingleTop = true
-                restoreState = true
-            }
-        }
-    }
-    var isScrolledToTop by rememberSaveable {
-        mutableStateOf(false)
-    }
+
     val isTablet = windowSize.isWidthAtLeastBreakpoint(WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isTabletLandscape = isTablet && currentOrientation() == Orientation.LANDSCAPE
 
@@ -466,35 +483,26 @@ fun App(
                             .padding(bottom = 12.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        AnimatedVisibility(
-                            isShowMiniPlayer,
-                            enter = fadeIn() + slideInVertically { it },
-                            exit = fadeOut() + slideOutVertically { it },
-                        ) {
-                            MiniPlayer(
-                                Modifier
-                                    .height(60.dp)
-                                    .widthIn(max = 560.dp)
-                                    .fillMaxWidth(if (isTablet) 0.65f else 0.94f)
-                                    .padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
-                                backdrop = backdrop,
-                                onClick = {
-                                    isShowNowPlaylistScreen = true
-                                },
-                                onClose = {
-                                    viewModel.stopPlayer()
-                                    viewModel.isServiceRunning = false
-                                },
-                            )
-                        }
+                        AppMiniPlayer(
+                            isShowMiniPlayer = isShowMiniPlayer,
+                            isTablet = isTablet,
+                            backdrop = backdrop,
+                            onClick = { isShowNowPlaylistScreen = true },
+                            onClose = {
+                                viewModel.stopPlayer()
+                                viewModel.isServiceRunning = false
+                            }
+                        )
                         // Sleek modern floating dock with solid color rendering
+                        val reloadDestination = remember(viewModel) {
+                            { klass: KClass<*> -> viewModel.reloadDestination(klass) }
+                        }
                         AppBottomDock(
                             navController = navController,
                             showAnalyticsTab = showAnalyticsTab,
                             showMixForYouTab = showMixForYouTab,
-                        ) { klass ->
-                            viewModel.reloadDestination(klass)
-                        }
+                            reloadDestinationIfNeeded = reloadDestination
+                        )
                     }
                 }
             },
@@ -695,8 +703,11 @@ fun App(
                     }
                 }
 
-                if (sleepTimerState.isDone) {
-                    Logger.w("MainActivity", "Sleep Timer Done: $sleepTimerState")
+                val isSleepTimerDone by remember {
+                    derivedStateOf { sleepTimerStateState.value.isDone }
+                }
+                if (isSleepTimerDone) {
+                    Logger.w("MainActivity", "Sleep Timer Done")
                     AlertDialog(
                         properties =
                             DialogProperties(

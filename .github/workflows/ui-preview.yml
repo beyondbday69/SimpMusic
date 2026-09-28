@@ -55,7 +55,7 @@ jobs:
 
       - name: Build Android App (APK)
         run: |
-          ./gradlew :androidApp:assembleDebug -x lint -x test
+          ./gradlew :androidApp:assembleRelease -x lint -x test
 
       - name: Locate Output APKs
         run: |

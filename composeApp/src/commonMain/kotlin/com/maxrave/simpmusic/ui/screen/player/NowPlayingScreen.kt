@@ -225,7 +225,8 @@ fun NowPlayingScreenContent(
     // ViewModel State
     val controllerState by sharedViewModel.controllerState.collectAsStateWithLifecycle()
     val screenDataState by sharedViewModel.nowPlayingScreenData.collectAsStateWithLifecycle()
-    val timelineState by sharedViewModel.timeline.collectAsStateWithLifecycle()
+    val timelineStateState = sharedViewModel.timeline.collectAsStateWithLifecycle()
+    val timelineState by timelineStateState
     // Audio-delay correction, read here and applied ONLY to the lyric line below. The seek bar and
     // the elapsed-time readout keep the raw position: they report where the player is, while a
     // lyric reports what the ear is hearing, and those two are what the offset separates.
@@ -507,9 +508,10 @@ fun NowPlayingScreenContent(
     var isSliding by rememberSaveable {
         mutableStateOf(false)
     }
-    var sliderValue by rememberSaveable {
+    val sliderValueState = rememberSaveable {
         mutableFloatStateOf(0f)
     }
+    var sliderValue by sliderValueState
     LaunchedEffect(key1 = timelineState, key2 = isSliding) {
         if (!isSliding) {
             sliderValue =
@@ -522,9 +524,9 @@ fun NowPlayingScreenContent(
     }
 
     // Crossfade: RGB rainbow color cycling when transitioning between tracks
-    val sliderTrackColor = if (timelineState.isCrossfading) {
+    val sliderTrackColorState = if (controllerState.isCrossfading) {
         val infiniteTransition = rememberInfiniteTransition(label = "crossfadeRainbow")
-        val rainbowHue by infiniteTransition.animateFloat(
+        val rainbowHue = infiniteTransition.animateFloat(
             initialValue = 0f,
             targetValue = 360f,
             animationSpec =
@@ -534,22 +536,21 @@ fun NowPlayingScreenContent(
                 ),
             label = "rainbowHue",
         )
-        val rainbowColor = hsvToColor(rainbowHue, 1f, 1f)
-        val animatedColor by animateColorAsState(
-            targetValue = rainbowColor,
+        val rainbowColor = derivedStateOf { hsvToColor(rainbowHue.value, 1f, 1f) }
+        animateColorAsState(
+            targetValue = rainbowColor.value,
             animationSpec = tween(300),
             label = "sliderCrossfadeColor",
         )
-        animatedColor
     } else {
-        Color.White
+        remember { mutableStateOf(Color.White) }
     }
 
     // Show ControlLayout Or Show Artist Badge
     var showHideControlLayout by rememberSaveable {
         mutableStateOf(true)
     }
-    val controlLayoutAlpha: Float by animateFloatAsState(
+    val controlLayoutAlphaState = animateFloatAsState(
         targetValue = if (showHideControlLayout) 1f else 0f,
         animationSpec =
             tween(
@@ -558,6 +559,7 @@ fun NowPlayingScreenContent(
             ),
         label = "ControlLayoutAlpha",
     )
+    val controlLayoutAlpha: Float by controlLayoutAlphaState
 
     var showHideJob by remember {
         mutableStateOf(true)
@@ -605,46 +607,48 @@ fun NowPlayingScreenContent(
             }
     }
 
-    var currentLyricLineIndex by rememberSaveable {
+    val currentLyricLineIndexState = rememberSaveable {
         mutableIntStateOf(-1)
     }
 
     // Canvas subtitle sync
-    LaunchedEffect(timelineState, screenDataState.lyricsData?.lyrics, lyricsOffsetMs) {
-        val lyrics = screenDataState.lyricsData?.lyrics
-        if (lyrics == null || lyrics.syncType == "UNSYNCED" || lyrics.syncType == null) {
-            currentLyricLineIndex = -1
-            return@LaunchedEffect
-        }
-        val lines = lyrics.lines ?: return@LaunchedEffect
-        val translatedLines =
-            screenDataState.lyricsData
-                ?.translatedLyrics
-                ?.first
-                ?.lines
-        // What the ear is hearing right now, which is what a lyric answers to. Keyed on the offset
-        // as well so dragging the setting while paused still moves the line.
-        val nowMs = timelineState.current - lyricsOffsetMs
-        if (nowMs > 0L) {
-            lines.indices.forEach { i ->
-                val startTimeMs = lines[i].startTimeMs.toLongOrNull() ?: 0L
-                val endTimeMs =
-                    if (i < lines.size - 1) {
-                        lines[i + 1].startTimeMs.toLongOrNull() ?: 0L
-                    } else {
-                        startTimeMs + 60000
+    LaunchedEffect(sharedViewModel.timeline, screenDataState.lyricsData?.lyrics, lyricsOffsetMs) {
+        sharedViewModel.timeline.collect { timeline ->
+            val lyrics = screenDataState.lyricsData?.lyrics
+            if (lyrics == null || lyrics.syncType == "UNSYNCED" || lyrics.syncType == null) {
+                currentLyricLineIndexState.intValue = -1
+                return@collect
+            }
+            val lines = lyrics.lines ?: return@collect
+            val translatedLines =
+                screenDataState.lyricsData
+                    ?.translatedLyrics
+                    ?.first
+                    ?.lines
+            // What the ear is hearing right now, which is what a lyric answers to. Keyed on the offset
+            // as well so dragging the setting while paused still moves the line.
+            val nowMs = timeline.current - lyricsOffsetMs
+            if (nowMs > 0L) {
+                lines.indices.forEach { i ->
+                    val startTimeMs = lines[i].startTimeMs.toLongOrNull() ?: 0L
+                    val endTimeMs =
+                        if (i < lines.size - 1) {
+                            lines[i + 1].startTimeMs.toLongOrNull() ?: 0L
+                        } else {
+                            startTimeMs + 60000
+                        }
+                    if (nowMs in startTimeMs..endTimeMs) {
+                        currentLyricLineIndexState.intValue = i
                     }
-                if (nowMs in startTimeMs..endTimeMs) {
-                    currentLyricLineIndex = i
                 }
+                if (lines.isNotEmpty() &&
+                    nowMs in 0..(lines.getOrNull(0)?.startTimeMs?.toLongOrNull() ?: 0L)
+                ) {
+                    currentLyricLineIndexState.intValue = -1
+                }
+            } else {
+                currentLyricLineIndexState.intValue = -1
             }
-            if (lines.isNotEmpty() &&
-                nowMs in 0..(lines.getOrNull(0)?.startTimeMs?.toLongOrNull() ?: 0L)
-            ) {
-                currentLyricLineIndex = -1
-            }
-        } else {
-            currentLyricLineIndex = -1
         }
     }
 
@@ -655,7 +659,7 @@ fun NowPlayingScreenContent(
         NowPlayingContentState(
             screenData = screenDataState,
             controllerState = controllerState,
-            timelineState = timelineState,
+            timelineStateState = timelineStateState,
             timelineFlow = sharedViewModel.timeline,
             likeStatus = likeStatus,
             castState = castState,
@@ -668,11 +672,11 @@ fun NowPlayingScreenContent(
             endColor = endColor,
             spotShadowColor = spotShadowColor,
             gradientOffset = gradientOffset,
-            sliderTrackColor = sliderTrackColor,
-            sliderValue = sliderValue,
-            currentLyricLineIndex = currentLyricLineIndex,
+            sliderTrackColorState = sliderTrackColorState,
+            sliderValueState = sliderValueState,
+            currentLyricLineIndexState = currentLyricLineIndexState,
             showControlLayout = showHideControlLayout,
-            controlLayoutAlpha = controlLayoutAlpha,
+            controlLayoutAlphaState = controlLayoutAlphaState,
             showHideMiddleLayout = showHideMiddleLayout,
             shouldShowToolbar = shouldShowToolbar,
             isInPipMode = isInPipMode,

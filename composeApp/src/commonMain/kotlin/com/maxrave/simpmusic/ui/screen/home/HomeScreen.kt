@@ -627,30 +627,27 @@ fun HomeScreen(
                                         ) {
                                             QuickPicks(
                                                 homeItem =
-                                                    (
+                                                    remember(homeData) {
                                                         homeData.find {
-                                                            it.title ==
-                                                                stringResource(
-                                                                    Res.string.quick_picks,
-                                                                )
-                                                        } ?: return@AnimatedVisibility
-                                                    ).let { content ->
-                                                        content.copy(
-                                                            contents =
-                                                                content.contents.mapNotNull { ct ->
-                                                                    ct?.copy(
-                                                                        artists =
-                                                                            ct.artists?.let { art ->
-                                                                                if (art.size > 1) {
-                                                                                    art.dropLast(1)
-                                                                                } else {
-                                                                                    art
-                                                                                }
-                                                                            },
-                                                                    )
-                                                                },
-                                                        )
-                                                    },
+                                                            it.title == item.title
+                                                        }?.let { content ->
+                                                            content.copy(
+                                                                contents =
+                                                                    content.contents.mapNotNull { ct ->
+                                                                        ct?.copy(
+                                                                            artists =
+                                                                                ct.artists?.let { art ->
+                                                                                    if (art.size > 1) {
+                                                                                        art.dropLast(1)
+                                                                                    } else {
+                                                                                        art
+                                                                                    }
+                                                                                },
+                                                                        )
+                                                                    },
+                                                            )
+                                                        }
+                                                    } ?: return@AnimatedVisibility,
                                                 navController = navController,
                                                 viewModel = viewModel,
                                             )
@@ -679,7 +676,7 @@ fun HomeScreen(
                             }
                         }
                         if (homeListState == ListState.PAGINATION_EXHAUST) {
-                            items(newRelease, key = { it.hashCode() }) {
+                            items(newRelease, key = { it.hashCode() }, contentType = { "newRelease" }) {
                                 AnimatedVisibility(
                                     visible = newRelease.isNotEmpty(),
                                 ) {
@@ -957,13 +954,16 @@ fun AccountLayout(
         ) {
             AsyncImage(
                 model =
-                    ImageRequest
-                        .Builder(LocalPlatformContext.current)
+                    remember(url) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
                         .data(url)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(url)
                         
-                        .build(),
+                        
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,
@@ -1045,7 +1045,7 @@ fun QuickPicks(
             state = lazyListState,
             flingBehavior = snapperFlingBehavior,
         ) {
-            items(homeItem.contents, key = { it.hashCode() }) {
+            items(homeItem.contents, key = { it.hashCode() }, contentType = { "homeItem" }) {
                 if (it != null) {
                     QuickPicksItem(
                         onClick = {
@@ -1119,7 +1119,7 @@ fun MoodMomentAndGenre(
                 state = gridState,
                 flingBehavior = flingBehavior,
             ) {
-                items(section.items, key = { it.params }) { item ->
+                items(section.items, key = { it.params }, contentType = { "moodItem" }) { item ->
                     MoodMomentAndGenreHomeItem(
                         title = item.title,
                         stripeColor = item.stripeColor,
@@ -1199,7 +1199,7 @@ fun ChartData(
                 items(item.playlists.size, key = { index ->
                     val data = item.playlists[index]
                     data.id + data.title + index
-                }) {
+                }, contentType = { "playlistItem" }) {
                     HomeItemContentPlaylist(
                         onClick = {
                             navController.navigate(
@@ -1233,7 +1233,7 @@ fun ChartData(
             items(chart.artists.itemArtists.size, key = { index ->
                 val item = chart.artists.itemArtists[index]
                 item.title + item.browseId + index
-            }) {
+            }, contentType = { "artistItem" }) {
                 val data = chart.artists.itemArtists[it]
                 ItemArtistChart(
                     onClick = {

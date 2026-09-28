@@ -243,7 +243,7 @@ fun LibraryItem(
                                 top = 10.dp,
                             ),
                         ) {
-                            items(state.data) { item ->
+                            items(state.data, key = { it.hashCode() }, contentType = { "library" }) { item ->
                                 val song = item as? SongEntity ?: return@items
                                 Box(
                                     Modifier
@@ -270,13 +270,16 @@ fun LibraryItem(
                                 ) {
                                     AsyncImage(
                                         model =
-                                            ImageRequest
-                                                .Builder(LocalPlatformContext.current)
-                                                .data(item.canvasThumbUrl)
+                                            remember(item.canvasThumbUrl) {
+                    ImageRequest.Builder(LocalPlatformContext.current)
+                        .data(item.canvasThumbUrl)
                                                 .diskCachePolicy(CachePolicy.ENABLED)
                                                 .diskCacheKey(item.canvasThumbUrl)
                                                 
-                                                .build(),
+                                                
+                        .size(coil3.size.Size.ORIGINAL)
+                        .build()
+                },
                                         placeholder = rememberHolderPainter(),
                                         error = rememberHolderPainter(),
                                         contentDescription = null,
@@ -342,7 +345,7 @@ fun LibraryItem(
                     } else {
                         if (state.data.isNotEmpty()) {
                             LazyRow {
-                                items(items = state.data) { item ->
+                                items(items = state.data, key = { it.hashCode() }, contentType = { "playlist" }) { item ->
                                     Box(modifier = Modifier.animateItem()) {
                                         HomeItemContentPlaylist(
                                             onClick = {
