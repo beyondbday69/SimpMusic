@@ -7,7 +7,9 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -160,6 +162,7 @@ fun MiniPlayer(
     modifier: Modifier,
     backdrop: PlatformBackdrop,
     sharedViewModel: SharedViewModel = koinInject(),
+    isTablet: Boolean = false,
     onClose: () -> Unit,
     onClick: () -> Unit,
     onOpenFullscreenLyrics: () -> Unit = {},
@@ -251,330 +254,353 @@ fun MiniPlayer(
         job4.join()
     }
 
+    var isCollapsed by rememberSaveable { mutableStateOf(false) }
+    var userInteractionCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(songEntity?.videoId, isCollapsed, userInteractionCount) {
+        if (!isCollapsed) {
+            delay(5000)
+            isCollapsed = true
+        }
+    }
+
     if (getPlatform() == Platform.Android) {
-        // One shape for both the Card and the clip below. They must not diverge: the clip wraps
-        // the Card's own background draw, so the larger radius wins and silently becomes the
-        // visible one.
+        // One shape for both the Card and the clip below.
         val miniPlayerShape = CircleShape
         // Solid color rendering without blur/translucency for maximum performance
         val cardColor = MaterialTheme.colorScheme.surfaceContainer
         val isFlat = true
-        Card(
-            shape = miniPlayerShape,
-            colors =
-                CardDefaults.cardColors(
-                    containerColor = cardColor,
-                    disabledContainerColor = cardColor,
-                ),
-            modifier =
-                modifier.then(
-                    Modifier
-                            .clip(miniPlayerShape)
-                            .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                            .clickable(
-                                onClick = onClick,
-                            )
-                            .pointerInput(Unit) {
-                                detectVerticalDragGestures(
-                                    onDragStart = {
-                                    },
-                                    onVerticalDrag = { change: PointerInputChange, dragAmount: Float ->
-                                        if (offsetY.value + dragAmount > 0f) {
-                                            change.consume()
-                                            coroutineScope.launch {
-                                                val current = offsetY.value
-                                                val resistance = (1f - (current / 400f)).coerceIn(0.3f, 1f)
-                                                offsetY.snapTo(current + dragAmount * resistance)
-                                            }
-                                        }
-                                    },
-                                    onDragCancel = {
-                                        coroutineScope.launch {
-                                            offsetY.animateTo(
-                                                targetValue = 0f,
-                                                animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow,
-                                                ),
-                                            )
-                                        }
-                                    },
-                                    onDragEnd = {
-                                        coroutineScope.launch {
-                                            if (offsetY.value > 70f) {
-                                                onClose()
-                                            }
-                                            offsetY.animateTo(
-                                                targetValue = 0f,
-                                                animationSpec = spring(
-                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                    stiffness = Spring.StiffnessMediumLow,
-                                                ),
-                                            )
-                                        }
-                                    },
-                                )
-                            },
-                    ),
+
+        BoxWithConstraints(
+            modifier = modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
         ) {
-            Box(modifier = Modifier.fillMaxHeight()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier =
-                        Modifier
-                            .fillMaxSize(),
-                ) {
-                    Spacer(modifier = Modifier.size(8.dp))
-                    Box(modifier = Modifier.weight(1F)) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                                    .pointerInput(Unit) {
-                                        detectHorizontalDragGestures(
-                                            onDragStart = {
-                                            },
-                                            onHorizontalDrag = {
-                                                change: PointerInputChange,
-                                                dragAmount: Float,
-                                                ->
-                                                change.consume()
-                                                coroutineScope.launch {
-                                                    val current = offsetX.value
-                                                    val resistance = (1f - (kotlin.math.abs(current) / 600f)).coerceIn(0.3f, 1f)
-                                                    offsetX.snapTo(current + dragAmount * resistance)
-                                                }
-                                            },
-                                            onDragCancel = {
-                                                coroutineScope.launch {
-                                                    offsetX.animateTo(
-                                                        targetValue = 0f,
-                                                        animationSpec = spring(
-                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                            stiffness = Spring.StiffnessMediumLow,
-                                                        ),
-                                                    )
-                                                }
-                                            },
-                                            onDragEnd = {
-                                                coroutineScope.launch {
-                                                    val finalOffset = offsetX.value
-                                                    if (finalOffset > 160f) {
-                                                        sharedViewModel.onUIEvent(UIEvent.Previous)
-                                                    } else if (finalOffset < -120f) {
-                                                        sharedViewModel.onUIEvent(UIEvent.Next)
-                                                    }
-                                                    offsetX.animateTo(
-                                                        targetValue = 0f,
-                                                        animationSpec = spring(
-                                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                            stiffness = Spring.StiffnessMediumLow,
-                                                        ),
-                                                    )
-                                                }
-                                            },
+            val fullWidth = (maxWidth * (if (isTablet) 0.65f else 0.94f)).coerceAtMost(560.dp)
+            val cardHeight = 58.dp
+            val targetWidth = if (isCollapsed) cardHeight else fullWidth
+            val animatedWidth by animateDpAsState(
+                targetValue = targetWidth,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = 380f,
+                ),
+                label = "MiniPlayerWidth",
+            )
+
+            Card(
+                shape = miniPlayerShape,
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = cardColor,
+                        disabledContainerColor = cardColor,
+                    ),
+                modifier =
+                    Modifier
+                        .width(animatedWidth)
+                        .height(cardHeight)
+                        .clip(miniPlayerShape)
+                        .offset { IntOffset(0, offsetY.value.roundToInt()) }
+                        .clickable {
+                            if (isCollapsed) {
+                                isCollapsed = false
+                                userInteractionCount++
+                            } else {
+                                onClick()
+                            }
+                        }
+                        .pointerInput(Unit) {
+                            detectVerticalDragGestures(
+                                onDragStart = {},
+                                onVerticalDrag = { change: PointerInputChange, dragAmount: Float ->
+                                    if (offsetY.value + dragAmount > 0f) {
+                                        change.consume()
+                                        coroutineScope.launch {
+                                            val current = offsetY.value
+                                            val resistance = (1f - (current / 400f)).coerceIn(0.3f, 1f)
+                                            offsetY.snapTo(current + dragAmount * resistance)
+                                        }
+                                    }
+                                },
+                                onDragCancel = {
+                                    coroutineScope.launch {
+                                        offsetY.animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMediumLow,
+                                            ),
                                         )
-                                    },
+                                    }
+                                },
+                                onDragEnd = {
+                                    coroutineScope.launch {
+                                        if (offsetY.value > 70f) {
+                                            onClose()
+                                        }
+                                        offsetY.animateTo(
+                                            targetValue = 0f,
+                                            animationSpec = spring(
+                                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                stiffness = Spring.StiffnessMediumLow,
+                                            ),
+                                        )
+                                    }
+                                },
+                            )
+                        },
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    // Collapsed state: single centered circle with artwork & surrounded wavy progress ring
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = isCollapsed,
+                        enter = fadeIn(tween(220)),
+                        exit = fadeOut(tween(160)),
+                    ) {
+                        Box(
+                            modifier = Modifier.size(44.dp),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            Box(
+                            val ringStroke = Stroke(width = with(LocalDensity.current) { 3.dp.toPx() }, cap = StrokeCap.Round)
+                            CircularWavyProgressIndicator(
+                                progress = { progressState.floatValue },
+                                modifier = Modifier.fillMaxSize(),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                stroke = ringStroke,
+                                trackStroke = ringStroke,
+                                amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
+                            )
+                            val context = LocalPlatformContext.current
+                            AsyncImage(
+                                model = remember(songEntity?.thumbnails) {
+                                    ImageRequest
+                                        .Builder(context)
+                                        .data(songEntity?.thumbnails)
+                                        .build()
+                                },
+                                placeholder = rememberHolderPainter(),
+                                error = rememberHolderPainter(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
                                 modifier =
                                     Modifier
-                                        .size(40.dp)
-                                        .align(Alignment.CenterVertically),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                if (isFlat) {
-                                    // Progress rides a ring around the artwork: wavy while playing, flat when paused.
-                                    val ringStroke = Stroke(width = with(LocalDensity.current) { 3.dp.toPx() }, cap = StrokeCap.Round)
-                                    CircularWavyProgressIndicator(
-                                        progress = { progressState.floatValue },
-                                        modifier = Modifier.fillMaxSize(),
-                                        color = MaterialTheme.colorScheme.primary,
-                                        trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                        stroke = ringStroke,
-                                        trackStroke = ringStroke,
-                                        // A raw 0/1, never a tweened value: the node animates amplitude
-                                        // itself and drops new targets mid-animation (see WavySeekBar).
-                                        amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
-                                    )
-                                }
-                                val context = LocalPlatformContext.current
-                                AsyncImage(
-                                    model = remember(songEntity?.thumbnails) {
-                                        ImageRequest
-                                            .Builder(context)
-                                            .data(songEntity?.thumbnails)
-                                            .build()
-                                    },
-                                    placeholder = rememberHolderPainter(),
-                                    error = rememberHolderPainter(),
-                                    contentDescription = null,
-                                    // Crop in the circle: FillWidth would leave bands around a 16:9 video thumbnail.
-                                    contentScale = if (isFlat) ContentScale.Crop else ContentScale.FillWidth,
+                                        .size(28.dp)
+                                        .clip(CircleShape),
+                            )
+                        }
+                    }
+
+                    // Expanded state: full pill with artwork, title, artist, like, and play controls
+                    androidx.compose.animation.AnimatedVisibility(
+                        visible = !isCollapsed,
+                        enter = fadeIn(tween(220)),
+                        exit = fadeOut(tween(160)),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxSize(),
+                        ) {
+                            Spacer(modifier = Modifier.size(8.dp))
+                            Box(modifier = Modifier.weight(1F)) {
+                                Row(
                                     modifier =
                                         Modifier
-                                            .size(if (isFlat) 26.dp else 40.dp)
-                                            .clip(if (isFlat) CircleShape else RoundedCornerShape(4.dp)),
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(10.dp))
-                            AnimatedContent(
-                                targetState = songEntity,
-                                modifier = Modifier.weight(1F).fillMaxHeight(),
-                                contentAlignment = Alignment.CenterStart,
-                                transitionSpec = {
-                                    // Compare the incoming number with the previous number.
-                                    if (targetState != initialState) {
-                                        // If the target number is larger, it slides up and fades in
-                                        // while the initial (smaller) number slides up and fades out.
-                                        (
-                                            slideInHorizontally { width ->
-                                                width
-                                            } + fadeIn()
-                                        ).togetherWith(
-                                            slideOutHorizontally { width -> +width } + fadeOut(),
-                                        )
-                                    } else {
-                                        // If the target number is smaller, it slides down and fades in
-                                        // while the initial number slides down and fades out.
-                                        (
-                                            slideInHorizontally { width ->
-                                                +width
-                                            } + fadeIn()
-                                        ).togetherWith(
-                                            slideOutHorizontally { width -> width } + fadeOut(),
-                                        )
-                                    }.using(
-                                        // Disable clipping since the faded slide-in/out should
-                                        // be displayed out of bounds.
-                                        SizeTransform(clip = false),
-                                    )
-                                },
-                            ) { target ->
-                                if (target != null) {
-                                    Column(
-                                        Modifier
-                                            .wrapContentHeight()
-                                            .align(Alignment.CenterVertically),
+                                            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                                            .pointerInput(Unit) {
+                                                detectHorizontalDragGestures(
+                                                    onDragStart = {},
+                                                    onHorizontalDrag = { change: PointerInputChange, dragAmount: Float ->
+                                                        change.consume()
+                                                        coroutineScope.launch {
+                                                            val current = offsetX.value
+                                                            val resistance = (1f - (kotlin.math.abs(current) / 600f)).coerceIn(0.3f, 1f)
+                                                            offsetX.snapTo(current + dragAmount * resistance)
+                                                        }
+                                                    },
+                                                    onDragCancel = {
+                                                        coroutineScope.launch {
+                                                            offsetX.animateTo(
+                                                                targetValue = 0f,
+                                                                animationSpec = spring(
+                                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                                    stiffness = Spring.StiffnessMediumLow,
+                                                                ),
+                                                            )
+                                                        }
+                                                    },
+                                                    onDragEnd = {
+                                                        coroutineScope.launch {
+                                                            val finalOffset = offsetX.value
+                                                            if (finalOffset > 160f) {
+                                                                sharedViewModel.onUIEvent(UIEvent.Previous)
+                                                            } else if (finalOffset < -120f) {
+                                                                sharedViewModel.onUIEvent(UIEvent.Next)
+                                                            }
+                                                            offsetX.animateTo(
+                                                                targetValue = 0f,
+                                                                animationSpec = spring(
+                                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                                    stiffness = Spring.StiffnessMediumLow,
+                                                                ),
+                                                            )
+                                                        }
+                                                    },
+                                                )
+                                            },
+                                ) {
+                                    Box(
+                                        modifier =
+                                            Modifier
+                                                .size(44.dp)
+                                                .align(Alignment.CenterVertically),
+                                        contentAlignment = Alignment.Center,
                                     ) {
-                                        Text(
-                                            text = (songEntity?.title ?: "").toString(),
-                                            style = if (isFlat) typo().titleSmall else typo().labelSmall,
-                                            color = textColor,
-                                            maxLines = 1,
+                                        val ringStroke = Stroke(width = with(LocalDensity.current) { 3.dp.toPx() }, cap = StrokeCap.Round)
+                                        CircularWavyProgressIndicator(
+                                            progress = { progressState.floatValue },
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            stroke = ringStroke,
+                                            trackStroke = ringStroke,
+                                            amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
+                                        )
+                                        val context = LocalPlatformContext.current
+                                        AsyncImage(
+                                            model = remember(songEntity?.thumbnails) {
+                                                ImageRequest
+                                                    .Builder(context)
+                                                    .data(songEntity?.thumbnails)
+                                                    .build()
+                                            },
+                                            placeholder = rememberHolderPainter(),
+                                            error = rememberHolderPainter(),
+                                            contentDescription = null,
+                                            contentScale = ContentScale.Crop,
                                             modifier =
                                                 Modifier
-                                                    .fillMaxWidth()
-                                                    .wrapContentHeight(
-                                                        align = Alignment.CenterVertically,
-                                                    ).basicMarquee(
-                                                        iterations = Int.MAX_VALUE,
-                                                        animationMode = MarqueeAnimationMode.Immediately,
-                                                    ).focusable(),
+                                                    .size(28.dp)
+                                                    .clip(CircleShape),
                                         )
-                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                            androidx.compose.animation.AnimatedVisibility(visible = songEntity?.isExplicit == true) {
-                                                ExplicitBadge(
+                                    }
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    AnimatedContent(
+                                        targetState = songEntity,
+                                        modifier = Modifier.weight(1F).fillMaxHeight(),
+                                        contentAlignment = Alignment.CenterStart,
+                                        transitionSpec = {
+                                            if (targetState != initialState) {
+                                                (
+                                                    slideInHorizontally { width -> width } + fadeIn()
+                                                ).togetherWith(
+                                                    slideOutHorizontally { width -> +width } + fadeOut(),
+                                                )
+                                            } else {
+                                                (
+                                                    slideInHorizontally { width -> +width } + fadeIn()
+                                                ).togetherWith(
+                                                    slideOutHorizontally { width -> width } + fadeOut(),
+                                                )
+                                            }.using(
+                                                SizeTransform(clip = false),
+                                            )
+                                        },
+                                    ) { target ->
+                                        if (target != null) {
+                                            Column(
+                                                Modifier
+                                                    .wrapContentHeight()
+                                                    .align(Alignment.CenterVertically),
+                                            ) {
+                                                Text(
+                                                    text = (songEntity?.title ?: "").toString(),
+                                                    style = typo().titleSmall,
+                                                    color = textColor,
+                                                    maxLines = 1,
                                                     modifier =
                                                         Modifier
-                                                            .size(20.dp)
-                                                            .padding(end = 4.dp)
-                                                            .weight(1f),
+                                                            .fillMaxWidth()
+                                                            .wrapContentHeight(Alignment.CenterVertically)
+                                                            .basicMarquee(
+                                                                iterations = Int.MAX_VALUE,
+                                                                animationMode = MarqueeAnimationMode.Immediately,
+                                                            ).focusable(),
                                                 )
+                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                    androidx.compose.animation.AnimatedVisibility(visible = songEntity?.isExplicit == true) {
+                                                        ExplicitBadge(
+                                                            modifier =
+                                                                Modifier
+                                                                    .size(20.dp)
+                                                                    .padding(end = 4.dp),
+                                                        )
+                                                    }
+                                                    Text(
+                                                        text = (songEntity?.artistName?.connectArtists() ?: ""),
+                                                        style = typo().bodySmall.copy(fontSize = 10.sp),
+                                                        maxLines = 1,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        modifier =
+                                                            Modifier
+                                                                .weight(1f)
+                                                                .wrapContentHeight(Alignment.CenterVertically)
+                                                                .basicMarquee(
+                                                                    iterations = Int.MAX_VALUE,
+                                                                    animationMode = MarqueeAnimationMode.Immediately,
+                                                                ).focusable(),
+                                                    )
+                                                }
                                             }
-                                            Text(
-                                                text = (songEntity?.artistName?.connectArtists() ?: ""),
-                                                style = if (isFlat) typo().bodySmall.copy(fontSize = 10.sp) else typo().bodySmall,
-                                                maxLines = 1,
-                                                color = if (isFlat) MaterialTheme.colorScheme.onSurfaceVariant else textColor,
-                                                modifier =
-                                                    Modifier
-                                                        .weight(1f)
-                                                        .wrapContentHeight(
-                                                            align = Alignment.CenterVertically,
-                                                        ).basicMarquee(
-                                                            iterations = Int.MAX_VALUE,
-                                                            animationMode = MarqueeAnimationMode.Immediately,
-                                                        ).focusable(),
-                                            )
                                         }
                                     }
                                 }
                             }
-                        }
-                    }
-                    // Flat: 40dp in the 56dp pill leaves an even 8dp ring.
-                    val controlSize = if (isFlat) 40.dp else 48.dp
-                    val playColor = if (isFlat) MaterialTheme.colorScheme.onPrimary else textColor
-                    Spacer(modifier = Modifier.width(if (isFlat) 8.dp else 15.dp))
-                    // background(shape), not clip: the heart's like-burst draws outside its bounds.
-                    Box(
-                        modifier =
-                            if (isFlat) {
-                                Modifier
-                                    .size(controlSize)
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape)
-                            } else {
-                                Modifier
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        HeartCheckBox(checked = liked, size = 30, tint = textColor) {
-                            sharedViewModel.onUIEvent(UIEvent.ToggleLike)
-                        }
-                    }
-                    Spacer(modifier = Modifier.width(if (isFlat) 8.dp else 15.dp))
-                    Box(
-                        modifier =
-                            Modifier
-                                .size(controlSize)
-                                .then(if (isFlat) Modifier.background(MaterialTheme.colorScheme.primary, CircleShape) else Modifier),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Crossfade(targetState = loading, label = "") {
-                            if (it) {
-                                Box(modifier = Modifier.size(controlSize), contentAlignment = Alignment.Center) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(18.dp),
-                                        color = playColor,
-                                        strokeWidth = 3.dp,
-                                    )
-                                }
-                            } else {
-                                PlayPauseButton(isPlaying = isPlaying, modifier = Modifier.size(controlSize), tint = playColor) {
-                                    sharedViewModel.onUIEvent(UIEvent.PlayPause)
+                            val controlSize = 38.dp
+                            val playColor = MaterialTheme.colorScheme.onPrimary
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(controlSize)
+                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                HeartCheckBox(checked = liked, size = 28, tint = textColor) {
+                                    userInteractionCount++
+                                    sharedViewModel.onUIEvent(UIEvent.ToggleLike)
                                 }
                             }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .size(controlSize)
+                                        .background(MaterialTheme.colorScheme.primary, CircleShape),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Crossfade(targetState = loading, label = "") {
+                                    if (it) {
+                                        Box(modifier = Modifier.size(controlSize), contentAlignment = Alignment.Center) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                color = playColor,
+                                                strokeWidth = 3.dp,
+                                            )
+                                        }
+                                    } else {
+                                        PlayPauseButton(isPlaying = isPlaying, modifier = Modifier.size(controlSize), tint = playColor) {
+                                            userInteractionCount++
+                                            sharedViewModel.onUIEvent(UIEvent.PlayPause)
+                                        }
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
                         }
-                    }
-
-                    Spacer(modifier = Modifier.width(if (isFlat) 8.dp else 15.dp))
-                }
-                // The flat card shows progress as the ring around its artwork instead.
-                if (!isFlat) {
-                    Box(
-                        modifier =
-                            Modifier
-                                .wrapContentSize(Alignment.Center)
-                                .padding(
-                                    horizontal = 10.dp,
-                                ).align(Alignment.BottomCenter),
-                    ) {
-                        LinearProgressIndicator(
-                            progress = { progressState.floatValue },
-                            modifier =
-                                Modifier
-                                    .fillMaxWidth()
-                                    .height(1.dp)
-                                    .background(
-                                        color = Color.Transparent,
-                                        shape = RoundedCornerShape(4.dp),
-                                    ),
-                            color = textColor,
-                            trackColor = Color.Transparent,
-                            strokeCap = StrokeCap.Round,
-                            drawStopIndicator = {},
-                        )
                     }
                 }
             }

@@ -156,11 +156,8 @@ fun AppMiniPlayer(
         exit = fadeOut() + slideOutVertically { it },
     ) {
         MiniPlayer(
-            Modifier
-                .height(60.dp)
-                .widthIn(max = 560.dp)
-                .fillMaxWidth(if (isTablet) 0.65f else 0.94f)
-                .padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
+            modifier = Modifier.padding(bottom = 6.dp),
+            isTablet = isTablet,
             backdrop = backdrop,
             onClick = onClick,
             onClose = onClose,
