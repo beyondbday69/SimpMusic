@@ -13,6 +13,7 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 jobs:
   build-and-preview:
@@ -32,14 +33,20 @@ jobs:
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
+        with:
+          cache-disabled: true
 
-      - name: Cache Konan
+      - name: Cache Gradle & Dependencies
         uses: actions/cache@v4
         with:
-          path: ~/.konan
-          key: ${{ runner.os }}-konan-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.konan
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
           restore-keys: |
-            ${{ runner.os }}-konan-
+            ${{ runner.os }}-gradle-
+            setup-java-Linux-x64-gradle-
 
       - name: Setup local.properties
         run: |
@@ -83,6 +90,13 @@ jobs:
             --title "SimpMusic ARM64 Release ($TAG)" \
             --notes "Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, wavy progress bar, and smooth hardware-accelerated transitions." \
             --prerelease || true
+
+      - name: Clean Gradle Locks Before Caching
+        if: always()
+        run: |
+          rm -f ~/.gradle/caches/modules-2/modules-2.lock
+          rm -f ~/.gradle/caches/*/plugin-resolution/
+          rm -f ~/.gradle/caches/journal-1/file-access.properties
 
       - name: Upload Build Reports on Failure
         if: failure()
