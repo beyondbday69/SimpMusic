@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import com.maxrave.simpmusic.viewModel.SharedViewModel
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntOffset
@@ -56,6 +57,7 @@ fun WavySeekBar(
     onSliderChange: (Float) -> Unit,
     onSliderChangeFinished: () -> Unit,
     modifier: Modifier = Modifier,
+    waveStyle: String = SharedViewModel.WAVE_STYLE_EXPRESSIVE,
 ) {
     var isInteracting by remember { mutableStateOf(false) }
     var dragFraction by remember { mutableFloatStateOf(0f) }
@@ -70,7 +72,11 @@ fun WavySeekBar(
     // an internal animation towards ~0.97 and every following frame's smaller target was
     // swallowed by the guard (seen on device). A hard 0f/1f flip recomposes once, the fresh
     // lambda invalidates the node's draw cache, and the built-in spec renders the flatten.
-    val targetAmplitude = if (isPlaying && !isInteracting) 1f else 0f
+    val targetAmplitude = when (waveStyle) {
+        SharedViewModel.WAVE_STYLE_FLAT -> 0f
+        SharedViewModel.WAVE_STYLE_GENTLE -> if (isPlaying && !isInteracting) 0.5f else 0f
+        else -> if (isPlaying && !isInteracting) 1f else 0f
+    }
     // 0f = idle circle, 1f = dragging tall bar.
     val thumbMorph by animateFloatAsState(
         targetValue = if (isInteracting) 1f else 0f,

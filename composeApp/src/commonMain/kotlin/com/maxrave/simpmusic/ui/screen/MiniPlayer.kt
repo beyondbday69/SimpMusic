@@ -17,6 +17,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -170,6 +172,7 @@ fun MiniPlayer(
     val isLiquidGlassEnabled by sharedViewModel.getEnableLiquidGlass().collectAsStateWithLifecycle(DataStoreManager.FALSE)
     val controllerState by sharedViewModel.controllerState.collectAsStateWithLifecycle()
     val timelineStateState = sharedViewModel.timeline.collectAsStateWithLifecycle()
+    val waveStyle by sharedViewModel.getWaveStyle().collectAsStateWithLifecycle(SharedViewModel.WAVE_STYLE_EXPRESSIVE)
 
     val layer = rememberGraphicsLayer()
     val luminanceAnimation = remember { Animatable(0f) }
@@ -280,11 +283,13 @@ fun MiniPlayer(
             val targetWidth = if (isCollapsed) cardHeight else fullWidth
             val animatedWidth by animateDpAsState(
                 targetValue = targetWidth,
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = 380f,
-                ),
+                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
                 label = "MiniPlayerWidth",
+            )
+            val contentAlpha by animateFloatAsState(
+                targetValue = if (isCollapsed) 0f else 1f,
+                animationSpec = tween(durationMillis = if (isCollapsed) 160 else 240, easing = FastOutSlowInEasing),
+                label = "MiniPlayerContentAlpha",
             )
 
             Card(
@@ -349,62 +354,90 @@ fun MiniPlayer(
                             )
                         },
             ) {
-                Box(
+                Row(
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    // Collapsed state: single centered circle with artwork & surrounded wavy progress ring
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = isCollapsed,
-                        enter = fadeIn(tween(220)),
-                        exit = fadeOut(tween(160)),
+                    // Unified persistent artwork with wavy or classic circular progress ring
+                    // Centered precisely: start padding 7dp + 44dp size + 7dp end = 58dp
+                    Box(
+                        modifier =
+                            Modifier
+                                .padding(start = 7.dp)
+                                .size(44.dp),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Box(
-                            modifier = Modifier.size(44.dp),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            val ringStroke = Stroke(width = with(LocalDensity.current) { 3.dp.toPx() }, cap = StrokeCap.Round)
-                            CircularWavyProgressIndicator(
-                                progress = { progressState.floatValue },
-                                modifier = Modifier.fillMaxSize(),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                stroke = ringStroke,
-                                trackStroke = ringStroke,
-                                amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
-                            )
-                            val context = LocalPlatformContext.current
-                            AsyncImage(
-                                model = remember(songEntity?.thumbnails) {
+                        val density = LocalDensity.current
+                        val ringStroke =
+                            remember(density) {
+                                Stroke(width = with(density) { 3.dp.toPx() }, cap = StrokeCap.Round)
+                            }
+                        when (waveStyle) {
+                            SharedViewModel.WAVE_STYLE_FLAT -> {
+                                CircularProgressIndicator(
+                                    progress = { progressState.floatValue },
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    strokeWidth = 3.dp,
+                                    strokeCap = StrokeCap.Round,
+                                )
+                            }
+                            SharedViewModel.WAVE_STYLE_GENTLE -> {
+                                CircularWavyProgressIndicator(
+                                    progress = { progressState.floatValue },
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    stroke = ringStroke,
+                                    trackStroke = ringStroke,
+                                    amplitude = { p -> if (p > 0f && isPlaying) 0.5f else 0f },
+                                )
+                            }
+                            else -> {
+                                CircularWavyProgressIndicator(
+                                    progress = { progressState.floatValue },
+                                    modifier = Modifier.fillMaxSize(),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                    stroke = ringStroke,
+                                    trackStroke = ringStroke,
+                                    amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
+                                )
+                            }
+                        }
+                        val context = LocalPlatformContext.current
+                        AsyncImage(
+                            model =
+                                remember(songEntity?.thumbnails) {
                                     ImageRequest
                                         .Builder(context)
                                         .data(songEntity?.thumbnails)
                                         .build()
                                 },
-                                placeholder = rememberHolderPainter(),
-                                error = rememberHolderPainter(),
-                                contentDescription = null,
-                                contentScale = ContentScale.Crop,
-                                modifier =
-                                    Modifier
-                                        .size(28.dp)
-                                        .clip(CircleShape),
-                            )
-                        }
+                            placeholder = rememberHolderPainter(),
+                            error = rememberHolderPainter(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier =
+                                Modifier
+                                    .size(28.dp)
+                                    .clip(CircleShape),
+                        )
                     }
 
-                    // Expanded state: full pill with artwork, title, artist, like, and play controls
-                    androidx.compose.animation.AnimatedVisibility(
-                        visible = !isCollapsed,
-                        enter = fadeIn(tween(220)),
-                        exit = fadeOut(tween(160)),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
+                    // Content on the right: song info, like button, play/pause button
+                    if (animatedWidth > cardHeight) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier =
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                                    .graphicsLayer {
+                                        alpha = contentAlpha
+                                    }.clipToBounds(),
                         ) {
-                            Spacer(modifier = Modifier.size(8.dp))
                             Box(modifier = Modifier.weight(1F)) {
                                 Row(
                                     modifier =
@@ -425,10 +458,11 @@ fun MiniPlayer(
                                                         coroutineScope.launch {
                                                             offsetX.animateTo(
                                                                 targetValue = 0f,
-                                                                animationSpec = spring(
-                                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                                    stiffness = Spring.StiffnessMediumLow,
-                                                                ),
+                                                                animationSpec =
+                                                                    spring(
+                                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                                        stiffness = Spring.StiffnessMediumLow,
+                                                                    ),
                                                             )
                                                         }
                                                     },
@@ -442,51 +476,17 @@ fun MiniPlayer(
                                                             }
                                                             offsetX.animateTo(
                                                                 targetValue = 0f,
-                                                                animationSpec = spring(
-                                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                                    stiffness = Spring.StiffnessMediumLow,
-                                                                ),
+                                                                animationSpec =
+                                                                    spring(
+                                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                                        stiffness = Spring.StiffnessMediumLow,
+                                                                    ),
                                                             )
                                                         }
                                                     },
                                                 )
                                             },
                                 ) {
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(44.dp)
-                                                .align(Alignment.CenterVertically),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        val ringStroke = Stroke(width = with(LocalDensity.current) { 3.dp.toPx() }, cap = StrokeCap.Round)
-                                        CircularWavyProgressIndicator(
-                                            progress = { progressState.floatValue },
-                                            modifier = Modifier.fillMaxSize(),
-                                            color = MaterialTheme.colorScheme.primary,
-                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                            stroke = ringStroke,
-                                            trackStroke = ringStroke,
-                                            amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
-                                        )
-                                        val context = LocalPlatformContext.current
-                                        AsyncImage(
-                                            model = remember(songEntity?.thumbnails) {
-                                                ImageRequest
-                                                    .Builder(context)
-                                                    .data(songEntity?.thumbnails)
-                                                    .build()
-                                            },
-                                            placeholder = rememberHolderPainter(),
-                                            error = rememberHolderPainter(),
-                                            contentDescription = null,
-                                            contentScale = ContentScale.Crop,
-                                            modifier =
-                                                Modifier
-                                                    .size(28.dp)
-                                                    .clip(CircleShape),
-                                        )
-                                    }
                                     Spacer(modifier = Modifier.width(10.dp))
                                     AnimatedContent(
                                         targetState = songEntity,

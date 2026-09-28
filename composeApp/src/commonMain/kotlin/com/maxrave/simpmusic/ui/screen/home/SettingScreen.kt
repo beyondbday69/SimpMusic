@@ -341,6 +341,10 @@ import simpmusic.composeapp.generated.resources.now_playing_style
 import simpmusic.composeapp.generated.resources.now_playing_style_apple_music
 import simpmusic.composeapp.generated.resources.now_playing_style_m3_expressive
 import simpmusic.composeapp.generated.resources.now_playing_style_spotify
+import simpmusic.composeapp.generated.resources.wave_style
+import simpmusic.composeapp.generated.resources.wave_style_expressive
+import simpmusic.composeapp.generated.resources.wave_style_gentle
+import simpmusic.composeapp.generated.resources.wave_style_flat
 import simpmusic.composeapp.generated.resources.ok
 import simpmusic.composeapp.generated.resources.open_system_equalizer
 import simpmusic.composeapp.generated.resources.openai
@@ -565,6 +569,7 @@ fun SettingScreen(
     val themeColorSource by sharedViewModel.getThemeColorSource().collectAsStateWithLifecycle(DataStoreManager.THEME_COLOR_DEFAULT)
     val customThemeColorHex by sharedViewModel.getCustomThemeColor().collectAsStateWithLifecycle(DataStoreManager.DEFAULT_THEME_COLOR_HEX)
     val nowPlayingStyle by sharedViewModel.getNowPlayingStyle().collectAsStateWithLifecycle(DataStoreManager.NOW_PLAYING_STYLE_SPOTIFY)
+    val waveStyle by sharedViewModel.getWaveStyle().collectAsStateWithLifecycle(SharedViewModel.WAVE_STYLE_EXPRESSIVE)
     val lyricsStyle by sharedViewModel.getLyricsStyle().collectAsStateWithLifecycle(DataStoreManager.LYRICS_STYLE_CLASSIC)
     val romanizationStored by sharedViewModel.getRomanizationLanguages().collectAsStateWithLifecycle("")
     val japaneseDictionaryState by viewModel.japaneseDictionaryState.collectAsStateWithLifecycle()
@@ -742,6 +747,35 @@ fun SettingScreen(
                                         val selected = state.selectOne?.getSelected()
                                         nowPlayingStyleLabels.firstOrNull { it.second == selected }?.first?.let {
                                             sharedViewModel.setNowPlayingStyle(it)
+                                        }
+                                    },
+                                dismiss = runBlocking { getString(Res.string.cancel) },
+                            ),
+                        )
+                    },
+                )
+                val waveStyleLabels =
+                    listOf(
+                        SharedViewModel.WAVE_STYLE_EXPRESSIVE to stringResource(Res.string.wave_style_expressive),
+                        SharedViewModel.WAVE_STYLE_GENTLE to stringResource(Res.string.wave_style_gentle),
+                        SharedViewModel.WAVE_STYLE_FLAT to stringResource(Res.string.wave_style_flat),
+                    )
+                SettingItem(
+                    title = stringResource(Res.string.wave_style),
+                    subtitle = waveStyleLabels.firstOrNull { it.first == waveStyle }?.second ?: waveStyleLabels[0].second,
+                    onClick = {
+                        viewModel.setAlertData(
+                            SettingAlertState(
+                                title = runBlocking { getString(Res.string.wave_style) },
+                                selectOne =
+                                    SettingAlertState.SelectData(
+                                        listSelect = waveStyleLabels.map { (it.first == waveStyle) to it.second },
+                                    ),
+                                confirm =
+                                    runBlocking { getString(Res.string.change) } to { state ->
+                                        val selected = state.selectOne?.getSelected()
+                                        waveStyleLabels.firstOrNull { it.second == selected }?.first?.let {
+                                            sharedViewModel.setWaveStyle(it)
                                         }
                                     },
                                 dismiss = runBlocking { getString(Res.string.cancel) },

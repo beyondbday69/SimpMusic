@@ -1884,6 +1884,15 @@ class SharedViewModel(
         }
     }
 
+    fun getWaveStyle(): Flow<String> =
+        dataStoreManager.getString("wave_style").map { it.ifBlank { WAVE_STYLE_EXPRESSIVE } }
+
+    fun setWaveStyle(style: String) {
+        viewModelScope.launch {
+            dataStoreManager.putString("wave_style", style)
+        }
+    }
+
     fun setLyricsStyle(style: String) {
         viewModelScope.launch {
             dataStoreManager.setLyricsStyle(style)
@@ -2170,6 +2179,10 @@ data class NowPlayingScreenData(
     )
 
     companion object {
+        const val WAVE_STYLE_EXPRESSIVE = "expressive"
+        const val WAVE_STYLE_GENTLE = "gentle"
+        const val WAVE_STYLE_FLAT = "flat"
+
         fun initial(): NowPlayingScreenData =
             NowPlayingScreenData(
                 nowPlayingTitle = "",

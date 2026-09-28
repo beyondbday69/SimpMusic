@@ -151,9 +151,19 @@ fun AppMiniPlayer(
     onClose: () -> Unit
 ) {
     AnimatedVisibility(
-        isShowMiniPlayer,
-        enter = fadeIn() + slideInVertically { it },
-        exit = fadeOut() + slideOutVertically { it },
+        visible = isShowMiniPlayer,
+        enter =
+            fadeIn(animationSpec = tween(260)) +
+                slideInVertically(
+                    animationSpec = tween(320, easing = FastOutSlowInEasing),
+                    initialOffsetY = { it },
+                ),
+        exit =
+            fadeOut(animationSpec = tween(200)) +
+                slideOutVertically(
+                    animationSpec = tween(280, easing = FastOutSlowInEasing),
+                    targetOffsetY = { it },
+                ),
     ) {
         MiniPlayer(
             modifier = Modifier.padding(bottom = 6.dp),
@@ -475,9 +485,19 @@ fun App(
                 if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
             bottomBar = {
                 AnimatedVisibility(
-                    isNavBarVisible && !isInFullscreen,
-                    enter = fadeIn() + slideInVertically { it },
-                    exit = fadeOut() + slideOutVertically { it },
+                    visible = isNavBarVisible && !isInFullscreen && !isShowNowPlaylistScreen,
+                    enter =
+                        fadeIn(animationSpec = tween(260)) +
+                            slideInVertically(
+                                animationSpec = tween(320, easing = FastOutSlowInEasing),
+                                initialOffsetY = { it },
+                            ),
+                    exit =
+                        fadeOut(animationSpec = tween(200)) +
+                            slideOutVertically(
+                                animationSpec = tween(280, easing = FastOutSlowInEasing),
+                                targetOffsetY = { it },
+                            ),
                 ) {
                     Column(
                         modifier = Modifier
@@ -486,7 +506,7 @@ fun App(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         AppMiniPlayer(
-                            isShowMiniPlayer = isShowMiniPlayer,
+                            isShowMiniPlayer = isShowMiniPlayer && !isShowNowPlaylistScreen,
                             isTablet = isTablet,
                             backdrop = backdrop,
                             onClick = { isShowNowPlaylistScreen = true },

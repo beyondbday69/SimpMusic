@@ -112,6 +112,9 @@ import com.maxrave.simpmusic.ui.screen.player.content.expressive.WavySeekBar
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.UIEvent
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.maxrave.simpmusic.viewModel.SharedViewModel
+import org.koin.compose.koinInject
 import kotlin.math.roundToLong
 import kotlinx.coroutines.delay
 import org.jetbrains.compose.resources.stringResource
@@ -789,6 +792,8 @@ internal fun ColumnScope.ExpressivePlaybackControls(
     showShuffleAndRepeat: Boolean = false,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val sharedViewModel = koinInject<SharedViewModel>()
+    val waveStyle by sharedViewModel.getWaveStyle().collectAsStateWithLifecycle(SharedViewModel.WAVE_STYLE_EXPRESSIVE)
     Box(
         Modifier
             .padding(
@@ -812,6 +817,7 @@ internal fun ColumnScope.ExpressivePlaybackControls(
             thumbColor = colorScheme.primary,
             onSliderChange = actions.onSliderChange,
             onSliderChangeFinished = actions.onSliderChangeFinished,
+            waveStyle = waveStyle,
         )
     }
     // Time row — same math and negative guard as Classic
