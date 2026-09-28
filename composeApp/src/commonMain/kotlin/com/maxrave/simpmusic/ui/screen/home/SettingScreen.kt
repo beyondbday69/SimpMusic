@@ -754,7 +754,7 @@ fun SettingScreen(
                         )
                     },
                 )
-                val waveStyleLabels =
+                val waveStyleLabels: List<Pair<String, String>> =
                     listOf(
                         SharedViewModel.WAVE_STYLE_EXPRESSIVE to stringResource(Res.string.wave_style_expressive),
                         SharedViewModel.WAVE_STYLE_GENTLE to stringResource(Res.string.wave_style_gentle),

@@ -1885,7 +1885,7 @@ class SharedViewModel(
     }
 
     fun getWaveStyle(): Flow<String> =
-        dataStoreManager.getString("wave_style").map { it.ifBlank { WAVE_STYLE_EXPRESSIVE } }
+        dataStoreManager.getString("wave_style").map { it?.ifBlank { WAVE_STYLE_EXPRESSIVE } ?: WAVE_STYLE_EXPRESSIVE }
 
     fun setWaveStyle(style: String) {
         viewModelScope.launch {
@@ -2108,6 +2108,12 @@ class SharedViewModel(
     fun isUserLoggedInFlow(): Flow<Boolean> = dataStoreManager.cookie.map { it.isNotEmpty() }
 
     fun isCombineFavoriteAndYTLiked(): Boolean = runBlocking { dataStoreManager.combineLocalAndYouTubeLiked.first() == TRUE }
+
+    companion object {
+        const val WAVE_STYLE_EXPRESSIVE = "expressive"
+        const val WAVE_STYLE_GENTLE = "gentle"
+        const val WAVE_STYLE_FLAT = "flat"
+    }
 }
 
 sealed class UIEvent {
@@ -2179,10 +2185,6 @@ data class NowPlayingScreenData(
     )
 
     companion object {
-        const val WAVE_STYLE_EXPRESSIVE = "expressive"
-        const val WAVE_STYLE_GENTLE = "gentle"
-        const val WAVE_STYLE_FLAT = "flat"
-
         fun initial(): NowPlayingScreenData =
             NowPlayingScreenData(
                 nowPlayingTitle = "",
