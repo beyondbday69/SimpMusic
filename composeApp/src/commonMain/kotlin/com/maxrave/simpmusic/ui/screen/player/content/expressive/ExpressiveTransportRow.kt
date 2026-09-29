@@ -1,8 +1,14 @@
 package com.maxrave.simpmusic.ui.screen.player.content.expressive
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -26,6 +32,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.maxrave.domain.mediaservice.handler.ControlState
@@ -57,15 +65,15 @@ private val TOGGLE_SEPARATION = 8.dp
 /**
  * M3-Expressive transport: three pill buttons in a 68dp row.
  *
- * - Play/pause corner radius morphs 22dp (playing) ↔ 34dp (paused) on
- *   [MaterialTheme.motionScheme]'s default spatial spring.
+ * - Play/pause corner radius morphs 22dp (playing squircle) ↔ 34dp (paused pill) ↔ 16dp (pressed)
+ *   using [MaterialTheme.motionScheme]'s spatial springs.
+ * - Tactile press compression physics: button compresses on touch and bounces back with fast spatial recoil.
+ * - Play/pause icon swap runs on AnimatedContent with fast spatial scale bounce and fast effects fade.
  * - The pressed button's weight grows ×1.15 on the fast spatial spring while the
  *   neighbours shrink proportionally (Row weight normalization).
- * - Icon swaps ride Crossfade with the fast effects spec.
- * - While [loading], a small CircularProgressIndicator replaces the play/pause icon and the
- *   press is a no-op — mirroring the spinner block in NowPlayingContentSpotify's toolbar.
- * - Prev/next respect [ControlState.isPreviousAvailable]/[ControlState.isNextAvailable] the
- *   way the Classic style does: icon at 0.4f alpha and a no-op click.
+ * - While [loading], a small CircularProgressIndicator replaces the play/pause icon with spring transition.
+ * - Prev/next respect [ControlState.isPreviousAvailable]/[ControlState.isNextAvailable] with
+ *   spring shape morphing and tactile press recoil.
  *
  * Sends [UIEvent.PlayPause] / [UIEvent.Previous] / [UIEvent.Next] exactly like
  * [com.maxrave.simpmusic.ui.component.PlayerControlLayout].
@@ -90,6 +98,7 @@ fun ExpressiveTransportRow(
     val playPressed by playInteraction.collectIsPressedAsState()
     val nextPressed by nextInteraction.collectIsPressedAsState()
 
+    // Weight expansion: pressed button grows x1.15 on fast spatial spring
     val prevWeight by animateFloatAsState(
         targetValue = if (prevPressed) SIDE_WEIGHT * PRESS_GROWTH else SIDE_WEIGHT,
         animationSpec = motionScheme.fastSpatialSpec(),
@@ -106,10 +115,46 @@ fun ExpressiveTransportRow(
         label = "nextWeight",
     )
 
+    // Tactile press compression physics: 0.90f - 0.92f scale with fast spatial recoil
+    val prevScale by animateFloatAsState(
+        targetValue = if (prevPressed && controllerState.isPreviousAvailable) 0.92f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "prevScale",
+    )
+    val playScale by animateFloatAsState(
+        targetValue = if (playPressed) 0.90f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "playScale",
+    )
+    val nextScale by animateFloatAsState(
+        targetValue = if (nextPressed && controllerState.isNextAvailable) 0.92f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "nextScale",
+    )
+
+    // Shape morphing:
+    // Play: 34dp (paused pill) <-> 22dp (playing squircle) <-> 16dp (pressed more square)
+    val targetPlayCorner = when {
+        playPressed -> 16.dp
+        controllerState.isPlaying -> 22.dp
+        else -> 34.dp
+    }
     val playCorner by animateDpAsState(
-        targetValue = if (controllerState.isPlaying) 22.dp else 34.dp,
-        animationSpec = motionScheme.defaultSpatialSpec(),
+        targetValue = targetPlayCorner,
+        animationSpec = if (playPressed) motionScheme.fastSpatialSpec() else motionScheme.defaultSpatialSpec(),
         label = "playCorner",
+    )
+
+    // Prev/Next: 34dp pill <-> 22dp pressed
+    val prevCorner by animateDpAsState(
+        targetValue = if (prevPressed && controllerState.isPreviousAvailable) 22.dp else 34.dp,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "prevCorner",
+    )
+    val nextCorner by animateDpAsState(
+        targetValue = if (nextPressed && controllerState.isNextAvailable) 22.dp else 34.dp,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "nextCorner",
     )
 
     Row(
@@ -128,20 +173,25 @@ fun ExpressiveTransportRow(
             )
             Spacer(modifier = Modifier.width(TOGGLE_SEPARATION))
         }
-        // Previous — full pill on secondaryContainer.
+        // Previous — pill on secondaryContainer, morphs and compresses on press.
         Surface(
             onClick = {
                 if (controllerState.isPreviousAvailable) {
                     onUIEvent(UIEvent.Previous)
                 }
             },
-            shape = RoundedCornerShape(34.dp),
+            shape = RoundedCornerShape(prevCorner),
             color = colorScheme.secondaryContainer,
             interactionSource = prevInteraction,
             modifier =
                 Modifier
                     .weight(prevWeight)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = prevScale
+                        scaleY = prevScale
+                        transformOrigin = TransformOrigin.Center
+                    },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
@@ -155,7 +205,7 @@ fun ExpressiveTransportRow(
                 )
             }
         }
-        // Play / Pause — primary container, corner radius morphs with playback state.
+        // Play / Pause — primary container, corner radius morphs with playback state and press, tactile spring recoil.
         Surface(
             onClick = {
                 if (!loading) {
@@ -168,41 +218,69 @@ fun ExpressiveTransportRow(
             modifier =
                 Modifier
                     .weight(playWeight)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = playScale
+                        scaleY = playScale
+                        transformOrigin = TransformOrigin.Center
+                    },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                Crossfade(
+                AnimatedContent(
                     targetState = loading,
-                    animationSpec = motionScheme.fastEffectsSpec(),
-                    label = "playLoading",
+                    transitionSpec = {
+                        (scaleIn(
+                            initialScale = 0.8f,
+                            animationSpec = motionScheme.fastSpatialSpec(),
+                        ) + fadeIn(
+                            animationSpec = motionScheme.fastEffectsSpec(),
+                        )).togetherWith(
+                            scaleOut(
+                                targetScale = 0.8f,
+                                animationSpec = motionScheme.fastSpatialSpec(),
+                            ) + fadeOut(
+                                animationSpec = motionScheme.fastEffectsSpec(),
+                            ),
+                        )
+                    },
+                    label = "playLoadingAnimation",
                     modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center,
                 ) { isLoading ->
                     if (isLoading) {
-                        Box(
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(22.dp),
+                            color = colorScheme.onPrimary,
+                            strokeWidth = 3.dp,
+                        )
+                    } else {
+                        AnimatedContent(
+                            targetState = controllerState.isPlaying,
+                            transitionSpec = {
+                                (scaleIn(
+                                    initialScale = 0.65f,
+                                    animationSpec = motionScheme.fastSpatialSpec(),
+                                ) + fadeIn(
+                                    animationSpec = motionScheme.fastEffectsSpec(),
+                                )).togetherWith(
+                                    scaleOut(
+                                        targetScale = 0.65f,
+                                        animationSpec = motionScheme.fastSpatialSpec(),
+                                    ) + fadeOut(
+                                        animationSpec = motionScheme.fastEffectsSpec(),
+                                    ),
+                                )
+                            },
+                            label = "playPauseIconAnimation",
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
-                        ) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(22.dp),
-                                color = colorScheme.onPrimary,
-                                strokeWidth = 3.dp,
-                            )
-                        }
-                    } else {
-                        Crossfade(
-                            targetState = controllerState.isPlaying,
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                            label = "playPauseIcon",
-                            modifier = Modifier.fillMaxSize(),
                         ) { isPlaying ->
-                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                                Icon(
-                                    imageVector = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
-                                    contentDescription = "",
-                                    tint = colorScheme.onPrimary,
-                                    modifier = Modifier.size(36.dp),
-                                )
-                            }
+                            Icon(
+                                imageVector = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
+                                contentDescription = if (isPlaying) "Pause" else "Play",
+                                tint = colorScheme.onPrimary,
+                                modifier = Modifier.size(36.dp),
+                            )
                         }
                     }
                 }
@@ -215,13 +293,18 @@ fun ExpressiveTransportRow(
                     onUIEvent(UIEvent.Next)
                 }
             },
-            shape = RoundedCornerShape(34.dp),
+            shape = RoundedCornerShape(nextCorner),
             color = colorScheme.secondaryContainer,
             interactionSource = nextInteraction,
             modifier =
                 Modifier
                     .weight(nextWeight)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        scaleX = nextScale
+                        scaleY = nextScale
+                        transformOrigin = TransformOrigin.Center
+                    },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
@@ -249,7 +332,7 @@ fun ExpressiveTransportRow(
 
 /**
  * Shuffle or repeat as a pill beside the transport, in the connected group's colours: primary
- * container while on, surfaceContainerHigh while off — the same pair Now Playing uses for them.
+ * container while on, surfaceContainerHigh while off — with tactile compression and fast effects transitions.
  */
 @Composable
 private fun RowScope.ExpressiveToggleButton(
@@ -258,20 +341,49 @@ private fun RowScope.ExpressiveToggleButton(
     onClick: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val motionScheme = MaterialTheme.motionScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.90f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "toggleScale",
+    )
+    val corner by animateDpAsState(
+        targetValue = if (isPressed) 20.dp else 34.dp,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "toggleCorner",
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh,
+        animationSpec = motionScheme.fastEffectsSpec(),
+        label = "toggleContainerColor",
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (active) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
+        animationSpec = motionScheme.fastEffectsSpec(),
+        label = "toggleIconColor",
+    )
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(34.dp),
-        color = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh,
+        shape = RoundedCornerShape(corner),
+        color = containerColor,
+        interactionSource = interactionSource,
         modifier =
             Modifier
                 .weight(TOGGLE_WEIGHT)
-                .fillMaxHeight(),
+                .fillMaxHeight()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                    transformOrigin = TransformOrigin.Center
+                },
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
                 imageVector = icon,
                 contentDescription = "",
-                tint = if (active) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
+                tint = iconColor,
                 modifier = Modifier.size(22.dp),
             )
         }

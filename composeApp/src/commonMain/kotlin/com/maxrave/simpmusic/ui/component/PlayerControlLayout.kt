@@ -1,9 +1,15 @@
 package com.maxrave.simpmusic.ui.component
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -18,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -82,11 +89,13 @@ fun PlayerControlLayout(
         label = "prev_scale",
     )
 
+    val motionScheme = MaterialTheme.motionScheme
+
     val playPauseInteractionSource = remember { MutableInteractionSource() }
     val playPausePressed by playPauseInteractionSource.collectIsPressedAsState()
     val playPauseScale by animateFloatAsState(
         targetValue = if (playPausePressed) 0.88f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
+        animationSpec = motionScheme.fastSpatialSpec(),
         label = "play_pause_scale",
     )
 
@@ -200,7 +209,25 @@ fun PlayerControlLayout(
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                Crossfade(targetState = controllerState.isPlaying) { isPlaying ->
+                AnimatedContent(
+                    targetState = controllerState.isPlaying,
+                    transitionSpec = {
+                        (scaleIn(
+                            initialScale = 0.65f,
+                            animationSpec = motionScheme.fastSpatialSpec(),
+                        ) + fadeIn(
+                            animationSpec = motionScheme.fastEffectsSpec(),
+                        )).togetherWith(
+                            scaleOut(
+                                targetScale = 0.65f,
+                                animationSpec = motionScheme.fastSpatialSpec(),
+                            ) + fadeOut(
+                                animationSpec = motionScheme.fastEffectsSpec(),
+                            ),
+                        )
+                    },
+                    label = "playPauseAnimatedContent",
+                ) { isPlaying ->
                     if (!isPlaying) {
                         Icon(
                             imageVector = if (plainPlayPause) SimpIcons.PlayArrow else SimpIcons.PlayCircle,
