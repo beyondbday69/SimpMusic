@@ -81,14 +81,38 @@ jobs:
           path: ${{ env.APK_FILES }}
           if-no-files-found: error
 
+      - name: Deploy Live In-Browser Preview (Appetize.io)
+        env:
+          APPETIZE_TOKEN: ${{ secrets.APPETIZE_API_TOKEN || 'tok_zju2qp2a6s6iak5zgyqeres2au' }}
+          APPETIZE_PUBLIC_KEY: "xlbp5fcq67yo5d2amk2rqqcasi"
+        run: |
+          APK_FILE=$(ls ${{ env.APK_FILES }} | head -n 1)
+          echo "Deploying $APK_FILE to Appetize.io..."
+          RESP=$(curl -s -u "$APPETIZE_TOKEN:" \
+            "https://api.appetize.io/v1/apps/$APPETIZE_PUBLIC_KEY" \
+            -F "file=@$APK_FILE" \
+            -F "platform=android")
+          echo "Appetize response: $RESP"
+          PREVIEW_URL="https://appetize.io/app/$APPETIZE_PUBLIC_KEY"
+          echo "APPETIZE_PREVIEW_URL=$PREVIEW_URL" >> $GITHUB_ENV
+          echo "### 📱 Live In-Browser Interactive Preview" >> $GITHUB_STEP_SUMMARY
+          echo "Test and interact with this build live in your browser without installing:" >> $GITHUB_STEP_SUMMARY
+          echo "👉 **[Launch SimpMusic on Appetize.io]($PREVIEW_URL)**" >> $GITHUB_STEP_SUMMARY
+
       - name: Create GitHub Release with APK
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
+          RELEASE_NOTES="### 📱 Live In-Browser Preview
+          Test and interact with this build live without installing:
+          👉 **[Launch SimpMusic on Appetize.io](${APPETIZE_PREVIEW_URL})**
+
+          ### 📦 Download APK
+          Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, thick M3 Expressive progress bar without dot, and smooth hardware-accelerated transitions."
           gh release create "$TAG" ${{ env.APK_FILES }} \
             --title "SimpMusic ARM64 Release ($TAG)" \
-            --notes "Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, wavy progress bar, and smooth hardware-accelerated transitions." \
+            --notes "$RELEASE_NOTES" \
             --prerelease || true
 
       - name: Clean Gradle Locks Before Caching
