@@ -455,20 +455,38 @@ fun NowPlayingScreenContent(
     // Palette state
     val paletteState = rememberPaletteState()
 
+    val cachedTrackColor by sharedViewModel.trackArtworkColor.collectAsStateWithLifecycle()
+    val initialColor = remember {
+        cachedTrackColor?.takeIf { it != Color.Black } ?: Color.Black
+    }
     val startColor =
         remember {
-            Animatable(Color.Black)
+            Animatable(initialColor)
         }
     val endColor =
         remember {
-            Animatable(Color.Black)
+            Animatable(if (initialColor != Color.Black) PlayerBackdropColor else Color.Black)
         }
     val gradientOffset by remember {
         mutableStateOf(GradientOffset(GradientAngle.CW135))
     }
 
     var spotShadowColor by remember {
-        mutableStateOf(Color.White)
+        mutableStateOf(if (initialColor != Color.Black) initialColor else Color.White)
+    }
+
+    LaunchedEffect(cachedTrackColor) {
+        val cached = cachedTrackColor?.takeIf { it != Color.Black }
+        if (cached != null) {
+            spotShadowColor = cached
+            if (startColor.value == Color.Black) {
+                startColor.snapTo(cached)
+                endColor.snapTo(PlayerBackdropColor)
+            } else if (startColor.value != cached && startColor.targetValue != cached) {
+                startColor.animateTo(cached)
+                endColor.animateTo(PlayerBackdropColor)
+            }
+        }
     }
 
     LaunchedEffect(screenDataState) {
@@ -495,11 +513,18 @@ fun NowPlayingScreenContent(
         snapshotFlow { paletteState.palette }
             .distinctUntilChanged()
             .collectLatest {
-                spotShadowColor = it.getColorFromPalette()
-                startColor.animateTo(it.getColorFromPalette())
-                // Lands on the same backdrop colour the fade and the area below the gradient
-                // use, so the palette ramp resolves into the surface instead of a black patch.
-                endColor.animateTo(PlayerBackdropColor)
+                val color = it.getColorFromPalette().takeIf { c -> c != Color.Black }
+                if (color != null) {
+                    sharedViewModel.setTrackArtworkColor(color)
+                    spotShadowColor = color
+                    if (startColor.value == Color.Black) {
+                        startColor.snapTo(color)
+                        endColor.snapTo(PlayerBackdropColor)
+                    } else if (startColor.value != color && startColor.targetValue != color) {
+                        startColor.animateTo(color)
+                        endColor.animateTo(PlayerBackdropColor)
+                    }
+                }
             }
     }
 

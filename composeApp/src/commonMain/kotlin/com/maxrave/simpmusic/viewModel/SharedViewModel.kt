@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.viewModel
 
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.viewModelScope
 import com.maxrave.common.Config
@@ -1119,6 +1120,7 @@ class SharedViewModel(
     }
 
     fun stopPlayer() {
+        _trackArtworkColor.value = null
         _nowPlayingScreenData.value = NowPlayingScreenData.initial()
         _nowPlayingState.value = null
         mediaPlayerHandler.resetSongAndQueue()
@@ -1993,6 +1995,14 @@ class SharedViewModel(
         _nowPlayingScreenData.update {
             it.copy(bitmap = bitmap)
         }
+    }
+
+    // Track artwork palette color for instant seamless theming
+    private val _trackArtworkColor = MutableStateFlow<Color?>(null)
+    val trackArtworkColor: StateFlow<Color?> = _trackArtworkColor.asStateFlow()
+
+    fun setTrackArtworkColor(color: Color?) {
+        _trackArtworkColor.value = color
     }
 
     // Vote state for translated lyrics

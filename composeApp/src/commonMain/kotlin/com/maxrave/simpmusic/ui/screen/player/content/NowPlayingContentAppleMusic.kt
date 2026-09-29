@@ -39,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -99,6 +100,7 @@ import com.maxrave.simpmusic.ui.screen.player.content.applemusic.AppleMusicView
 import com.maxrave.simpmusic.ui.screen.player.content.applemusic.appleMusicGradientColorAt
 import com.maxrave.simpmusic.ui.screen.player.content.applemusic.appleMusicVerticalFadeEdges
 import com.maxrave.simpmusic.ui.screen.player.content.applemusic.rememberAppleMusicTypography
+import com.maxrave.simpmusic.ui.theme.LocalForcedDarkColorScheme
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.SharedViewModel
@@ -157,7 +159,8 @@ fun NowPlayingContentAppleMusic(
     }
 
     val paletteColor = state.startColor.value
-    val seedColor = if (paletteColor == Color.Black) seed else paletteColor
+    val activeDarkScheme = LocalForcedDarkColorScheme.current ?: MaterialTheme.colorScheme
+    val seedColor = if (paletteColor == Color.Black) activeDarkScheme.primary else paletteColor
     val activePillContainer = remember(seedColor) { lerp(seedColor, Color.White, 0.75f) }
     val activePillContent = remember(seedColor) { lerp(seedColor, Color.Black, 0.6f) }
 

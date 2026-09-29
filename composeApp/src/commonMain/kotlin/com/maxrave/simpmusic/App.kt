@@ -229,6 +229,7 @@ fun App(
     val nowPlayingStyle by viewModel.getNowPlayingStyle().collectAsStateWithLifecycle(DataStoreManager.NOW_PLAYING_STYLE_SPOTIFY)
     val isMaterialDynamicColorEnabled by viewModel.getMaterialDynamicColor().collectAsStateWithLifecycle(true)
     val nowPlayingScreenData by viewModel.nowPlayingScreenData.collectAsStateWithLifecycle()
+    val cachedTrackArtworkColor by viewModel.trackArtworkColor.collectAsStateWithLifecycle()
     val paletteState = rememberPaletteState()
 
     LaunchedEffect(Unit) {
@@ -240,8 +241,15 @@ fun App(
             }
     }
 
-    val dynamicTrackColor = remember(paletteState.palette) {
-        paletteState.palette.getColorFromPalette().takeIf { it != Color.Black }
+    LaunchedEffect(paletteState.palette) {
+        val color = paletteState.palette.getColorFromPalette().takeIf { it != Color.Black }
+        if (color != null) {
+            viewModel.setTrackArtworkColor(color)
+        }
+    }
+
+    val dynamicTrackColor = remember(paletteState.palette, cachedTrackArtworkColor) {
+        paletteState.palette.getColorFromPalette().takeIf { it != Color.Black } ?: cachedTrackArtworkColor
     }
     // MiniPlayer visibility: derived, never stored.
     //

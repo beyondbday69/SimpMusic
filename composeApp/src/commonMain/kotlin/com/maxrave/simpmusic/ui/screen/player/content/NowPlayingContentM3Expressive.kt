@@ -10,6 +10,7 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -110,6 +111,7 @@ import com.maxrave.simpmusic.ui.icon.Shuffle
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.screen.player.content.expressive.ExpressiveTransportRow
 import com.maxrave.simpmusic.ui.screen.player.content.expressive.WavySeekBar
+import com.maxrave.simpmusic.ui.theme.LocalForcedDarkColorScheme
 import com.maxrave.simpmusic.ui.theme.seed
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.UIEvent
@@ -161,16 +163,25 @@ internal fun NowPlayingExpressiveTheme(
     content: @Composable () -> Unit,
 ) {
     // === 1. Color system: full dark scheme derived from the artwork ===
-    // startColor is animated by the shell from Color.Black (initial) to the palette color;
-    // fall back to the app seed while it still sits on the initial black.
+    // startColor is animated by the shell from the track's cached palette color (or fallback)
+    // to any subsequent track palette; fall back to the active theme's primary while unseeded.
     val paletteColor = state.startColor.value
-    val seedColor = if (paletteColor == Color.Black) seed else paletteColor
-    // Track changes must GLIDE between palettes: the shell's startColor spring is quick, and a
-    // whole tonal scheme snapping at once reads as a flash. 800ms matches the palette crossfade
-    // feel of the other immersive screens.
+    val activeDarkScheme = LocalForcedDarkColorScheme.current ?: MaterialTheme.colorScheme
+    val fallbackSeed = activeDarkScheme.primary
+    val seedColor = if (paletteColor == Color.Black) fallbackSeed else paletteColor
+
+    var hasReceivedTrackColor by remember { mutableStateOf(paletteColor != Color.Black) }
+    LaunchedEffect(paletteColor) {
+        if (paletteColor != Color.Black) {
+            hasReceivedTrackColor = true
+        }
+    }
+
+    // Track changes must GLIDE between palettes: 800ms matches the palette crossfade feel.
+    // Initial color application snaps immediately so opening the player never flashes default colors.
     val animatedSeedColor by animateColorAsState(
         targetValue = seedColor,
-        animationSpec = tween(durationMillis = 800),
+        animationSpec = if (!hasReceivedTrackColor) snap() else tween(durationMillis = 800),
         label = "m3eSeedColor",
     )
     val derivedScheme =
