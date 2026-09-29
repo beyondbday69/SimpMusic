@@ -508,18 +508,17 @@ fun NowPlayingContentSpotify(
                             )
                             val morphProgress = LocalNowPlayingMorphProgress.current
                             val artworkBoundsHolder = LocalNowPlayingArtworkBounds.current
-                            val isMorphing = morphProgress in 0.001f..0.96f
+                            val restingArtworkAlpha =
+                                if (pageHasCanvas) 0f
+                                else if (morphProgress < 0.85f) 0f
+                                else if (morphProgress < 1f) ((morphProgress - 0.85f) / 0.15f).coerceIn(0f, 1f)
+                                else 1f
                             Box(
                                 modifier =
                                     Modifier
                                         .fillMaxWidth()
                                         .padding(horizontal = 20.dp)
-                                        .alpha(
-                                            if (pageHasCanvas) 0f
-                                            else if (isMorphing) 0f
-                                            else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
-                                            else 1f
-                                        )
+                                        .alpha(restingArtworkAlpha)
                                         .aspectRatio(1f)
                                         .onGloballyPositioned { coordinates ->
                                             if (isCurrentArtworkPage) {
@@ -1728,16 +1727,15 @@ internal fun NowPlayingTrackInfoRow(
 
         val morphProgress = LocalNowPlayingMorphProgress.current
         val textBoundsHolder = LocalNowPlayingTextBounds.current
-        val isMorphing = morphProgress in 0.001f..0.96f
+        val restingTextAlpha =
+            if (morphProgress < 0.85f) 0f
+            else if (morphProgress < 1f) ((morphProgress - 0.85f) / 0.15f).coerceIn(0f, 1f)
+            else 1f
         Column(
             modifier =
                 Modifier
                     .weight(1f)
-                    .alpha(
-                        if (isMorphing) 0f
-                        else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
-                        else 1f
-                    )
+                    .alpha(restingTextAlpha)
                     .onGloballyPositioned { coordinates ->
                         textBoundsHolder?.value = coordinates.boundsInRoot()
                     },

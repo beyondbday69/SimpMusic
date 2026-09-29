@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.ui.graphics.graphicsLayer
@@ -56,7 +57,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -80,6 +80,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import coil3.toUri
 import com.maxrave.domain.data.player.GenericMediaItem
 import com.maxrave.domain.manager.DataStoreManager
@@ -94,7 +95,6 @@ import com.maxrave.simpmusic.expect.ui.PlatformBackdrop
 import com.maxrave.simpmusic.extension.copy
 import com.maxrave.simpmusic.ui.component.AppBottomDock
 import com.maxrave.simpmusic.ui.component.AppNavigationRail
-import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.ui.icon.ArrowForwardIos
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.home.AnalyticsDestination
@@ -158,9 +158,7 @@ import simpmusic.composeapp.generated.resources.update_message
 import simpmusic.composeapp.generated.resources.version_format
 import simpmusic.composeapp.generated.resources.yes
 import kotlin.time.ExperimentalTime
-import kotlin.math.PI
 import kotlin.math.roundToInt
-import kotlin.math.sin
 import kotlin.reflect.KClass
 
 @Composable
@@ -515,7 +513,71 @@ fun App(
             LocalNowPlayingArtworkBounds provides nowPlayingArtworkBoundsState,
             LocalNowPlayingTextBounds provides nowPlayingTextBoundsState,
         ) {
-            Box(Modifier.fillMaxSize()) {
+            BoxWithConstraints(Modifier.fillMaxSize()) {
+                val density = LocalDensity.current
+                val screenWidthPx = with(density) { maxWidth.toPx() }
+                val horizontalPaddingPx = with(density) { 20.dp.toPx() }
+                val artworkSizePx = (screenWidthPx - 2 * horizontalPaddingPx).coerceAtLeast(0f)
+                val fallbackTargetArtwork = remember(screenWidthPx) {
+                    val topPx = with(density) { 100.dp.toPx() }
+                    Rect(
+                        left = horizontalPaddingPx,
+                        top = topPx,
+                        right = horizontalPaddingPx + artworkSizePx,
+                        bottom = topPx + artworkSizePx,
+                    )
+                }
+                val fallbackTargetText = remember(screenWidthPx) {
+                    val topPx = with(density) { 100.dp.toPx() } + artworkSizePx + with(density) { 28.dp.toPx() }
+                    val bottomPx = topPx + with(density) { 48.dp.toPx() }
+                    Rect(
+                        left = horizontalPaddingPx,
+                        top = topPx,
+                        right = screenWidthPx - horizontalPaddingPx,
+                        bottom = bottomPx,
+                    )
+                }
+
+                var lastKnownArtworkTargetBounds by remember { mutableStateOf<Rect?>(null) }
+                var lastKnownTextTargetBounds by remember { mutableStateOf<Rect?>(null) }
+                nowPlayingArtworkBoundsState.value?.let {
+                    if (it.width > 0f && it.height > 0f) {
+                        lastKnownArtworkTargetBounds = it
+                    }
+                }
+                nowPlayingTextBoundsState.value?.let {
+                    if (it.width > 0f && it.height > 0f) {
+                        lastKnownTextTargetBounds = it
+                    }
+                }
+                val targetArtworkBounds =
+                    nowPlayingArtworkBoundsState.value
+                        ?: lastKnownArtworkTargetBounds
+                        ?: fallbackTargetArtwork
+                val targetTextBounds =
+                    nowPlayingTextBoundsState.value
+                        ?: lastKnownTextTargetBounds
+                        ?: fallbackTargetText
+
+                var lastKnownMiniPlayerArtworkBounds by remember { mutableStateOf<Rect?>(null) }
+                var lastKnownMiniPlayerTextBounds by remember { mutableStateOf<Rect?>(null) }
+                miniPlayerArtworkBoundsState.value?.let {
+                    if (it.width > 0f && it.height > 0f) {
+                        lastKnownMiniPlayerArtworkBounds = it
+                    }
+                }
+                miniPlayerTextBoundsState.value?.let {
+                    if (it.width > 0f && it.height > 0f) {
+                        lastKnownMiniPlayerTextBounds = it
+                    }
+                }
+                val sourceArtworkBounds =
+                    miniPlayerArtworkBoundsState.value
+                        ?: lastKnownMiniPlayerArtworkBounds
+                val sourceTextBounds =
+                    miniPlayerTextBoundsState.value
+                        ?: lastKnownMiniPlayerTextBounds
+
                 Scaffold(
                     containerColor =
                         if (isDesktopShell) desktopWindow else MaterialTheme.colorScheme.background,
@@ -1010,8 +1072,8 @@ fun App(
                 MorphingArtworkOverlay(
                     artworkUrl = currentArtworkUrl,
                     progress = morphProgress,
-                    fromBounds = miniPlayerArtworkBoundsState.value,
-                    toBounds = nowPlayingArtworkBoundsState.value,
+                    fromBounds = sourceArtworkBounds,
+                    toBounds = targetArtworkBounds,
                 )
                 val currentSong = nowPlayingDataState.value?.songEntity
                 val currentTitle =
@@ -1026,8 +1088,8 @@ fun App(
                     artist = currentArtist,
                     isExplicit = isExplicit,
                     progress = morphProgress,
-                    fromBounds = miniPlayerTextBoundsState.value,
-                    toBounds = nowPlayingTextBoundsState.value,
+                    fromBounds = sourceTextBounds,
+                    toBounds = targetTextBounds,
                 )
             }
         }
@@ -1051,17 +1113,29 @@ private fun MorphingArtworkOverlay(
     val currentWidth = lerp(fromBounds.width, toBounds.width, progress)
     val currentHeight = lerp(fromBounds.height, toBounds.height, progress)
 
-    // Corner radius: from half the miniplayer size (circle) to 28.dp rounded card
+    // Corner radius: smoothly scales from MiniPlayer circle to NowPlaying card corner
     val startRadius = fromBounds.width / 2f
     val targetRadius = with(density) { 28.dp.toPx() }
     val currentRadius = lerp(startRadius, targetRadius, progress)
     val shape = RoundedCornerShape(with(density) { currentRadius.toDp() })
 
-    // Parabolic elevation peaking at mid-flight for tactile physical lift
-    val elevationDp = (sin(progress * PI.toFloat()) * 16f).coerceAtLeast(0f).dp
+    // Continuous symmetric cross-fade:
+    // Seamless handoff from MiniPlayer (0.00..0.15) and into NowPlaying resting card (0.85..1.00)
+    val alpha =
+        when {
+            progress < 0.15f -> (progress / 0.15f).coerceIn(0f, 1f)
+            progress > 0.85f -> ((1f - progress) / 0.15f).coerceIn(0f, 1f)
+            else -> 1f
+        }
 
-    // Cross-fade opacity at the end of the flight (0.96 to 1.0) so handoff to resting card is perfectly seamless
-    val alpha = if (progress >= 0.96f) ((1f - progress) / 0.04f).coerceIn(0f, 1f) else 1f
+    val context = LocalPlatformContext.current
+    val imageRequest =
+        remember(artworkUrl) {
+            ImageRequest.Builder(context)
+                .data(artworkUrl)
+                .crossfade(false)
+                .build()
+        }
 
     Box(
         modifier =
@@ -1070,24 +1144,14 @@ private fun MorphingArtworkOverlay(
                 .size(
                     width = with(density) { currentWidth.toDp() },
                     height = with(density) { currentHeight.toDp() },
-                ).shadow(
-                    elevation = elevationDp,
-                    shape = shape,
-                    clip = false,
-                ).clip(shape)
+                )
+                .clip(shape)
                 .graphicsLayer { this.alpha = alpha },
     ) {
         AsyncImage(
-            model =
-                ImageRequest.Builder(LocalPlatformContext.current)
-                    .data(artworkUrl)
-                    .diskCachePolicy(CachePolicy.ENABLED)
-                    .diskCacheKey(artworkUrl)
-                    .build(),
+            model = imageRequest,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            placeholder = rememberHolderPainter(),
-            error = rememberHolderPainter(),
             modifier = Modifier.fillMaxSize(),
         )
     }
@@ -1119,8 +1183,13 @@ private fun MorphingTextOverlay(
     // Dynamic vertical spacing between title and artist row
     val currentSpacing = lerp(0f, 3.5f, progress).dp
 
-    // Cross-fade opacity at the end of the flight (0.96 to 1.0) so handoff to resting text row is seamless
-    val alpha = if (progress >= 0.96f) ((1f - progress) / 0.04f).coerceIn(0f, 1f) else 1f
+    // Continuous symmetric cross-fade matching artwork overlay
+    val alpha =
+        when {
+            progress < 0.15f -> (progress / 0.15f).coerceIn(0f, 1f)
+            progress > 0.85f -> ((1f - progress) / 0.15f).coerceIn(0f, 1f)
+            else -> 1f
+        }
 
     Column(
         modifier =

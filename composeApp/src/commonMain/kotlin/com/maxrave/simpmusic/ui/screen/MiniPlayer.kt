@@ -372,12 +372,9 @@ fun MiniPlayer(
                             Modifier
                                 .padding(start = 7.dp)
                                 .size(44.dp)
-                                .onGloballyPositioned { coordinates ->
-                                    onArtworkPositioned?.invoke(coordinates.boundsInRoot())
-                                }
                                 .graphicsLayer {
-                                    // Fade out resting circle smoothly as the morph takes flight
-                                    alpha = if (morphProgress > 0.04f) 0f else 1f
+                                    // Smooth continuous fade-out: 1.0 at rest, 0.0 at 0.15 progress
+                                    alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
                                 },
                         contentAlignment = Alignment.Center,
                     ) {
@@ -436,7 +433,10 @@ fun MiniPlayer(
                             modifier =
                                 Modifier
                                     .size(28.dp)
-                                    .clip(CircleShape),
+                                    .clip(CircleShape)
+                                    .onGloballyPositioned { coordinates ->
+                                        onArtworkPositioned?.invoke(coordinates.boundsInRoot())
+                                    },
                         )
                     }
 
@@ -534,7 +534,7 @@ fun MiniPlayer(
                                                     }
                                                     .graphicsLayer {
                                                         // Fade out resting text smoothly as the morph takes flight
-                                                        alpha = if (morphProgress > 0.04f) 0f else 1f
+                                                        alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
                                                     },
                                             ) {
                                                 Text(
@@ -789,7 +789,13 @@ fun MiniPlayer(
                                 Modifier
                                     .size(32.dp)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .hoverable(artworkInteraction),
+                                    .hoverable(artworkInteraction)
+                                    .onGloballyPositioned { coordinates ->
+                                        onArtworkPositioned?.invoke(coordinates.boundsInRoot())
+                                    }
+                                    .graphicsLayer {
+                                        alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
+                                    },
                             contentAlignment = Alignment.Center,
                         ) {
                             val context = LocalPlatformContext.current
@@ -847,7 +853,7 @@ fun MiniPlayer(
                                 }
                                 .graphicsLayer {
                                     // Fade out resting text smoothly as the morph takes flight
-                                    alpha = if (morphProgress > 0.04f) 0f else 1f
+                                    alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
                                 },
                         ) {
                             Text(
