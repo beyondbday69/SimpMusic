@@ -1,5 +1,7 @@
 package com.maxrave.simpmusic.ui.theme
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -13,6 +15,7 @@ import androidx.compose.material3.RippleConfiguration
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.materialkolor.PaletteStyle
@@ -122,32 +125,40 @@ fun AppTheme(
     themeColorSource: String = DataStoreManager.THEME_COLOR_DEFAULT,
     customThemeColor: Color? = null,
     liquidGlassEnabled: Boolean = true,
+    dynamicSeedColor: Color? = null,
     content:
         @Composable()
         () -> Unit,
 ) {
     val isDark = isDarkTheme(themeMode)
     val wallpaperScheme =
-        if (themeColorSource == DataStoreManager.THEME_COLOR_WALLPAPER) {
+        if (themeColorSource == DataStoreManager.THEME_COLOR_WALLPAPER && dynamicSeedColor == null) {
             platformDynamicColorScheme(isDark)
         } else {
             null
         }
-    val seedColor =
+    val baseSeedColor =
         if (themeColorSource == DataStoreManager.THEME_COLOR_CUSTOM) {
             customThemeColor ?: seed
         } else {
             seed
         }
+    val effectiveSeedColor = dynamicSeedColor ?: baseSeedColor
+    val animatedSeedColor by animateColorAsState(
+        targetValue = effectiveSeedColor,
+        animationSpec = tween(durationMillis = 800),
+        label = "appThemeSeedColor",
+    )
+    val paletteStyle = if (dynamicSeedColor != null) PaletteStyle.Vibrant else PaletteStyle.TonalSpot
     // Symmetric base: dark pins background/surface to pure black via isAmoled; light pins them to
     // pure white with a neutral-grey ramp (the seed otherwise tints the light neutrals warm/cream).
     val colorScheme =
         wallpaperScheme
             ?: rememberDynamicColorScheme(
-                seedColor = seedColor,
+                seedColor = animatedSeedColor,
                 isDark = isDark,
                 isAmoled = isDark,
-                style = PaletteStyle.TonalSpot,
+                style = paletteStyle,
                 modifyColorScheme = { cs -> if (isDark) cs else cs.withNeutralLightSurfaces() },
             )
     // Immersive screens stay dark even at light theme (see [ForceDarkContent]). Resolve their scheme
@@ -157,10 +168,10 @@ fun AppTheme(
             colorScheme
         } else {
             rememberDynamicColorScheme(
-                seedColor = seedColor,
+                seedColor = animatedSeedColor,
                 isDark = true,
                 isAmoled = true,
-                style = PaletteStyle.TonalSpot,
+                style = paletteStyle,
             )
         }
     SystemBarAppearanceEffect(isDark)

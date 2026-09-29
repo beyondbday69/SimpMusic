@@ -430,6 +430,9 @@ fun MiniPlayer(
                             error = rememberHolderPainter(),
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
+                            onSuccess = { state ->
+                                sharedViewModel.setBitmap(state.result.image.toImageBitmap())
+                            },
                             modifier =
                                 Modifier
                                     .size(28.dp)
@@ -810,6 +813,9 @@ fun MiniPlayer(
                                 error = rememberHolderPainter(),
                                 contentDescription = null,
                                 contentScale = ContentScale.Crop,
+                                onSuccess = { state ->
+                                    sharedViewModel.setBitmap(state.result.image.toImageBitmap())
+                                },
                                 modifier = Modifier.fillMaxSize(),
                             )
                             // The Apple Music lyrics view's open-in-full button, reachable from the capsule.

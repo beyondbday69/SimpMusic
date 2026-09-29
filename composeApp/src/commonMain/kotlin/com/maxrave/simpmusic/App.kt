@@ -54,9 +54,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import com.kmpalette.rememberPaletteState
+import com.maxrave.simpmusic.extension.getColorFromPalette
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -219,6 +225,24 @@ fun App(
     val themeColorSource by viewModel.getThemeColorSource().collectAsStateWithLifecycle(DataStoreManager.THEME_COLOR_DEFAULT)
     val customThemeColorHex by viewModel.getCustomThemeColor().collectAsStateWithLifecycle(DataStoreManager.DEFAULT_THEME_COLOR_HEX)
     val isOfficialBuild by viewModel.isOfficialBuild.collectAsStateWithLifecycle()
+
+    val nowPlayingStyle by viewModel.getNowPlayingStyle().collectAsStateWithLifecycle(DataStoreManager.NOW_PLAYING_STYLE_SPOTIFY)
+    val isMaterialDynamicColorEnabled by viewModel.getMaterialDynamicColor().collectAsStateWithLifecycle(true)
+    val nowPlayingScreenData by viewModel.nowPlayingScreenData.collectAsStateWithLifecycle()
+    val paletteState = rememberPaletteState()
+
+    LaunchedEffect(Unit) {
+        snapshotFlow { nowPlayingScreenData.bitmap }
+            .filterNotNull()
+            .distinctUntilChanged()
+            .collectLatest {
+                paletteState.generate(it)
+            }
+    }
+
+    val dynamicTrackColor = remember(paletteState.palette) {
+        paletteState.palette.getColorFromPalette().takeIf { it != Color.Black }
+    }
     // MiniPlayer visibility: derived, never stored.
     //
     // This used to be a rememberSaveable Boolean written by a LaunchedEffect. Two things went
@@ -489,6 +513,16 @@ fun App(
     )
     val isMorphActive = isShowNowPlaylistScreen || morphProgress > 0.001f
 
+    val activeDynamicSeed =
+        if (isMaterialDynamicColorEnabled &&
+            nowPlayingStyle == DataStoreManager.NOW_PLAYING_STYLE_M3_EXPRESSIVE &&
+            isShowMiniPlayer
+        ) {
+            dynamicTrackColor
+        } else {
+            null
+        }
+
     AppTheme(
         themeMode = themeMode,
         themeColorSource = themeColorSource,
@@ -496,6 +530,7 @@ fun App(
         // Desktop is unconditionally true — the liquid-glass setting row is Android-only, and the
         // Desktop capsule player is glass by design. Same rule as MiniPlayer's useGlassSurface.
         liquidGlassEnabled = isLiquidGlassEnabled == TRUE || getPlatform() == Platform.Desktop,
+        dynamicSeedColor = activeDynamicSeed,
     ) {
         // Backdrop base must match the theme: white page → white glass, dark/AMOLED → black glass.
         // Read inside AppTheme so MaterialTheme reflects the resolved scheme (light background is #FFFFFF).

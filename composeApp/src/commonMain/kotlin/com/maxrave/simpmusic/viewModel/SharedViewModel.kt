@@ -1893,6 +1893,15 @@ class SharedViewModel(
         }
     }
 
+    fun getMaterialDynamicColor(): Flow<Boolean> =
+        dataStoreManager.getString("material_dynamic_color").map { it != FALSE }
+
+    fun setMaterialDynamicColor(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStoreManager.putString("material_dynamic_color", if (enabled) TRUE else FALSE)
+        }
+    }
+
     fun setLyricsStyle(style: String) {
         viewModelScope.launch {
             dataStoreManager.setLyricsStyle(style)

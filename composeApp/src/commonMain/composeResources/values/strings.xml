@@ -919,4 +919,7 @@
     <string name="login_sync_failed">Something went wrong. Please try again.</string>
     <string name="modified_build_title">Unofficial app</string>
     <string name="modified_build_message">You are using an unofficial copy of SimpMusic that was modified or repackaged by someone else. It cannot be used. Download the official version from simpmusic.org.</string>
+    <string name="material_dynamic_color_title">Dynamic Artwork Coloring</string>
+    <string name="material_dynamic_color_subtitle">Theme the dock, mini-player, and entire app using the playing song\'s artwork palette</string>
+    <string name="material_dynamic_color_disabled_hint">Requires Material 3 Expressive now playing style</string>
 </resources>

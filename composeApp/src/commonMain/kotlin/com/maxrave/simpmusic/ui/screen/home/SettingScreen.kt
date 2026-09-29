@@ -573,6 +573,7 @@ fun SettingScreen(
     val nowPlayingStyle by sharedViewModel.getNowPlayingStyle().collectAsStateWithLifecycle(DataStoreManager.NOW_PLAYING_STYLE_SPOTIFY)
     val waveStyle by sharedViewModel.getWaveStyle().collectAsStateWithLifecycle(SharedViewModel.WAVE_STYLE_EXPRESSIVE)
     val lyricsStyle by sharedViewModel.getLyricsStyle().collectAsStateWithLifecycle(DataStoreManager.LYRICS_STYLE_CLASSIC)
+    val materialDynamicColor by sharedViewModel.getMaterialDynamicColor().collectAsStateWithLifecycle(true)
     val romanizationStored by sharedViewModel.getRomanizationLanguages().collectAsStateWithLifecycle("")
     val japaneseDictionaryState by viewModel.japaneseDictionaryState.collectAsStateWithLifecycle()
     var showColorPickerDialog by rememberSaveable { mutableStateOf(false) }
@@ -757,6 +758,18 @@ fun SettingScreen(
                             ),
                         )
                     },
+                )
+                val isM3Selected = nowPlayingStyle == DataStoreManager.NOW_PLAYING_STYLE_M3_EXPRESSIVE
+                SettingItem(
+                    title = stringResource(Res.string.material_dynamic_color_title),
+                    subtitle =
+                        if (isM3Selected) {
+                            stringResource(Res.string.material_dynamic_color_subtitle)
+                        } else {
+                            stringResource(Res.string.material_dynamic_color_disabled_hint)
+                        },
+                    isEnable = isM3Selected,
+                    switch = (materialDynamicColor to { sharedViewModel.setMaterialDynamicColor(it) }),
                 )
                 val waveStyleLabels: List<Pair<String, String>> =
                     listOf(
