@@ -2,6 +2,7 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -27,9 +28,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -89,6 +96,63 @@ fun PlayerControlLayout(
     val repeatPressed by repeatInteractionSource.collectIsPressedAsState()
 
     val motionScheme = MaterialTheme.motionScheme
+    val scope = rememberCoroutineScope()
+
+    val shufflePulse = remember { Animatable(1f) }
+    val prevPulse = remember { Animatable(1f) }
+    val playPausePulse = remember { Animatable(1f) }
+    val nextPulse = remember { Animatable(1f) }
+    val repeatPulse = remember { Animatable(1f) }
+
+    // Wave impulse function: compresses the whole clicked button and ripples through surrounded buttons
+    val triggerWave: (Int) -> Unit = { centerIndex ->
+        scope.launch {
+            // 0: Shuffle, 1: Prev, 2: Play/Pause, 3: Next, 4: Repeat
+            val pulses = listOf(shufflePulse, prevPulse, playPausePulse, nextPulse, repeatPulse)
+            pulses.forEachIndexed { index, pulse ->
+                val distance = abs(index - centerIndex)
+                val targetScale = when (distance) {
+                    0 -> 0.78f // Main pressed button gets full punchy compression
+                    1 -> 0.88f // Directly surrounded neighbor buttons get distinct bounce
+                    2 -> 0.94f // Secondary neighbor ripple
+                    else -> 0.98f
+                }
+                val damping = if (distance == 0) 0.55f else 0.6f
+                val stiffness = if (distance == 0) 800f else 900f
+                launch {
+                    pulse.snapTo(targetScale)
+                    pulse.animateTo(1f, spring(dampingRatio = damping, stiffness = stiffness))
+                }
+            }
+        }
+    }
+
+    var firstRepeatMount by remember { mutableStateOf(true) }
+    LaunchedEffect(controllerState.repeatState) {
+        if (firstRepeatMount) {
+            firstRepeatMount = false
+            return@LaunchedEffect
+        }
+        triggerWave(4)
+    }
+
+    var firstShuffleMount by remember { mutableStateOf(true) }
+    LaunchedEffect(controllerState.isShuffle) {
+        if (firstShuffleMount) {
+            firstShuffleMount = false
+            return@LaunchedEffect
+        }
+        triggerWave(0)
+    }
+
+    var firstPlayMount by remember { mutableStateOf(true) }
+    LaunchedEffect(controllerState.isPlaying) {
+        if (firstPlayMount) {
+            firstPlayMount = false
+            return@LaunchedEffect
+        }
+        triggerWave(2)
+    }
 
     // Coupled scales: 1 button pressed causes adjacent buttons to bounce a little bit
     // Shuffle (function button: pops on X axis, scaleY = 1f)
@@ -174,7 +238,7 @@ fun PlayerControlLayout(
                         .size(smallIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = shuffleScale
+                            scaleX = shuffleScale * shufflePulse.value
                             scaleY = 1f // pop X axis not Y and Z
                         }
                         .clip(CircleShape)
@@ -182,27 +246,14 @@ fun PlayerControlLayout(
                             interactionSource = shuffleInteractionSource,
                             indication = ripple(bounded = false, radius = smallIcon.second / 2),
                         ) {
+                            triggerWave(0)
                             onUIEvent(UIEvent.Shuffle)
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                AnimatedContent(
+                Crossfade(
                     targetState = controllerState.isShuffle,
-                    transitionSpec = {
-                        (scaleIn(
-                            initialScale = 0.65f,
-                            animationSpec = motionScheme.fastSpatialSpec(),
-                        ) + fadeIn(
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                        )).togetherWith(
-                            scaleOut(
-                                targetScale = 0.65f,
-                                animationSpec = motionScheme.fastSpatialSpec(),
-                            ) + fadeOut(
-                                animationSpec = motionScheme.fastEffectsSpec(),
-                            ),
-                        )
-                    },
+                    animationSpec = motionScheme.fastEffectsSpec(),
                     label = "Shuffle Button",
                 ) { isShuffle ->
                     Icon(
@@ -221,8 +272,8 @@ fun PlayerControlLayout(
                         .size(mediumIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = prevScale
-                            scaleY = prevScale
+                            scaleX = prevScale * prevPulse.value
+                            scaleY = prevScale * prevPulse.value
                         }
                         .clip(CircleShape)
                         .clickable(
@@ -230,6 +281,7 @@ fun PlayerControlLayout(
                             indication = ripple(bounded = false, radius = mediumIcon.second / 2),
                             enabled = controllerState.isPreviousAvailable,
                         ) {
+                            triggerWave(1)
                             onUIEvent(UIEvent.Previous)
                         },
                 contentAlignment = Alignment.Center,
@@ -249,14 +301,15 @@ fun PlayerControlLayout(
                         .size(bigIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = playPauseScale
-                            scaleY = playPauseScale
+                            scaleX = playPauseScale * playPausePulse.value
+                            scaleY = playPauseScale * playPausePulse.value
                         }
                         .clip(CircleShape)
                         .clickable(
                             interactionSource = playPauseInteractionSource,
                             indication = ripple(bounded = false, radius = bigIcon.second / 2),
                         ) {
+                            triggerWave(2)
                             onUIEvent(UIEvent.PlayPause)
                         },
                 contentAlignment = Alignment.Center,
@@ -265,13 +318,13 @@ fun PlayerControlLayout(
                     targetState = controllerState.isPlaying,
                     transitionSpec = {
                         (scaleIn(
-                            initialScale = 0.65f,
+                            initialScale = 0.88f,
                             animationSpec = motionScheme.fastSpatialSpec(),
                         ) + fadeIn(
                             animationSpec = motionScheme.fastEffectsSpec(),
                         )).togetherWith(
                             scaleOut(
-                                targetScale = 0.65f,
+                                targetScale = 0.88f,
                                 animationSpec = motionScheme.fastSpatialSpec(),
                             ) + fadeOut(
                                 animationSpec = motionScheme.fastEffectsSpec(),
@@ -305,8 +358,8 @@ fun PlayerControlLayout(
                         .size(mediumIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = nextScale
-                            scaleY = nextScale
+                            scaleX = nextScale * nextPulse.value
+                            scaleY = nextScale * nextPulse.value
                         }
                         .clip(CircleShape)
                         .clickable(
@@ -314,6 +367,7 @@ fun PlayerControlLayout(
                             indication = ripple(bounded = false, radius = mediumIcon.second / 2),
                             enabled = controllerState.isNextAvailable,
                         ) {
+                            triggerWave(3)
                             onUIEvent(UIEvent.Next)
                         },
                 contentAlignment = Alignment.Center,
@@ -333,7 +387,7 @@ fun PlayerControlLayout(
                         .size(smallIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = repeatScale
+                            scaleX = repeatScale * repeatPulse.value
                             scaleY = 1f // pop X axis not Y and Z
                         }
                         .clip(CircleShape)
@@ -341,27 +395,14 @@ fun PlayerControlLayout(
                             interactionSource = repeatInteractionSource,
                             indication = ripple(bounded = false, radius = smallIcon.second / 2),
                         ) {
+                            triggerWave(4)
                             onUIEvent(UIEvent.Repeat)
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                AnimatedContent(
+                Crossfade(
                     targetState = controllerState.repeatState,
-                    transitionSpec = {
-                        (scaleIn(
-                            initialScale = 0.65f,
-                            animationSpec = motionScheme.fastSpatialSpec(),
-                        ) + fadeIn(
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                        )).togetherWith(
-                            scaleOut(
-                                targetScale = 0.65f,
-                                animationSpec = motionScheme.fastSpatialSpec(),
-                            ) + fadeOut(
-                                animationSpec = motionScheme.fastEffectsSpec(),
-                            ),
-                        )
-                    },
+                    animationSpec = motionScheme.fastEffectsSpec(),
                     label = "Repeat Button",
                 ) { rs ->
                     val (icon, tint) = when (rs) {

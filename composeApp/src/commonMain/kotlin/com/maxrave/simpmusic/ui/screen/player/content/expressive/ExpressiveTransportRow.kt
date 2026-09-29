@@ -2,8 +2,11 @@ package com.maxrave.simpmusic.ui.screen.player.content.expressive
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -28,9 +31,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -97,6 +106,51 @@ fun ExpressiveTransportRow(
     val prevPressed by prevInteraction.collectIsPressedAsState()
     val playPressed by playInteraction.collectIsPressedAsState()
     val nextPressed by nextInteraction.collectIsPressedAsState()
+
+    val scope = rememberCoroutineScope()
+    val shufflePulse = remember { Animatable(1f) }
+    val prevPulse = remember { Animatable(1f) }
+    val playPulse = remember { Animatable(1f) }
+    val nextPulse = remember { Animatable(1f) }
+    val repeatPulse = remember { Animatable(1f) }
+
+    // Wave impulse function: compresses the whole clicked button and ripples through surrounded buttons
+    val triggerTransportWave: (Int) -> Unit = { centerIndex ->
+        scope.launch {
+            // Mapping: if showShuffleAndRepeat: 0: Shuffle, 1: Prev, 2: Play, 3: Next, 4: Repeat
+            // otherwise: 0: Prev, 1: Play, 2: Next
+            val pulses = if (showShuffleAndRepeat) {
+                listOf(shufflePulse, prevPulse, playPulse, nextPulse, repeatPulse)
+            } else {
+                listOf(prevPulse, playPulse, nextPulse)
+            }
+            pulses.forEachIndexed { index, pulse ->
+                val distance = abs(index - centerIndex)
+                val targetScale = when (distance) {
+                    0 -> 0.82f // Main clicked button gets full spring compression
+                    1 -> 0.90f // Directly surrounded neighbor buttons get distinct bounce
+                    2 -> 0.95f // Secondary ripple
+                    else -> 0.98f
+                }
+                val damping = if (distance == 0) 0.55f else 0.6f
+                val stiffness = if (distance == 0) 800f else 900f
+                launch {
+                    pulse.snapTo(targetScale)
+                    pulse.animateTo(1f, spring(dampingRatio = damping, stiffness = stiffness))
+                }
+            }
+        }
+    }
+
+    var firstPlayMount by remember { mutableStateOf(true) }
+    LaunchedEffect(controllerState.isPlaying) {
+        if (firstPlayMount) {
+            firstPlayMount = false
+            return@LaunchedEffect
+        }
+        val playIndex = if (showShuffleAndRepeat) 2 else 1
+        triggerTransportWave(playIndex)
+    }
 
     // Weight expansion: pressed button grows x1.15 on fast spatial spring
     val prevWeight by animateFloatAsState(
@@ -188,7 +242,11 @@ fun ExpressiveTransportRow(
             ExpressiveToggleButton(
                 icon = SimpIcons.Shuffle,
                 active = controllerState.isShuffle,
-                onClick = { onUIEvent(UIEvent.Shuffle) },
+                pulse = shufflePulse,
+                onClick = {
+                    triggerTransportWave(0)
+                    onUIEvent(UIEvent.Shuffle)
+                },
             )
             Spacer(modifier = Modifier.width(TOGGLE_SEPARATION))
         }
@@ -196,6 +254,8 @@ fun ExpressiveTransportRow(
         Surface(
             onClick = {
                 if (controllerState.isPreviousAvailable) {
+                    val prevIndex = if (showShuffleAndRepeat) 1 else 0
+                    triggerTransportWave(prevIndex)
                     onUIEvent(UIEvent.Previous)
                 }
             },
@@ -207,8 +267,8 @@ fun ExpressiveTransportRow(
                     .weight(prevWeight)
                     .fillMaxHeight()
                     .graphicsLayer {
-                        scaleX = prevScale
-                        scaleY = prevScale
+                        scaleX = prevScale * prevPulse.value
+                        scaleY = prevScale * prevPulse.value
                         transformOrigin = TransformOrigin.Center
                     },
         ) {
@@ -228,6 +288,8 @@ fun ExpressiveTransportRow(
         Surface(
             onClick = {
                 if (!loading) {
+                    val playIndex = if (showShuffleAndRepeat) 2 else 1
+                    triggerTransportWave(playIndex)
                     onUIEvent(UIEvent.PlayPause)
                 }
             },
@@ -239,8 +301,8 @@ fun ExpressiveTransportRow(
                     .weight(playWeight)
                     .fillMaxHeight()
                     .graphicsLayer {
-                        scaleX = playScale
-                        scaleY = playScale
+                        scaleX = playScale * playPulse.value
+                        scaleY = playScale * playPulse.value
                         transformOrigin = TransformOrigin.Center
                     },
         ) {
@@ -277,13 +339,13 @@ fun ExpressiveTransportRow(
                             targetState = controllerState.isPlaying,
                             transitionSpec = {
                                 (scaleIn(
-                                    initialScale = 0.65f,
+                                    initialScale = 0.88f,
                                     animationSpec = motionScheme.fastSpatialSpec(),
                                 ) + fadeIn(
                                     animationSpec = motionScheme.fastEffectsSpec(),
                                 )).togetherWith(
                                     scaleOut(
-                                        targetScale = 0.65f,
+                                        targetScale = 0.88f,
                                         animationSpec = motionScheme.fastSpatialSpec(),
                                     ) + fadeOut(
                                         animationSpec = motionScheme.fastEffectsSpec(),
@@ -309,6 +371,8 @@ fun ExpressiveTransportRow(
         Surface(
             onClick = {
                 if (controllerState.isNextAvailable) {
+                    val nextIndex = if (showShuffleAndRepeat) 3 else 2
+                    triggerTransportWave(nextIndex)
                     onUIEvent(UIEvent.Next)
                 }
             },
@@ -320,8 +384,8 @@ fun ExpressiveTransportRow(
                     .weight(nextWeight)
                     .fillMaxHeight()
                     .graphicsLayer {
-                        scaleX = nextScale
-                        scaleY = nextScale
+                        scaleX = nextScale * nextPulse.value
+                        scaleY = nextScale * nextPulse.value
                         transformOrigin = TransformOrigin.Center
                     },
         ) {
@@ -343,7 +407,11 @@ fun ExpressiveTransportRow(
             ExpressiveToggleButton(
                 icon = if (repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat,
                 active = repeatState !is RepeatState.None,
-                onClick = { onUIEvent(UIEvent.Repeat) },
+                pulse = repeatPulse,
+                onClick = {
+                    triggerTransportWave(4)
+                    onUIEvent(UIEvent.Repeat)
+                },
             )
         }
     }
@@ -357,6 +425,7 @@ fun ExpressiveTransportRow(
 private fun RowScope.ExpressiveToggleButton(
     icon: ImageVector,
     active: Boolean,
+    pulse: Animatable<Float, AnimationVector1D>? = null,
     onClick: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
@@ -393,8 +462,8 @@ private fun RowScope.ExpressiveToggleButton(
                 .weight(TOGGLE_WEIGHT)
                 .fillMaxHeight()
                 .graphicsLayer {
-                    scaleX = scale
-                    scaleY = scale
+                    scaleX = scale * (pulse?.value ?: 1f)
+                    scaleY = 1.0f // function buttons (repeat, loop, shuffle) pop on X axis, not Y and Z!
                     transformOrigin = TransformOrigin.Center
                 },
     ) {

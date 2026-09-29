@@ -5,16 +5,21 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
+import kotlinx.coroutines.launch
+import kotlin.math.abs
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
@@ -950,6 +955,7 @@ private fun ExpressiveConnectedGroup(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val motionScheme = MaterialTheme.motionScheme
+    val scope = rememberCoroutineScope()
 
     val startCap = RoundedCornerShape(topStart = 24.dp, topEnd = 6.dp, bottomEnd = 6.dp, bottomStart = 24.dp)
     val endCap = RoundedCornerShape(topStart = 6.dp, topEnd = 24.dp, bottomEnd = 24.dp, bottomStart = 6.dp)
@@ -970,6 +976,55 @@ private fun ExpressiveConnectedGroup(
     val queuePressed by queueInteraction.collectIsPressedAsState()
 
     val anyPressed = infoPressed || castPressed || shufflePressed || repeatPressed || playlistPressed || queuePressed
+
+    // Interactive momentum pulses for the whole button and surrounded buttons on click
+    val infoPulse = remember { Animatable(1f) }
+    val castPulse = remember { Animatable(1f) }
+    val shufflePulse = remember { Animatable(1f) }
+    val repeatPulse = remember { Animatable(1f) }
+    val playlistPulse = remember { Animatable(1f) }
+    val queuePulse = remember { Animatable(1f) }
+
+    // Wave impulse function: compresses the whole clicked button and ripples through surrounded buttons
+    val triggerWave: (Int) -> Unit = { centerIndex ->
+        scope.launch {
+            // 0: Info, 1: Cast, 2: Shuffle, 3: Repeat, 4: Playlist, 5: Queue
+            val pulses = listOf(infoPulse, castPulse, shufflePulse, repeatPulse, playlistPulse, queuePulse)
+            pulses.forEachIndexed { index, pulse ->
+                val distance = abs(index - centerIndex)
+                val targetScale = when (distance) {
+                    0 -> 0.78f // Main pressed button gets full punchy compression
+                    1 -> 0.88f // Directly surrounded neighbor buttons get distinct bounce
+                    2 -> 0.94f // Secondary neighbor ripple
+                    else -> 0.98f
+                }
+                val damping = if (distance == 0) 0.55f else 0.6f
+                val stiffness = if (distance == 0) 800f else 900f
+                launch {
+                    pulse.snapTo(targetScale)
+                    pulse.animateTo(1f, spring(dampingRatio = damping, stiffness = stiffness))
+                }
+            }
+        }
+    }
+
+    var firstRepeatMount by remember { mutableStateOf(true) }
+    LaunchedEffect(state.controllerState.repeatState) {
+        if (firstRepeatMount) {
+            firstRepeatMount = false
+            return@LaunchedEffect
+        }
+        triggerWave(3)
+    }
+
+    var firstShuffleMount by remember { mutableStateOf(true) }
+    LaunchedEffect(state.controllerState.isShuffle) {
+        if (firstShuffleMount) {
+            firstShuffleMount = false
+            return@LaunchedEffect
+        }
+        triggerWave(2)
+    }
 
     // Dynamic weight distribution: pressed slot expands to 1.28f while peers contract to 0.94f
     val infoWeight by animateFloatAsState(
@@ -1003,7 +1058,7 @@ private fun ExpressiveConnectedGroup(
         label = "queueWeight",
     )
 
-    // Coupled X-axis scales (popping X axis not Y and Z): 1 button pressed causes neighbors to bounce a little bit
+    // Coupled X-axis scales: 1 button pressed causes neighbors to bounce a little bit
     val infoScaleX by animateFloatAsState(
         targetValue = when {
             infoPressed -> 0.86f
@@ -1077,9 +1132,12 @@ private fun ExpressiveConnectedGroup(
         ExpressiveConnectedSlot(
             shape = startCap,
             weight = infoWeight,
-            scaleX = infoScaleX,
+            scaleX = infoScaleX * infoPulse.value,
             interactionSource = infoInteraction,
-            onClick = { actions.onShowInfo() },
+            onClick = {
+                triggerWave(0)
+                actions.onShowInfo()
+            },
         ) {
             Icon(
                 imageVector = SimpIcons.Info,
@@ -1092,7 +1150,7 @@ private fun ExpressiveConnectedGroup(
             ExpressiveConnectedSlot(
                 shape = middle,
                 weight = castWeight,
-                scaleX = castScaleX,
+                scaleX = castScaleX * castPulse.value,
                 interactionSource = castInteraction,
                 onClick = null,
             ) {
@@ -1106,29 +1164,17 @@ private fun ExpressiveConnectedGroup(
             shape = middle,
             active = state.controllerState.isShuffle,
             weight = shuffleWeight,
-            scaleX = shuffleScaleX,
+            scaleX = shuffleScaleX * shufflePulse.value,
             interactionSource = shuffleInteraction,
-            onClick = { actions.onUIEvent(UIEvent.Shuffle) },
+            onClick = {
+                triggerWave(2)
+                actions.onUIEvent(UIEvent.Shuffle)
+            },
         ) {
-            AnimatedContent(
+            Crossfade(
                 targetState = state.controllerState.isShuffle,
-                transitionSpec = {
-                    (scaleIn(
-                        initialScale = 0.60f,
-                        animationSpec = motionScheme.fastSpatialSpec(),
-                    ) + fadeIn(
-                        animationSpec = motionScheme.fastEffectsSpec(),
-                    )).togetherWith(
-                        scaleOut(
-                            targetScale = 0.60f,
-                            animationSpec = motionScheme.fastSpatialSpec(),
-                        ) + fadeOut(
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                        ),
-                    )
-                },
+                animationSpec = motionScheme.fastEffectsSpec(),
                 label = "expressiveShuffleAnim",
-                contentAlignment = Alignment.Center,
             ) { isShuffle ->
                 Icon(
                     imageVector = SimpIcons.Shuffle,
@@ -1142,29 +1188,17 @@ private fun ExpressiveConnectedGroup(
             shape = middle,
             active = state.controllerState.repeatState !is RepeatState.None,
             weight = repeatWeight,
-            scaleX = repeatScaleX,
+            scaleX = repeatScaleX * repeatPulse.value,
             interactionSource = repeatInteraction,
-            onClick = { actions.onUIEvent(UIEvent.Repeat) },
+            onClick = {
+                triggerWave(3)
+                actions.onUIEvent(UIEvent.Repeat)
+            },
         ) {
-            AnimatedContent(
+            Crossfade(
                 targetState = state.controllerState.repeatState,
-                transitionSpec = {
-                    (scaleIn(
-                        initialScale = 0.60f,
-                        animationSpec = motionScheme.fastSpatialSpec(),
-                    ) + fadeIn(
-                        animationSpec = motionScheme.fastEffectsSpec(),
-                    )).togetherWith(
-                        scaleOut(
-                            targetScale = 0.60f,
-                            animationSpec = motionScheme.fastSpatialSpec(),
-                        ) + fadeOut(
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                        ),
-                    )
-                },
+                animationSpec = motionScheme.fastEffectsSpec(),
                 label = "expressiveRepeatAnim",
-                contentAlignment = Alignment.Center,
             ) { rs ->
                 val icon = when (rs) {
                     is RepeatState.None -> SimpIcons.Repeat
@@ -1183,9 +1217,12 @@ private fun ExpressiveConnectedGroup(
         ExpressiveConnectedSlot(
             shape = middle,
             weight = playlistWeight,
-            scaleX = playlistScaleX,
+            scaleX = playlistScaleX * playlistPulse.value,
             interactionSource = playlistInteraction,
-            onClick = { actions.onShowAddToPlaylist() },
+            onClick = {
+                triggerWave(4)
+                actions.onShowAddToPlaylist()
+            },
         ) {
             Icon(
                 imageVector = SimpIcons.PlaylistAdd,
@@ -1197,9 +1234,12 @@ private fun ExpressiveConnectedGroup(
         ExpressiveConnectedSlot(
             shape = endCap,
             weight = queueWeight,
-            scaleX = queueScaleX,
+            scaleX = queueScaleX * queuePulse.value,
             interactionSource = queueInteraction,
-            onClick = { actions.onShowQueue() },
+            onClick = {
+                triggerWave(5)
+                actions.onShowQueue()
+            },
         ) {
             Icon(
                 imageVector = SimpIcons.QueueMusic,
