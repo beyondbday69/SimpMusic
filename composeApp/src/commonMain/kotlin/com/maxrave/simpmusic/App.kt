@@ -115,6 +115,10 @@ import com.maxrave.simpmusic.ui.screen.player.NowPlayingScreen
 import com.maxrave.simpmusic.ui.screen.player.NowPlayingScreenContent
 import com.maxrave.simpmusic.ui.screen.player.content.LocalNowPlayingArtworkBounds
 import com.maxrave.simpmusic.ui.screen.player.content.LocalNowPlayingMorphProgress
+import com.maxrave.simpmusic.ui.screen.player.content.LocalNowPlayingTextBounds
+import com.maxrave.simpmusic.ui.component.ExplicitBadge
+import androidx.compose.ui.text.style.TextOverflow
+import com.maxrave.domain.utils.connectArtists
 import com.maxrave.simpmusic.ui.theme.AppTheme
 import com.maxrave.simpmusic.ui.theme.ForceDarkContent
 import com.maxrave.simpmusic.ui.theme.desktopPanelDark
@@ -167,6 +171,7 @@ fun AppMiniPlayer(
     onClick: () -> Unit,
     onClose: () -> Unit,
     onArtworkPositioned: ((Rect) -> Unit)? = null,
+    onTextPositioned: ((Rect) -> Unit)? = null,
 ) {
     AnimatedVisibility(
         visible = isShowMiniPlayer,
@@ -180,6 +185,7 @@ fun AppMiniPlayer(
             onClick = onClick,
             onClose = onClose,
             onArtworkPositioned = onArtworkPositioned,
+            onTextPositioned = onTextPositioned,
         )
     }
 }
@@ -238,6 +244,8 @@ fun App(
     }
     val miniPlayerArtworkBoundsState = remember { mutableStateOf<Rect?>(null) }
     val nowPlayingArtworkBoundsState = remember { mutableStateOf<Rect?>(null) }
+    val miniPlayerTextBoundsState = remember { mutableStateOf<Rect?>(null) }
+    val nowPlayingTextBoundsState = remember { mutableStateOf<Rect?>(null) }
 
     // Fullscreen
     var isInFullscreen by rememberSaveable {
@@ -505,6 +513,7 @@ fun App(
         CompositionLocalProvider(
             LocalNowPlayingMorphProgress provides morphProgress,
             LocalNowPlayingArtworkBounds provides nowPlayingArtworkBoundsState,
+            LocalNowPlayingTextBounds provides nowPlayingTextBoundsState,
         ) {
             Box(Modifier.fillMaxSize()) {
                 Scaffold(
@@ -542,6 +551,7 @@ fun App(
                                         viewModel.isServiceRunning = false
                                     },
                                     onArtworkPositioned = { miniPlayerArtworkBoundsState.value = it },
+                                    onTextPositioned = { miniPlayerTextBoundsState.value = it },
                                 )
                         // Sleek modern floating dock with solid color rendering
                         val reloadDestination = remember(viewModel) {
@@ -1003,6 +1013,22 @@ fun App(
                     fromBounds = miniPlayerArtworkBoundsState.value,
                     toBounds = nowPlayingArtworkBoundsState.value,
                 )
+                val currentSong = nowPlayingDataState.value?.songEntity
+                val currentTitle =
+                    currentSong?.title
+                        ?: nowPlayingDataState.value?.mediaItem?.metadata?.title?.toString()
+                val currentArtist =
+                    currentSong?.artistName?.connectArtists()
+                        ?: nowPlayingDataState.value?.mediaItem?.metadata?.artist?.toString()
+                val isExplicit = currentSong?.isExplicit == true
+                MorphingTextOverlay(
+                    title = currentTitle,
+                    artist = currentArtist,
+                    isExplicit = isExplicit,
+                    progress = morphProgress,
+                    fromBounds = miniPlayerTextBoundsState.value,
+                    toBounds = nowPlayingTextBoundsState.value,
+                )
             }
         }
     }
@@ -1064,6 +1090,70 @@ private fun MorphingArtworkOverlay(
             error = rememberHolderPainter(),
             modifier = Modifier.fillMaxSize(),
         )
+    }
+}
+
+@Composable
+private fun MorphingTextOverlay(
+    title: String?,
+    artist: String?,
+    isExplicit: Boolean,
+    progress: Float,
+    fromBounds: Rect?,
+    toBounds: Rect?,
+) {
+    if (progress !in 0.001f..0.999f || fromBounds == null || toBounds == null || fromBounds.width <= 0f || toBounds.width <= 0f || title.isNullOrBlank()) {
+        return
+    }
+
+    val density = LocalDensity.current
+    val currentLeft = lerp(fromBounds.left, toBounds.left, progress)
+    val currentTop = lerp(fromBounds.top, toBounds.top, progress)
+    val currentWidth = lerp(fromBounds.width, toBounds.width, progress)
+
+    // Dynamic typography scaling between MiniPlayer and NowPlaying
+    // MiniPlayer title is ~13.sp (titleSmall), NowPlaying title is 18.sp (titleMedium)
+    val currentTitleSize = lerp(13f, 18f, progress).sp
+    // MiniPlayer artist is ~10.5sp (bodySmall), NowPlaying artist is 13.5sp (bodyMedium)
+    val currentArtistSize = lerp(10.5f, 13.5f, progress).sp
+    // Dynamic vertical spacing between title and artist row
+    val currentSpacing = lerp(0f, 3.5f, progress).dp
+
+    // Cross-fade opacity at the end of the flight (0.96 to 1.0) so handoff to resting text row is seamless
+    val alpha = if (progress >= 0.96f) ((1f - progress) / 0.04f).coerceIn(0f, 1f) else 1f
+
+    Column(
+        modifier =
+            Modifier
+                .offset { IntOffset(currentLeft.roundToInt(), currentTop.roundToInt()) }
+                .width(with(density) { currentWidth.toDp() })
+                .graphicsLayer { this.alpha = alpha },
+    ) {
+        Text(
+            text = title,
+            style = typo().titleMedium.copy(fontSize = currentTitleSize),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Spacer(modifier = Modifier.height(currentSpacing))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (isExplicit) {
+                ExplicitBadge(
+                    modifier =
+                        Modifier
+                            .size(lerp(16f, 20f, progress).dp)
+                            .padding(end = 4.dp),
+                )
+            }
+            Text(
+                text = artist ?: "",
+                style = typo().bodyMedium.copy(fontSize = currentArtistSize),
+                color = Color.White.copy(alpha = lerp(0.7f, 0.85f, progress)),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
     }
 }
 

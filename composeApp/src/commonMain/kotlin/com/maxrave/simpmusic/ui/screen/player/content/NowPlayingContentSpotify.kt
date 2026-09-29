@@ -1726,7 +1726,22 @@ internal fun NowPlayingTrackInfoRow(
             )
         }
 
-        Column(Modifier.weight(1f)) {
+        val morphProgress = LocalNowPlayingMorphProgress.current
+        val textBoundsHolder = LocalNowPlayingTextBounds.current
+        val isMorphing = morphProgress in 0.001f..0.96f
+        Column(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .alpha(
+                        if (isMorphing) 0f
+                        else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
+                        else 1f
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        textBoundsHolder?.value = coordinates.boundsInRoot()
+                    },
+        ) {
             Text(
                 text = state.screenData.nowPlayingTitle,
                 style = typo().titleMedium,

@@ -173,6 +173,7 @@ fun MiniPlayer(
     onClick: () -> Unit,
     onOpenFullscreenLyrics: () -> Unit = {},
     onArtworkPositioned: ((Rect) -> Unit)? = null,
+    onTextPositioned: ((Rect) -> Unit)? = null,
 ) {
     val isLiquidGlassEnabled by sharedViewModel.getEnableLiquidGlass().collectAsStateWithLifecycle(DataStoreManager.FALSE)
     val controllerState by sharedViewModel.controllerState.collectAsStateWithLifecycle()
@@ -222,6 +223,7 @@ fun MiniPlayer(
 
     val offsetX = remember { Animatable(initialValue = 0f) }
     val offsetY = remember { Animatable(0f) }
+    val morphProgress = LocalNowPlayingMorphProgress.current
 
     var loading by rememberSaveable {
         mutableStateOf(true)
@@ -365,7 +367,6 @@ fun MiniPlayer(
                 ) {
                     // Unified persistent artwork with wavy or classic circular progress ring
                     // Centered precisely: start padding 7dp + 44dp size + 7dp end = 58dp
-                    val morphProgress = LocalNowPlayingMorphProgress.current
                     Box(
                         modifier =
                             Modifier
@@ -527,7 +528,14 @@ fun MiniPlayer(
                                             Column(
                                                 Modifier
                                                     .wrapContentHeight()
-                                                    .align(Alignment.CenterVertically),
+                                                    .align(Alignment.CenterVertically)
+                                                    .onGloballyPositioned { coordinates ->
+                                                        onTextPositioned?.invoke(coordinates.boundsInRoot())
+                                                    }
+                                                    .graphicsLayer {
+                                                        // Fade out resting text smoothly as the morph takes flight
+                                                        alpha = if (morphProgress > 0.04f) 0f else 1f
+                                                    },
                                             ) {
                                                 Text(
                                                     text = (songEntity?.title ?: "").toString(),
@@ -831,7 +839,17 @@ fun MiniPlayer(
                             }
                         }
                         Spacer(modifier = Modifier.width(10.dp))
-                        Column(Modifier.weight(1f)) {
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .onGloballyPositioned { coordinates ->
+                                    onTextPositioned?.invoke(coordinates.boundsInRoot())
+                                }
+                                .graphicsLayer {
+                                    // Fade out resting text smoothly as the morph takes flight
+                                    alpha = if (morphProgress > 0.04f) 0f else 1f
+                                },
+                        ) {
                             Text(
                                 text = (songEntity?.title ?: "").toString(),
                                 // labelSmall is 14sp — oversized against a 40dp artwork; keep its

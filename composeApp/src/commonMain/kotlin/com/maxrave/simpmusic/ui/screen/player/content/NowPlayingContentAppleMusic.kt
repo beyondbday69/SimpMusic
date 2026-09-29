@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -710,7 +711,22 @@ internal fun AppleMusicMainTitleRow(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        val morphProgress = LocalNowPlayingMorphProgress.current
+        val textBoundsHolder = LocalNowPlayingTextBounds.current
+        val isMorphing = morphProgress in 0.001f..0.96f
+        Column(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .alpha(
+                        if (isMorphing) 0f
+                        else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
+                        else 1f
+                    )
+                    .onGloballyPositioned { coordinates ->
+                        textBoundsHolder?.value = coordinates.boundsInRoot()
+                    },
+        ) {
             Text(
                 text = state.screenData.nowPlayingTitle,
                 style = typography.mainTitle,
@@ -771,12 +787,24 @@ private fun AppleMusicArtworkPage(
     Box(modifier = Modifier.fillMaxSize()) {
         if (isCurrentPage) {
             var artworkUrl by remember(state.screenData.thumbnailURL) { mutableStateOf(state.screenData.thumbnailURL) }
+            val morphProgress = LocalNowPlayingMorphProgress.current
+            val artworkBoundsHolder = LocalNowPlayingArtworkBounds.current
+            val isMorphing = morphProgress in 0.001f..0.96f
             Box(
                 modifier =
                     Modifier
                         .align(Alignment.TopCenter)
                         .fillMaxWidth()
-                        .height(artworkZoneHeightDp.dp),
+                        .height(artworkZoneHeightDp.dp)
+                        .alpha(
+                            if (pageShowsCanvasOrVideo) 0f
+                            else if (isMorphing) 0f
+                            else if (morphProgress in 0.96f..0.999f) ((morphProgress - 0.96f) / 0.04f).coerceIn(0f, 1f)
+                            else 1f
+                        )
+                        .onGloballyPositioned { coordinates ->
+                            artworkBoundsHolder?.value = coordinates.boundsInRoot()
+                        },
             ) {
                 AsyncImage(
                     model =

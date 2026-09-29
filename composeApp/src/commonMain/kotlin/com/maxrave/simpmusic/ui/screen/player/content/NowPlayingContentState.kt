@@ -22,6 +22,7 @@ import com.maxrave.simpmusic.viewModel.UIEvent
 import kotlinx.coroutines.flow.StateFlow
 
 val LocalNowPlayingArtworkBounds = compositionLocalOf<MutableState<Rect?>?> { null }
+val LocalNowPlayingTextBounds = compositionLocalOf<MutableState<Rect?>?> { null }
 val LocalNowPlayingMorphProgress = compositionLocalOf { 1f }
 
 /**
