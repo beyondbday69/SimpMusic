@@ -115,19 +115,38 @@ fun ExpressiveTransportRow(
         label = "nextWeight",
     )
 
-    // Tactile press compression physics: 0.90f - 0.92f scale with fast spatial recoil
-    val prevScale by animateFloatAsState(
-        targetValue = if (prevPressed && controllerState.isPreviousAvailable) 0.92f else 1f,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "prevScale",
-    )
+    // Coupled tactile press compression physics: 1 button pressed causes adjacent buttons to bounce a little bit
+    val playTargetScale = when {
+        playPressed -> 0.90f
+        prevPressed || nextPressed -> 0.95f
+        else -> 1f
+    }
     val playScale by animateFloatAsState(
-        targetValue = if (playPressed) 0.90f else 1f,
+        targetValue = playTargetScale,
         animationSpec = motionScheme.fastSpatialSpec(),
         label = "playScale",
     )
+
+    val prevTargetScale = when {
+        prevPressed && controllerState.isPreviousAvailable -> 0.90f
+        playPressed -> 0.95f
+        nextPressed -> 0.98f
+        else -> 1f
+    }
+    val prevScale by animateFloatAsState(
+        targetValue = prevTargetScale,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "prevScale",
+    )
+
+    val nextTargetScale = when {
+        nextPressed && controllerState.isNextAvailable -> 0.90f
+        playPressed -> 0.95f
+        prevPressed -> 0.98f
+        else -> 1f
+    }
     val nextScale by animateFloatAsState(
-        targetValue = if (nextPressed && controllerState.isNextAvailable) 0.92f else 1f,
+        targetValue = nextTargetScale,
         animationSpec = motionScheme.fastSpatialSpec(),
         label = "nextScale",
     )

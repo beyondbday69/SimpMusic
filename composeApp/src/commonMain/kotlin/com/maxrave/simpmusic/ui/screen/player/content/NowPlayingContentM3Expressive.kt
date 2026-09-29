@@ -1,5 +1,6 @@
 package com.maxrave.simpmusic.ui.screen.player.content
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
@@ -8,6 +9,12 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.snap
@@ -942,9 +949,122 @@ private fun ExpressiveConnectedGroup(
     actions: NowPlayingContentActions,
 ) {
     val colorScheme = MaterialTheme.colorScheme
+    val motionScheme = MaterialTheme.motionScheme
+
     val startCap = RoundedCornerShape(topStart = 24.dp, topEnd = 6.dp, bottomEnd = 6.dp, bottomStart = 24.dp)
     val endCap = RoundedCornerShape(topStart = 6.dp, topEnd = 24.dp, bottomEnd = 24.dp, bottomStart = 6.dp)
     val middle = RoundedCornerShape(6.dp)
+
+    val infoInteraction = remember { MutableInteractionSource() }
+    val castInteraction = remember { MutableInteractionSource() }
+    val shuffleInteraction = remember { MutableInteractionSource() }
+    val repeatInteraction = remember { MutableInteractionSource() }
+    val playlistInteraction = remember { MutableInteractionSource() }
+    val queueInteraction = remember { MutableInteractionSource() }
+
+    val infoPressed by infoInteraction.collectIsPressedAsState()
+    val castPressed by castInteraction.collectIsPressedAsState()
+    val shufflePressed by shuffleInteraction.collectIsPressedAsState()
+    val repeatPressed by repeatInteraction.collectIsPressedAsState()
+    val playlistPressed by playlistInteraction.collectIsPressedAsState()
+    val queuePressed by queueInteraction.collectIsPressedAsState()
+
+    val anyPressed = infoPressed || castPressed || shufflePressed || repeatPressed || playlistPressed || queuePressed
+
+    // Dynamic weight distribution: pressed slot expands to 1.28f while peers contract to 0.94f
+    val infoWeight by animateFloatAsState(
+        targetValue = if (infoPressed) 1.28f else if (anyPressed) 0.94f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "infoWeight",
+    )
+    val castWeight by animateFloatAsState(
+        targetValue = if (castPressed) 1.28f else if (anyPressed) 0.94f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "castWeight",
+    )
+    val shuffleWeight by animateFloatAsState(
+        targetValue = if (shufflePressed) 1.28f else if (anyPressed) 0.94f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "shuffleWeight",
+    )
+    val repeatWeight by animateFloatAsState(
+        targetValue = if (repeatPressed) 1.28f else if (anyPressed) 0.94f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "repeatWeight",
+    )
+    val playlistWeight by animateFloatAsState(
+        targetValue = if (playlistPressed) 1.28f else if (anyPressed) 0.94f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "playlistWeight",
+    )
+    val queueWeight by animateFloatAsState(
+        targetValue = if (queuePressed) 1.28f else if (anyPressed) 0.94f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "queueWeight",
+    )
+
+    // Coupled X-axis scales (popping X axis not Y and Z): 1 button pressed causes neighbors to bounce a little bit
+    val infoScaleX by animateFloatAsState(
+        targetValue = when {
+            infoPressed -> 0.86f
+            castPressed || shufflePressed -> 0.94f
+            anyPressed -> 0.97f
+            else -> 1f
+        },
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "infoScaleX",
+    )
+    val castScaleX by animateFloatAsState(
+        targetValue = when {
+            castPressed -> 0.86f
+            infoPressed || shufflePressed -> 0.94f
+            anyPressed -> 0.97f
+            else -> 1f
+        },
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "castScaleX",
+    )
+    val shuffleScaleX by animateFloatAsState(
+        targetValue = when {
+            shufflePressed -> 0.84f
+            repeatPressed || castPressed -> 0.93f
+            anyPressed -> 0.96f
+            else -> 1f
+        },
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "shuffleScaleX",
+    )
+    val repeatScaleX by animateFloatAsState(
+        targetValue = when {
+            repeatPressed -> 0.84f
+            shufflePressed || playlistPressed -> 0.93f
+            anyPressed -> 0.96f
+            else -> 1f
+        },
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "repeatScaleX",
+    )
+    val playlistScaleX by animateFloatAsState(
+        targetValue = when {
+            playlistPressed -> 0.86f
+            repeatPressed || queuePressed -> 0.94f
+            anyPressed -> 0.97f
+            else -> 1f
+        },
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "playlistScaleX",
+    )
+    val queueScaleX by animateFloatAsState(
+        targetValue = when {
+            queuePressed -> 0.86f
+            playlistPressed || repeatPressed -> 0.94f
+            anyPressed -> 0.97f
+            else -> 1f
+        },
+        animationSpec = motionScheme.fastSpatialSpec(),
+        label = "queueScaleX",
+    )
+
     Row(
         horizontalArrangement = Arrangement.spacedBy(3.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -956,21 +1076,24 @@ private fun ExpressiveConnectedGroup(
     ) {
         ExpressiveConnectedSlot(
             shape = startCap,
+            weight = infoWeight,
+            scaleX = infoScaleX,
+            interactionSource = infoInteraction,
             onClick = { actions.onShowInfo() },
         ) {
             Icon(
                 imageVector = SimpIcons.Info,
-                contentDescription = "",
+                contentDescription = "Info",
                 tint = colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
             )
         }
-        // Cast — PlatformCastButton owns its own click and hides itself when Cast is
-        // unavailable, but it can't hide this wrapper slot, so the slot is gated too.
-        // Active session tints primary, like Classic's cyan.
         if (isPlatformCastAvailable()) {
             ExpressiveConnectedSlot(
                 shape = middle,
+                weight = castWeight,
+                scaleX = castScaleX,
+                interactionSource = castInteraction,
                 onClick = null,
             ) {
                 PlatformCastButton(
@@ -982,12 +1105,34 @@ private fun ExpressiveConnectedGroup(
         ExpressiveConnectedSlot(
             shape = middle,
             active = state.controllerState.isShuffle,
+            weight = shuffleWeight,
+            scaleX = shuffleScaleX,
+            interactionSource = shuffleInteraction,
             onClick = { actions.onUIEvent(UIEvent.Shuffle) },
         ) {
-            Crossfade(targetState = state.controllerState.isShuffle, label = "expressiveShuffle") { isShuffle ->
+            AnimatedContent(
+                targetState = state.controllerState.isShuffle,
+                transitionSpec = {
+                    (scaleIn(
+                        initialScale = 0.60f,
+                        animationSpec = motionScheme.fastSpatialSpec(),
+                    ) + fadeIn(
+                        animationSpec = motionScheme.fastEffectsSpec(),
+                    )).togetherWith(
+                        scaleOut(
+                            targetScale = 0.60f,
+                            animationSpec = motionScheme.fastSpatialSpec(),
+                        ) + fadeOut(
+                            animationSpec = motionScheme.fastEffectsSpec(),
+                        ),
+                    )
+                },
+                label = "expressiveShuffleAnim",
+                contentAlignment = Alignment.Center,
+            ) { isShuffle ->
                 Icon(
                     imageVector = SimpIcons.Shuffle,
-                    contentDescription = "",
+                    contentDescription = "Shuffle",
                     tint = if (isShuffle) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(22.dp),
                 )
@@ -996,41 +1141,50 @@ private fun ExpressiveConnectedGroup(
         ExpressiveConnectedSlot(
             shape = middle,
             active = state.controllerState.repeatState !is RepeatState.None,
+            weight = repeatWeight,
+            scaleX = repeatScaleX,
+            interactionSource = repeatInteraction,
             onClick = { actions.onUIEvent(UIEvent.Repeat) },
         ) {
-            Crossfade(targetState = state.controllerState.repeatState, label = "expressiveRepeat") { rs ->
-                when (rs) {
-                    is RepeatState.None -> {
-                        Icon(
-                            imageVector = SimpIcons.Repeat,
-                            contentDescription = "",
-                            tint = colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-
-                    RepeatState.All -> {
-                        Icon(
-                            imageVector = SimpIcons.Repeat,
-                            contentDescription = "",
-                            tint = colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
-
-                    RepeatState.One -> {
-                        Icon(
-                            imageVector = SimpIcons.RepeatOne,
-                            contentDescription = "",
-                            tint = colorScheme.onPrimaryContainer,
-                            modifier = Modifier.size(22.dp),
-                        )
-                    }
+            AnimatedContent(
+                targetState = state.controllerState.repeatState,
+                transitionSpec = {
+                    (scaleIn(
+                        initialScale = 0.60f,
+                        animationSpec = motionScheme.fastSpatialSpec(),
+                    ) + fadeIn(
+                        animationSpec = motionScheme.fastEffectsSpec(),
+                    )).togetherWith(
+                        scaleOut(
+                            targetScale = 0.60f,
+                            animationSpec = motionScheme.fastSpatialSpec(),
+                        ) + fadeOut(
+                            animationSpec = motionScheme.fastEffectsSpec(),
+                        ),
+                    )
+                },
+                label = "expressiveRepeatAnim",
+                contentAlignment = Alignment.Center,
+            ) { rs ->
+                val icon = when (rs) {
+                    is RepeatState.None -> SimpIcons.Repeat
+                    RepeatState.All -> SimpIcons.Repeat
+                    RepeatState.One -> SimpIcons.RepeatOne
                 }
+                val iconTint = if (rs !is RepeatState.None) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant
+                Icon(
+                    imageVector = icon,
+                    contentDescription = "Repeat",
+                    tint = iconTint,
+                    modifier = Modifier.size(22.dp),
+                )
             }
         }
         ExpressiveConnectedSlot(
             shape = middle,
+            weight = playlistWeight,
+            scaleX = playlistScaleX,
+            interactionSource = playlistInteraction,
             onClick = { actions.onShowAddToPlaylist() },
         ) {
             Icon(
@@ -1042,11 +1196,14 @@ private fun ExpressiveConnectedGroup(
         }
         ExpressiveConnectedSlot(
             shape = endCap,
+            weight = queueWeight,
+            scaleX = queueScaleX,
+            interactionSource = queueInteraction,
             onClick = { actions.onShowQueue() },
         ) {
             Icon(
                 imageVector = SimpIcons.QueueMusic,
-                contentDescription = "",
+                contentDescription = "Queue",
                 tint = colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
             )
@@ -1059,19 +1216,33 @@ private fun RowScope.ExpressiveConnectedSlot(
     shape: Shape,
     onClick: (() -> Unit)?,
     active: Boolean = false,
+    weight: Float = 1f,
+    scaleX: Float = 1f,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
     content: @Composable () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val container = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh
+    val motionScheme = MaterialTheme.motionScheme
+    val containerColor by animateColorAsState(
+        targetValue = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh,
+        animationSpec = motionScheme.fastEffectsSpec(),
+        label = "slotContainerColor",
+    )
     if (onClick != null) {
         Surface(
             onClick = onClick,
             shape = shape,
-            color = container,
+            color = containerColor,
+            interactionSource = interactionSource,
             modifier =
                 Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
+                    .weight(weight)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        this.scaleX = scaleX
+                        this.scaleY = 1.0f // function buttons (repeat, loop) pop on X axis, not Y and Z!
+                        transformOrigin = TransformOrigin.Center
+                    },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 content()
@@ -1080,11 +1251,16 @@ private fun RowScope.ExpressiveConnectedSlot(
     } else {
         Surface(
             shape = shape,
-            color = container,
+            color = containerColor,
             modifier =
                 Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
+                    .weight(weight)
+                    .fillMaxHeight()
+                    .graphicsLayer {
+                        this.scaleX = scaleX
+                        this.scaleY = 1.0f // function buttons pop on X axis, not Y and Z!
+                        transformOrigin = TransformOrigin.Center
+                    },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 content()
