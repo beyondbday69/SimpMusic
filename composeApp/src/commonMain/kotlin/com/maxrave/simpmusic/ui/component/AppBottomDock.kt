@@ -21,12 +21,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -159,78 +161,106 @@ fun AppBottomDock(
             else -> 90.dp
         }
 
-    Surface(
-        shape = CircleShape,
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shadowElevation = 0.dp,
-        tonalElevation = 0.dp,
-        modifier =
-            Modifier
-                .wrapContentWidth()
-                .height(58.dp)
-                .animateContentSize(
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = 500f,
-                    ),
-                ),
+    Row(
+        modifier = Modifier.wrapContentWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+        // Main Navigation Dock Pill (Left)
+        Surface(
+            shape =
+                RoundedCornerShape(
+                    topStart = 29.dp,
+                    bottomStart = 29.dp,
+                    topEnd = 16.dp,
+                    bottomEnd = 16.dp,
+                ),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+            modifier =
+                Modifier
+                    .wrapContentWidth()
+                    .height(58.dp)
+                    .animateContentSize(
+                        animationSpec =
+                            spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = 500f,
+                            ),
+                    ),
         ) {
-            bottomNavScreens.forEach { screen ->
-                val selected = selectedOrdinal == screen.ordinal
-                AppBottomDockItem(
-                    screen = screen,
-                    selected = selected,
-                    selectedWidth = selectedItemWidth,
-                    labelStyle = labelStyle,
-                    onSelect = selectTab,
-                )
+            Row(
+                modifier = Modifier.padding(start = 8.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                bottomNavScreens.forEach { screen ->
+                    val selected = selectedOrdinal == screen.ordinal
+                    AppBottomDockItem(
+                        screen = screen,
+                        selected = selected,
+                        selectedWidth = selectedItemWidth,
+                        labelStyle = labelStyle,
+                        onSelect = selectTab,
+                    )
+                }
             }
+        }
 
-            // Settings tab separator (invisible spacing)
-            Box(modifier = Modifier.size(4.dp))
+        // Settings Button Pill (Right) - Compact slice with smoothed cut edge
+        val isSettingsSelected = currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true
+        val settingsInteractionSource = remember { MutableInteractionSource() }
+        val isSettingsPressed by settingsInteractionSource.collectIsPressedAsState()
 
-            val isSettingsSelected = currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true
-            val settingsInteractionSource = remember { MutableInteractionSource() }
-            val isSettingsPressed by settingsInteractionSource.collectIsPressedAsState()
+        val settingsPressScale by animateFloatAsState(
+            targetValue = if (isSettingsPressed) 0.92f else 1.0f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
+            label = "settingsPressScale",
+        )
+        val settingsContentColor by animateColorAsState(
+            targetValue =
+                if (isSettingsSelected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "settingsContentColor",
+        )
 
-            val settingsPressScale by animateFloatAsState(
-                targetValue = if (isSettingsPressed) 0.92f else 1.0f,
-                animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
-                label = "settingsPressScale",
-            )
-            val settingsContentColor by animateColorAsState(
-                targetValue =
-                    if (isSettingsSelected) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                animationSpec = tween(200, easing = FastOutSlowInEasing),
-                label = "settingsContentColor",
-            )
+        val settingsPillColor = MaterialTheme.colorScheme.primaryContainer
+        val settingsBackgroundColor by animateColorAsState(
+            targetValue =
+                if (isSettingsSelected) {
+                    settingsPillColor
+                } else {
+                    androidx.compose.ui.graphics.Color.Transparent
+                },
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "settingsBackgroundColor",
+        )
 
-            val settingsPillColor = MaterialTheme.colorScheme.primaryContainer
-            val settingsBackgroundColor by animateColorAsState(
-                targetValue =
-                    if (isSettingsSelected) {
-                        settingsPillColor
-                    } else {
-                        androidx.compose.ui.graphics.Color.Transparent
-                    },
-                animationSpec = tween(200, easing = FastOutSlowInEasing),
-                label = "settingsBackgroundColor",
-            )
+        Surface(
+            shape =
+                RoundedCornerShape(
+                    topStart = 16.dp,
+                    bottomStart = 16.dp,
+                    topEnd = 29.dp,
+                    bottomEnd = 29.dp,
+                ),
+            color = MaterialTheme.colorScheme.surfaceContainer,
+            shadowElevation = 0.dp,
+            tonalElevation = 0.dp,
+            modifier =
+                Modifier
+                    .height(58.dp)
+                    .width(54.dp),
+        ) {
             Box(
                 modifier =
                     Modifier
-                        .size(44.dp)
-                        .clip(CircleShape)
-                        .background(settingsBackgroundColor)
+                        .fillMaxSize()
                         .graphicsLayer {
                             scaleX = settingsPressScale
                             scaleY = settingsPressScale
@@ -252,8 +282,17 @@ fun AppBottomDock(
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
-                    Icon(SimpIcons.Settings, contentDescription = "Settings")
+                Box(
+                    modifier =
+                        Modifier
+                            .size(44.dp)
+                            .clip(CircleShape)
+                            .background(settingsBackgroundColor),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
+                        Icon(SimpIcons.Settings, contentDescription = "Settings")
+                    }
                 }
             }
         }
