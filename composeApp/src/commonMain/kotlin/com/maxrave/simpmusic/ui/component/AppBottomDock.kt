@@ -128,15 +128,12 @@ fun AppBottomDock(
 
     val selectTab: (BottomNavScreen) -> Unit = { screen ->
         onItemClick()
-        if (selectedOrdinal == screen.ordinal) {
-            if (currentDestination?.hierarchy?.any {
-                    it.hasRoute(screen.destination::class)
-                } == true
-            ) {
-                reloadDestinationIfNeeded(screen.destination::class)
-            } else {
-                navController.navigate(screen.destination)
-            }
+        val isScreenSelected =
+            currentDestination?.hierarchy?.any {
+                it.hasRoute(screen.destination::class)
+            } == true
+        if (isScreenSelected) {
+            reloadDestinationIfNeeded(screen.destination::class)
         } else {
             // Immediate 0ms visual feedback on tap
             selectedOrdinal = screen.ordinal
@@ -208,13 +205,13 @@ fun AppBottomDock(
             }
         }
 
-        // Settings Button Pill (Right) - Compact slice with smoothed cut edge
+        // Settings Button Pill (Right) - Compact slice with smoothed cut edge & morph animation
         val isSettingsSelected = currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true
         val settingsInteractionSource = remember { MutableInteractionSource() }
         val isSettingsPressed by settingsInteractionSource.collectIsPressedAsState()
 
         val settingsPressScale by animateFloatAsState(
-            targetValue = if (isSettingsPressed) 0.92f else 1.0f,
+            targetValue = if (isSettingsPressed) 0.90f else 1.0f,
             animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
             label = "settingsPressScale",
         )
@@ -229,33 +226,59 @@ fun AppBottomDock(
             label = "settingsContentColor",
         )
 
-        val settingsPillColor = MaterialTheme.colorScheme.primaryContainer
-        val settingsBackgroundColor by animateColorAsState(
+        // Whole pill background fills with primaryContainer when selected
+        val settingsSurfaceColor by animateColorAsState(
             targetValue =
                 if (isSettingsSelected) {
-                    settingsPillColor
+                    MaterialTheme.colorScheme.primaryContainer
                 } else {
-                    androidx.compose.ui.graphics.Color.Transparent
+                    MaterialTheme.colorScheme.surfaceContainer
                 },
-            animationSpec = tween(200, easing = FastOutSlowInEasing),
-            label = "settingsBackgroundColor",
+            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            label = "settingsSurfaceColor",
+        )
+
+        // Dynamic corner morph on the cut face (16dp -> 24dp)
+        val settingsCutCorner by animateDpAsState(
+            targetValue = if (isSettingsSelected) 24.dp else 16.dp,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 400f),
+            label = "settingsCutCorner",
+        )
+
+        // Tactile width morph (54dp -> 58dp)
+        val settingsWidth by animateDpAsState(
+            targetValue = if (isSettingsSelected) 58.dp else 54.dp,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 400f),
+            label = "settingsWidth",
+        )
+
+        // Gear icon fluid 90-degree elastic turn on selection
+        val gearRotation by animateFloatAsState(
+            targetValue = if (isSettingsSelected) 90f else 0f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 320f),
+            label = "settingsGearRotation",
+        )
+        val gearScale by animateFloatAsState(
+            targetValue = if (isSettingsSelected) 1.08f else 1.0f,
+            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 400f),
+            label = "settingsGearScale",
         )
 
         Surface(
             shape =
                 RoundedCornerShape(
-                    topStart = 16.dp,
-                    bottomStart = 16.dp,
+                    topStart = settingsCutCorner,
+                    bottomStart = settingsCutCorner,
                     topEnd = 29.dp,
                     bottomEnd = 29.dp,
                 ),
-            color = MaterialTheme.colorScheme.surfaceContainer,
+            color = settingsSurfaceColor,
             shadowElevation = 0.dp,
             tonalElevation = 0.dp,
             modifier =
                 Modifier
                     .height(58.dp)
-                    .width(54.dp),
+                    .width(settingsWidth),
         ) {
             Box(
                 modifier =
@@ -275,6 +298,9 @@ fun AppBottomDock(
                             } else {
                                 selectedOrdinal = -1
                                 navController.navigate(SettingsDestination) {
+                                    popUpTo(navController.graph.findStartDestination().id) {
+                                        saveState = true
+                                    }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -282,17 +308,19 @@ fun AppBottomDock(
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(settingsBackgroundColor),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
-                        Icon(SimpIcons.Settings, contentDescription = "Settings")
-                    }
+                CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
+                    Icon(
+                        imageVector = SimpIcons.Settings,
+                        contentDescription = "Settings",
+                        modifier =
+                            Modifier
+                                .size(24.dp)
+                                .graphicsLayer {
+                                    rotationZ = gearRotation
+                                    scaleX = gearScale
+                                    scaleY = gearScale
+                                },
+                    )
                 }
             }
         }
