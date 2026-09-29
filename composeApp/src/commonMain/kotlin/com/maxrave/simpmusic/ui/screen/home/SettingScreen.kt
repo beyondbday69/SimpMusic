@@ -343,6 +343,9 @@ import simpmusic.composeapp.generated.resources.now_playing_style_m3_expressive
 import simpmusic.composeapp.generated.resources.now_playing_style_spotify
 import simpmusic.composeapp.generated.resources.now_playing_style_vinyl
 import simpmusic.composeapp.generated.resources.now_playing_style_glow
+import simpmusic.composeapp.generated.resources.material_dynamic_color_title
+import simpmusic.composeapp.generated.resources.material_dynamic_color_subtitle
+import simpmusic.composeapp.generated.resources.material_dynamic_color_disabled_hint
 import simpmusic.composeapp.generated.resources.wave_style
 import simpmusic.composeapp.generated.resources.wave_style_expressive
 import simpmusic.composeapp.generated.resources.wave_style_gentle
