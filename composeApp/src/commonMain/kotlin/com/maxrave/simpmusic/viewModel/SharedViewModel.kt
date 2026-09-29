@@ -2110,6 +2110,8 @@ class SharedViewModel(
     fun isCombineFavoriteAndYTLiked(): Boolean = runBlocking { dataStoreManager.combineLocalAndYouTubeLiked.first() == TRUE }
 
     companion object {
+        const val NOW_PLAYING_STYLE_VINYL = "vinyl"
+        const val NOW_PLAYING_STYLE_GLOW = "glow"
         const val WAVE_STYLE_EXPRESSIVE = "expressive"
         const val WAVE_STYLE_GENTLE = "gentle"
         const val WAVE_STYLE_FLAT = "flat"

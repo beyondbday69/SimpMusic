@@ -341,6 +341,8 @@ import simpmusic.composeapp.generated.resources.now_playing_style
 import simpmusic.composeapp.generated.resources.now_playing_style_apple_music
 import simpmusic.composeapp.generated.resources.now_playing_style_m3_expressive
 import simpmusic.composeapp.generated.resources.now_playing_style_spotify
+import simpmusic.composeapp.generated.resources.now_playing_style_vinyl
+import simpmusic.composeapp.generated.resources.now_playing_style_glow
 import simpmusic.composeapp.generated.resources.wave_style
 import simpmusic.composeapp.generated.resources.wave_style_expressive
 import simpmusic.composeapp.generated.resources.wave_style_gentle
@@ -730,6 +732,8 @@ fun SettingScreen(
                         DataStoreManager.NOW_PLAYING_STYLE_M3_EXPRESSIVE to stringResource(Res.string.now_playing_style_m3_expressive),
                         DataStoreManager.NOW_PLAYING_STYLE_APPLE_MUSIC to
                             stringResource(Res.string.now_playing_style_apple_music) + requiresAndroid12,
+                        SharedViewModel.NOW_PLAYING_STYLE_VINYL to stringResource(Res.string.now_playing_style_vinyl),
+                        SharedViewModel.NOW_PLAYING_STYLE_GLOW to stringResource(Res.string.now_playing_style_glow),
                     )
                 SettingItem(
                     title = stringResource(Res.string.now_playing_style),

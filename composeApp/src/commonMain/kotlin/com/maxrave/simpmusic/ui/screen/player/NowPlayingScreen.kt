@@ -90,10 +90,12 @@ import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.list.ArtistDestination
 import com.maxrave.simpmusic.ui.navigation.destination.player.FullscreenDestination
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentActions
+import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentAmbientGlow
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentAppleMusic
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentM3Expressive
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentSpotify
 import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentState
+import com.maxrave.simpmusic.ui.screen.player.content.NowPlayingContentVinyl
 import com.maxrave.simpmusic.ui.screen.player.content.PlayerBackdropColor
 import com.maxrave.simpmusic.ui.screen.player.content.toAudioCodecLabel
 import com.maxrave.simpmusic.viewModel.LyricsProvider
@@ -935,6 +937,18 @@ fun NowPlayingScreenContent(
 
         DataStoreManager.NOW_PLAYING_STYLE_APPLE_MUSIC ->
             NowPlayingContentAppleMusic(
+                state = state,
+                actions = actions,
+            )
+
+        SharedViewModel.NOW_PLAYING_STYLE_VINYL ->
+            NowPlayingContentVinyl(
+                state = state,
+                actions = actions,
+            )
+
+        SharedViewModel.NOW_PLAYING_STYLE_GLOW ->
+            NowPlayingContentAmbientGlow(
                 state = state,
                 actions = actions,
             )

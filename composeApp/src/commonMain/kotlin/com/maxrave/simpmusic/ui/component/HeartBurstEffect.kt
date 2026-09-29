@@ -2,6 +2,8 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
@@ -14,7 +16,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
+import androidx.compose.ui.graphics.graphicsLayer
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -37,11 +41,22 @@ class HeartBurstState internal constructor(
 ) {
     internal val bursts = mutableStateListOf<HeartBurst>()
     internal var colors: List<Color> = HeartBurstDefaults.colors
+    val scale = Animatable(1f)
 
     /** One burst, now. Call from the tap that LIKES (i.e. while the heart is still unchecked). */
     fun fire() {
         val burst = HeartBurst(List(PARTICLES_PER_BURST) { randomSpark(colors) })
         bursts += burst
+        scope.launch {
+            scale.snapTo(0.6f)
+            scale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            )
+        }
         scope.launch {
             burst.progress.animateTo(
                 targetValue = 1f,
@@ -76,53 +91,76 @@ fun Modifier.heartBurst(
     state.colors = colors
     val starPath = remember { buildUnitStarPath() }
 
-    return this.drawWithContent {
-        drawContent()
-        if (state.bursts.isEmpty()) return@drawWithContent
-        // Launch point sits slightly above the button centre; travel distance scales with the
-        // button so the effect reads the same on a 24dp list heart and a 48dp player heart.
-        val origin = Offset(size.width / 2f, size.height * 0.3f)
-        val reach = size.height * 2.2f
-        state.bursts.forEach { burst ->
-            val progress = burst.progress.value
-            if (progress <= 0f) return@forEach
-            // Decelerating flight + quadratic gravity pulling the sparks back down.
-            val flight = 1f - (1f - progress) * (1f - progress)
-            val fall = progress * progress * reach * 0.35f
-            val alpha = (1f - progress).coerceIn(0f, 1f)
-            burst.sparks.forEach { spark ->
-                val distance = spark.speed * flight * reach
-                val x = origin.x + cos(spark.angleRad) * distance
-                val y = origin.y + sin(spark.angleRad) * distance + fall
-                val sparkSize = size.height * spark.relativeSize
-                withTransform({
-                    translate(x, y)
-                    rotate(degrees = spark.spin * progress * 360f, pivot = Offset.Zero)
-                }) {
-                    when (spark.shape) {
-                        HeartSparkShape.STAR ->
-                            withTransform({ scale(sparkSize, sparkSize, Offset.Zero) }) {
-                                drawPath(starPath, color = spark.color, alpha = alpha)
-                            }
+    return this
+        .graphicsLayer {
+            scaleX = state.scale.value
+            scaleY = state.scale.value
+        }
+        .drawWithContent {
+            // Expanding radiant shockwave ripple ring behind the heart
+            state.bursts.forEach { burst ->
+                val progress = burst.progress.value
+                if (progress in 0.001f..0.65f) {
+                    val ringProgress = progress / 0.65f
+                    val ringRadius = (size.minDimension * 0.35f) + (ringProgress * size.minDimension * 0.9f)
+                    val ringAlpha = (1f - ringProgress).coerceIn(0f, 0.75f)
+                    drawCircle(
+                        color = Color(0xFFFF2D55).copy(alpha = ringAlpha),
+                        radius = ringRadius,
+                        center = Offset(size.width / 2f, size.height / 2f),
+                        style = Stroke(width = size.minDimension * 0.09f * (1f - ringProgress)),
+                    )
+                }
+            }
 
-                        HeartSparkShape.GLITTER ->
-                            drawRect(
-                                color = spark.color,
-                                alpha = alpha,
-                                topLeft = Offset(-sparkSize * 0.18f, -sparkSize * 0.55f),
-                                size = Size(sparkSize * 0.36f, sparkSize * 1.1f),
-                            )
+            drawContent()
+            if (state.bursts.isEmpty()) return@drawWithContent
+            // Launch point sits slightly above the button centre; travel distance scales with the
+            // button so the effect reads the same on a 24dp list heart and a 48dp player heart.
+            val origin = Offset(size.width / 2f, size.height * 0.3f)
+            val reach = size.height * 2.2f
+            state.bursts.forEach { burst ->
+                val progress = burst.progress.value
+                if (progress <= 0f) return@forEach
+                // Decelerating flight + quadratic gravity pulling the sparks back down.
+                val flight = 1f - (1f - progress) * (1f - progress)
+                val fall = progress * progress * reach * 0.35f
+                val alpha = (1f - progress).coerceIn(0f, 1f)
+                burst.sparks.forEach { spark ->
+                    val distance = spark.speed * flight * reach
+                    val x = origin.x + cos(spark.angleRad) * distance
+                    val y = origin.y + sin(spark.angleRad) * distance + fall
+                    val sparkSize = size.height * spark.relativeSize
+                    withTransform({
+                        translate(x, y)
+                        rotate(degrees = spark.spin * progress * 360f, pivot = Offset.Zero)
+                    }) {
+                        when (spark.shape) {
+                            HeartSparkShape.STAR ->
+                                withTransform({ scale(sparkSize, sparkSize, Offset.Zero) }) {
+                                    drawPath(starPath, color = spark.color, alpha = alpha)
+                                }
+
+                            HeartSparkShape.GLITTER ->
+                                drawRect(
+                                    color = spark.color,
+                                    alpha = alpha,
+                                    topLeft = Offset(-sparkSize * 0.18f, -sparkSize * 0.55f),
+                                    size = Size(sparkSize * 0.36f, sparkSize * 1.1f),
+                                )
+                        }
                     }
                 }
             }
         }
-    }
 }
 
 object HeartBurstDefaults {
-    /** Gold, warm white, and pink glitter — reads against both dark and artwork backdrops. */
+    /** Vivid celebration palette: vibrant crimson, coral, gold, peach, and crisp white. */
     val colors: List<Color> =
         listOf(
+            Color(0xFFFF2D55),
+            Color(0xFFFF3B30),
             Color(0xFFFFD54F),
             Color(0xFFFFF59D),
             Color(0xFFFF8A80),
@@ -131,8 +169,8 @@ object HeartBurstDefaults {
         )
 }
 
-private const val BURST_DURATION_MS = 750
-private const val PARTICLES_PER_BURST = 16
+private const val BURST_DURATION_MS = 650
+private const val PARTICLES_PER_BURST = 22
 
 internal enum class HeartSparkShape { STAR, GLITTER }
 
