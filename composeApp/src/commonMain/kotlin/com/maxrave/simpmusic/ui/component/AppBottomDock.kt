@@ -2,8 +2,10 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -18,9 +20,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
@@ -40,6 +44,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -61,9 +67,8 @@ import kotlin.reflect.KClass
 
 /**
  * A modern, clean floating bottom-center dock.
- * Uses graphicsLayer-only animations to avoid triggering layout/measure passes on every frame.
- * The selected-item pill is implemented via AnimatedVisibility expand/shrink — no
- * onGloballyPositioned state writes — so there is no recomposition during animation.
+ * Uses uniform selected item widths and coordinated spring animations to ensure the dock container
+ * remains perfectly stable without sub-pixel jitter or 1px resizing when switching options.
  */
 @Composable
 fun AppBottomDock(
@@ -102,9 +107,6 @@ fun AppBottomDock(
             }
         )
     }
-    var previousOrdinal by rememberSaveable {
-        mutableIntStateOf(selectedOrdinal)
-    }
 
     // Keep optimistic state synchronized when destination changes from gestures or deep links
     LaunchedEffect(currentDestination) {
@@ -113,12 +115,10 @@ fun AppBottomDock(
         }
         if (matching != null) {
             if (selectedOrdinal != matching.ordinal) {
-                previousOrdinal = selectedOrdinal
                 selectedOrdinal = matching.ordinal
             }
         } else if (currentDestination?.hierarchy?.any { it.hasRoute(SettingsDestination::class) } == true) {
             if (selectedOrdinal != -1) {
-                previousOrdinal = selectedOrdinal
                 selectedOrdinal = -1
             }
         }
@@ -137,7 +137,6 @@ fun AppBottomDock(
             }
         } else {
             // Immediate 0ms visual feedback on tap
-            previousOrdinal = selectedOrdinal
             selectedOrdinal = screen.ordinal
             navController.navigate(screen.destination) {
                 popUpTo(navController.graph.findStartDestination().id) {
@@ -152,9 +151,13 @@ fun AppBottomDock(
     // Cache typo once per composition — avoids re-allocating Typography on every item in the loop
     val labelStyle = typo().labelMedium
 
-    val currentScreenIndex = bottomNavScreens.indexOfFirst { it.ordinal == selectedOrdinal }.let { if (it == -1) bottomNavScreens.size else it }
-    val previousScreenIndex = bottomNavScreens.indexOfFirst { it.ordinal == previousOrdinal }.let { if (it == -1) bottomNavScreens.size else it }
-    val isMovingForward = currentScreenIndex >= previousScreenIndex
+    // Uniform pill width across all tabs keeps the total dock width perfectly constant while switching
+    val selectedItemWidth =
+        when {
+            bottomNavScreens.size <= 3 -> 106.dp
+            bottomNavScreens.size == 4 -> 98.dp
+            else -> 90.dp
+        }
 
     Surface(
         shape = CircleShape,
@@ -164,7 +167,13 @@ fun AppBottomDock(
         modifier =
             Modifier
                 .wrapContentWidth()
-                .height(58.dp),
+                .height(58.dp)
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = 500f,
+                    ),
+                ),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
@@ -176,9 +185,9 @@ fun AppBottomDock(
                 AppBottomDockItem(
                     screen = screen,
                     selected = selected,
-                    isMovingForward = isMovingForward,
+                    selectedWidth = selectedItemWidth,
                     labelStyle = labelStyle,
-                    onSelect = selectTab
+                    onSelect = selectTab,
                 )
             }
 
@@ -206,12 +215,22 @@ fun AppBottomDock(
             )
 
             val settingsPillColor = MaterialTheme.colorScheme.primaryContainer
+            val settingsBackgroundColor by animateColorAsState(
+                targetValue =
+                    if (isSettingsSelected) {
+                        settingsPillColor
+                    } else {
+                        androidx.compose.ui.graphics.Color.Transparent
+                    },
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                label = "settingsBackgroundColor",
+            )
             Box(
                 modifier =
                     Modifier
-                        .height(44.dp)
+                        .size(44.dp)
                         .clip(CircleShape)
-                        .background(if (isSettingsSelected) settingsPillColor else androidx.compose.ui.graphics.Color.Transparent)
+                        .background(settingsBackgroundColor)
                         .graphicsLayer {
                             scaleX = settingsPressScale
                             scaleY = settingsPressScale
@@ -224,15 +243,13 @@ fun AppBottomDock(
                             if (isSettingsSelected) {
                                 reloadDestinationIfNeeded(SettingsDestination::class)
                             } else {
-                                previousOrdinal = selectedOrdinal
                                 selectedOrdinal = -1
                                 navController.navigate(SettingsDestination) {
                                     launchSingleTop = true
                                     restoreState = true
                                 }
                             }
-                        }
-                        .padding(horizontal = 10.dp),
+                        },
                 contentAlignment = Alignment.Center,
             ) {
                 CompositionLocalProvider(LocalContentColor provides settingsContentColor) {
@@ -247,9 +264,9 @@ fun AppBottomDock(
 private fun AppBottomDockItem(
     screen: BottomNavScreen,
     selected: Boolean,
-    isMovingForward: Boolean,
+    selectedWidth: Dp,
     labelStyle: androidx.compose.ui.text.TextStyle,
-    onSelect: (BottomNavScreen) -> Unit
+    onSelect: (BottomNavScreen) -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
@@ -271,14 +288,36 @@ private fun AppBottomDockItem(
     )
 
     val pillColor = MaterialTheme.colorScheme.primaryContainer
-    val expandFrom = if (isMovingForward) Alignment.Start else Alignment.End
-    val shrinkTowards = if (isMovingForward) Alignment.Start else Alignment.End
+    val pillBackgroundColor by animateColorAsState(
+        targetValue =
+            if (selected) {
+                pillColor
+            } else {
+                androidx.compose.ui.graphics.Color.Transparent
+            },
+        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        label = "dockPillBackgroundColor",
+    )
+
+    // Coordinated item width animation: as one collapses from selectedWidth to 44dp,
+    // the other expands from 44dp to selectedWidth with the exact same spec, ensuring
+    // their sum is constant and eliminating 1px resize jitter completely.
+    val itemWidth by animateDpAsState(
+        targetValue = if (selected) selectedWidth else 44.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = 500f,
+        ),
+        label = "dockItemWidth",
+    )
+
     Box(
         modifier =
             Modifier
                 .height(44.dp)
+                .width(itemWidth)
                 .clip(CircleShape)
-                .background(if (selected) pillColor else androidx.compose.ui.graphics.Color.Transparent)
+                .background(pillBackgroundColor)
                 .graphicsLayer {
                     scaleX = pressScale
                     scaleY = pressScale
@@ -286,13 +325,13 @@ private fun AppBottomDockItem(
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
-                ) { onSelect(screen) }
-                .padding(horizontal = if (selected) 14.dp else 10.dp),
+                ) { onSelect(screen) },
         contentAlignment = Alignment.Center,
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.Center,
+            modifier = Modifier.fillMaxHeight().padding(horizontal = 8.dp),
         ) {
             CompositionLocalProvider(LocalContentColor provides contentColor) {
                 screen.icon()
@@ -300,17 +339,17 @@ private fun AppBottomDockItem(
             AnimatedVisibility(
                 visible = selected,
                 enter =
-                    fadeIn(tween(160)) +
+                    fadeIn(tween(140, delayMillis = 40)) +
                         expandHorizontally(
                             animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
-                            expandFrom = expandFrom,
+                            expandFrom = Alignment.Start,
                             clip = true,
                         ),
                 exit =
-                    fadeOut(tween(120)) +
+                    fadeOut(tween(90)) +
                         shrinkHorizontally(
                             animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
-                            shrinkTowards = shrinkTowards,
+                            shrinkTowards = Alignment.Start,
                             clip = true,
                         ),
             ) {
@@ -319,7 +358,9 @@ private fun AppBottomDockItem(
                     style = labelStyle,
                     color = contentColor,
                     maxLines = 1,
-                    modifier = Modifier.padding(start = 2.dp),
+                    overflow = TextOverflow.Ellipsis,
+                    softWrap = false,
+                    modifier = Modifier.padding(start = 4.dp),
                 )
             }
         }
