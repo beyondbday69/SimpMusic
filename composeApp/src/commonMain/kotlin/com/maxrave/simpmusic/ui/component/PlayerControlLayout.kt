@@ -104,7 +104,7 @@ fun PlayerControlLayout(
     val nextPulse = remember { Animatable(1f) }
     val repeatPulse = remember { Animatable(1f) }
 
-    // Wave impulse function: compresses the whole clicked button and ripples through surrounded buttons
+    // Wave impulse function: pressed button stretches outward while surrounded buttons contract inward
     val triggerWave: (Int) -> Unit = { centerIndex ->
         scope.launch {
             // 0: Shuffle, 1: Prev, 2: Play/Pause, 3: Next, 4: Repeat
@@ -112,9 +112,9 @@ fun PlayerControlLayout(
             pulses.forEachIndexed { index, pulse ->
                 val distance = abs(index - centerIndex)
                 val targetScale = when (distance) {
-                    0 -> 0.78f // Main pressed button gets full punchy compression
-                    1 -> 0.88f // Directly surrounded neighbor buttons get distinct bounce
-                    2 -> 0.94f // Secondary neighbor ripple
+                    0 -> 1.20f // Pressed button STRETCHES OUTWARDS (spreads around outer side)
+                    1 -> 0.86f // Directly surrounded neighbor buttons CONTRACT INWARD to make room
+                    2 -> 0.93f // Secondary neighbor ripple contraction
                     else -> 0.98f
                 }
                 val damping = if (distance == 0) 0.55f else 0.6f
@@ -154,12 +154,12 @@ fun PlayerControlLayout(
         triggerWave(2)
     }
 
-    // Coupled scales: 1 button pressed causes adjacent buttons to bounce a little bit
+    // Coupled scales: pressed button stretches outward while adjacent buttons contract inward
     // Shuffle (function button: pops on X axis, scaleY = 1f)
     val shuffleTargetScale = when {
-        shufflePressed -> 0.82f
-        prevPressed -> 0.93f
-        playPausePressed -> 0.96f
+        shufflePressed -> 1.16f // Stretches outward along X
+        prevPressed -> 0.88f // Contracts when Prev is pressed
+        playPausePressed -> 0.94f // Contracts when Play is pressed
         else -> 1f
     }
     val shuffleScale by animateFloatAsState(
@@ -170,10 +170,9 @@ fun PlayerControlLayout(
 
     // Previous
     val prevTargetScale = when {
-        prevPressed && controllerState.isPreviousAvailable -> 0.86f
-        shufflePressed -> 0.93f
-        playPausePressed -> 0.94f
-        nextPressed -> 0.98f
+        prevPressed && controllerState.isPreviousAvailable -> 1.15f // Stretches outward
+        shufflePressed || playPausePressed -> 0.88f // Contracts inward
+        nextPressed -> 0.94f
         else -> 1f
     }
     val prevScale by animateFloatAsState(
@@ -184,9 +183,9 @@ fun PlayerControlLayout(
 
     // Play/Pause
     val playPauseTargetScale = when {
-        playPausePressed -> 0.88f
-        prevPressed || nextPressed -> 0.94f
-        shufflePressed || repeatPressed -> 0.97f
+        playPausePressed -> 1.15f // Stretches outward
+        prevPressed || nextPressed -> 0.88f // Contracts inward
+        shufflePressed || repeatPressed -> 0.94f // Contracts slightly
         else -> 1f
     }
     val playPauseScale by animateFloatAsState(
@@ -197,10 +196,9 @@ fun PlayerControlLayout(
 
     // Next
     val nextTargetScale = when {
-        nextPressed && controllerState.isNextAvailable -> 0.86f
-        repeatPressed -> 0.93f
-        playPausePressed -> 0.94f
-        prevPressed -> 0.98f
+        nextPressed && controllerState.isNextAvailable -> 1.15f // Stretches outward
+        repeatPressed || playPausePressed -> 0.88f // Contracts inward
+        prevPressed -> 0.94f
         else -> 1f
     }
     val nextScale by animateFloatAsState(
@@ -211,9 +209,9 @@ fun PlayerControlLayout(
 
     // Repeat (function button / loop: pops on X axis, scaleY = 1f)
     val repeatTargetScale = when {
-        repeatPressed -> 0.82f
-        nextPressed -> 0.93f
-        playPausePressed -> 0.96f
+        repeatPressed -> 1.16f // Stretches outward along X
+        nextPressed -> 0.88f // Contracts when Next is pressed
+        playPausePressed -> 0.94f // Contracts when Play is pressed
         else -> 1f
     }
     val repeatScale by animateFloatAsState(

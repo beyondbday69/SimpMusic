@@ -114,7 +114,7 @@ fun ExpressiveTransportRow(
     val nextPulse = remember { Animatable(1f) }
     val repeatPulse = remember { Animatable(1f) }
 
-    // Wave impulse function: compresses the whole clicked button and ripples through surrounded buttons
+    // Wave impulse function: pressed button stretches outward while surrounded buttons contract inward
     val triggerTransportWave: (Int) -> Unit = { centerIndex ->
         scope.launch {
             // Mapping: if showShuffleAndRepeat: 0: Shuffle, 1: Prev, 2: Play, 3: Next, 4: Repeat
@@ -127,9 +127,9 @@ fun ExpressiveTransportRow(
             pulses.forEachIndexed { index, pulse ->
                 val distance = abs(index - centerIndex)
                 val targetScale = when (distance) {
-                    0 -> 0.82f // Main clicked button gets full spring compression
-                    1 -> 0.90f // Directly surrounded neighbor buttons get distinct bounce
-                    2 -> 0.95f // Secondary ripple
+                    0 -> 1.18f // Pressed button STRETCHES OUTWARDS (spreads around outer side)
+                    1 -> 0.86f // Directly surrounded neighbor buttons CONTRACT INWARD to make room
+                    2 -> 0.93f // Secondary ripple contraction
                     else -> 0.98f
                 }
                 val damping = if (distance == 0) 0.55f else 0.6f
@@ -169,10 +169,10 @@ fun ExpressiveTransportRow(
         label = "nextWeight",
     )
 
-    // Coupled tactile press compression physics: 1 button pressed causes adjacent buttons to bounce a little bit
+    // Coupled tactile stretch & contract physics: pressed button stretches outward while neighbors contract inward
     val playTargetScale = when {
-        playPressed -> 0.90f
-        prevPressed || nextPressed -> 0.95f
+        playPressed -> 1.14f // Stretches outwards!
+        prevPressed || nextPressed -> 0.88f // Adjacent buttons contract inward!
         else -> 1f
     }
     val playScale by animateFloatAsState(
@@ -182,9 +182,9 @@ fun ExpressiveTransportRow(
     )
 
     val prevTargetScale = when {
-        prevPressed && controllerState.isPreviousAvailable -> 0.90f
-        playPressed -> 0.95f
-        nextPressed -> 0.98f
+        prevPressed && controllerState.isPreviousAvailable -> 1.14f // Stretches outwards!
+        playPressed -> 0.88f // Adjacent button contracts inward!
+        nextPressed -> 0.94f
         else -> 1f
     }
     val prevScale by animateFloatAsState(
@@ -194,9 +194,9 @@ fun ExpressiveTransportRow(
     )
 
     val nextTargetScale = when {
-        nextPressed && controllerState.isNextAvailable -> 0.90f
-        playPressed -> 0.95f
-        prevPressed -> 0.98f
+        nextPressed && controllerState.isNextAvailable -> 1.14f // Stretches outwards!
+        playPressed -> 0.88f // Adjacent button contracts inward!
+        prevPressed -> 0.94f
         else -> 1f
     }
     val nextScale by animateFloatAsState(
@@ -433,7 +433,7 @@ private fun RowScope.ExpressiveToggleButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (isPressed) 0.90f else 1f,
+        targetValue = if (isPressed) 1.15f else 1f,
         animationSpec = motionScheme.fastSpatialSpec(),
         label = "toggleScale",
     )

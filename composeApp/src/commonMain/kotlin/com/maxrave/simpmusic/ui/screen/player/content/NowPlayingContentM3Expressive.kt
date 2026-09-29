@@ -985,7 +985,7 @@ private fun ExpressiveConnectedGroup(
     val playlistPulse = remember { Animatable(1f) }
     val queuePulse = remember { Animatable(1f) }
 
-    // Wave impulse function: compresses the whole clicked button and ripples through surrounded buttons
+    // Wave impulse function: pressed button stretches outward while surrounded buttons contract inward
     val triggerWave: (Int) -> Unit = { centerIndex ->
         scope.launch {
             // 0: Info, 1: Cast, 2: Shuffle, 3: Repeat, 4: Playlist, 5: Queue
@@ -993,9 +993,9 @@ private fun ExpressiveConnectedGroup(
             pulses.forEachIndexed { index, pulse ->
                 val distance = abs(index - centerIndex)
                 val targetScale = when (distance) {
-                    0 -> 0.78f // Main pressed button gets full punchy compression
-                    1 -> 0.88f // Directly surrounded neighbor buttons get distinct bounce
-                    2 -> 0.94f // Secondary neighbor ripple
+                    0 -> 1.20f // Pressed button STRETCHES OUTWARDS (spreads around outer side)
+                    1 -> 0.86f // Directly adjacent buttons CONTRACT INWARD to make room
+                    2 -> 0.93f // Secondary neighbor contraction
                     else -> 0.98f
                 }
                 val damping = if (distance == 0) 0.55f else 0.6f
@@ -1058,12 +1058,13 @@ private fun ExpressiveConnectedGroup(
         label = "queueWeight",
     )
 
-    // Coupled X-axis scales: 1 button pressed causes neighbors to bounce a little bit
+    // Coupled X-axis scales: pressed button stretches outward while neighbors contract inward
     val infoScaleX by animateFloatAsState(
         targetValue = when {
-            infoPressed -> 0.86f
-            castPressed || shufflePressed -> 0.94f
-            anyPressed -> 0.97f
+            infoPressed -> 1.15f
+            castPressed -> 0.88f
+            shufflePressed -> 0.94f
+            anyPressed -> 0.96f
             else -> 1f
         },
         animationSpec = motionScheme.fastSpatialSpec(),
@@ -1071,9 +1072,10 @@ private fun ExpressiveConnectedGroup(
     )
     val castScaleX by animateFloatAsState(
         targetValue = when {
-            castPressed -> 0.86f
-            infoPressed || shufflePressed -> 0.94f
-            anyPressed -> 0.97f
+            castPressed -> 1.15f
+            infoPressed || shufflePressed -> 0.88f
+            repeatPressed -> 0.94f
+            anyPressed -> 0.96f
             else -> 1f
         },
         animationSpec = motionScheme.fastSpatialSpec(),
@@ -1081,8 +1083,9 @@ private fun ExpressiveConnectedGroup(
     )
     val shuffleScaleX by animateFloatAsState(
         targetValue = when {
-            shufflePressed -> 0.84f
-            repeatPressed || castPressed -> 0.93f
+            shufflePressed -> 1.16f // function button stretches out on X axis!
+            castPressed || repeatPressed -> 0.88f // direct neighbors contract inward!
+            infoPressed || playlistPressed -> 0.94f
             anyPressed -> 0.96f
             else -> 1f
         },
@@ -1091,8 +1094,9 @@ private fun ExpressiveConnectedGroup(
     )
     val repeatScaleX by animateFloatAsState(
         targetValue = when {
-            repeatPressed -> 0.84f
-            shufflePressed || playlistPressed -> 0.93f
+            repeatPressed -> 1.16f // function button stretches out on X axis!
+            shufflePressed || playlistPressed -> 0.88f // direct neighbors contract inward!
+            castPressed || queuePressed -> 0.94f
             anyPressed -> 0.96f
             else -> 1f
         },
@@ -1101,9 +1105,10 @@ private fun ExpressiveConnectedGroup(
     )
     val playlistScaleX by animateFloatAsState(
         targetValue = when {
-            playlistPressed -> 0.86f
-            repeatPressed || queuePressed -> 0.94f
-            anyPressed -> 0.97f
+            playlistPressed -> 1.15f
+            repeatPressed || queuePressed -> 0.88f
+            shufflePressed -> 0.94f
+            anyPressed -> 0.96f
             else -> 1f
         },
         animationSpec = motionScheme.fastSpatialSpec(),
@@ -1111,9 +1116,10 @@ private fun ExpressiveConnectedGroup(
     )
     val queueScaleX by animateFloatAsState(
         targetValue = when {
-            queuePressed -> 0.86f
-            playlistPressed || repeatPressed -> 0.94f
-            anyPressed -> 0.97f
+            queuePressed -> 1.15f
+            playlistPressed -> 0.88f
+            repeatPressed -> 0.94f
+            anyPressed -> 0.96f
             else -> 1f
         },
         animationSpec = motionScheme.fastSpatialSpec(),
