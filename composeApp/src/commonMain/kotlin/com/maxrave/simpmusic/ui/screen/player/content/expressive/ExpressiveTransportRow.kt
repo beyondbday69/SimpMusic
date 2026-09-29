@@ -1,17 +1,8 @@
 package com.maxrave.simpmusic.ui.screen.player.content.expressive
 
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.AnimationVector1D
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -31,18 +22,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
-import kotlin.math.abs
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.maxrave.domain.mediaservice.handler.ControlState
@@ -74,15 +57,15 @@ private val TOGGLE_SEPARATION = 8.dp
 /**
  * M3-Expressive transport: three pill buttons in a 68dp row.
  *
- * - Play/pause corner radius morphs 22dp (playing squircle) ↔ 34dp (paused pill) ↔ 16dp (pressed)
- *   using [MaterialTheme.motionScheme]'s spatial springs.
- * - Tactile press compression physics: button compresses on touch and bounces back with fast spatial recoil.
- * - Play/pause icon swap runs on AnimatedContent with fast spatial scale bounce and fast effects fade.
+ * - Play/pause corner radius morphs 22dp (playing) ↔ 34dp (paused) on
+ *   [MaterialTheme.motionScheme]'s default spatial spring.
  * - The pressed button's weight grows ×1.15 on the fast spatial spring while the
  *   neighbours shrink proportionally (Row weight normalization).
- * - While [loading], a small CircularProgressIndicator replaces the play/pause icon with spring transition.
- * - Prev/next respect [ControlState.isPreviousAvailable]/[ControlState.isNextAvailable] with
- *   spring shape morphing and tactile press recoil.
+ * - Icon swaps ride Crossfade with the fast effects spec.
+ * - While [loading], a small CircularProgressIndicator replaces the play/pause icon and the
+ *   press is a no-op — mirroring the spinner block in NowPlayingContentSpotify's toolbar.
+ * - Prev/next respect [ControlState.isPreviousAvailable]/[ControlState.isNextAvailable] the
+ *   way the Classic style does: icon at 0.4f alpha and a no-op click.
  *
  * Sends [UIEvent.PlayPause] / [UIEvent.Previous] / [UIEvent.Next] exactly like
  * [com.maxrave.simpmusic.ui.component.PlayerControlLayout].
@@ -107,52 +90,6 @@ fun ExpressiveTransportRow(
     val playPressed by playInteraction.collectIsPressedAsState()
     val nextPressed by nextInteraction.collectIsPressedAsState()
 
-    val scope = rememberCoroutineScope()
-    val shufflePulse = remember { Animatable(1f) }
-    val prevPulse = remember { Animatable(1f) }
-    val playPulse = remember { Animatable(1f) }
-    val nextPulse = remember { Animatable(1f) }
-    val repeatPulse = remember { Animatable(1f) }
-
-    // Wave impulse function: pressed button stretches outward while surrounded buttons contract inward
-    val triggerTransportWave: (Int) -> Unit = { centerIndex ->
-        scope.launch {
-            // Mapping: if showShuffleAndRepeat: 0: Shuffle, 1: Prev, 2: Play, 3: Next, 4: Repeat
-            // otherwise: 0: Prev, 1: Play, 2: Next
-            val pulses = if (showShuffleAndRepeat) {
-                listOf(shufflePulse, prevPulse, playPulse, nextPulse, repeatPulse)
-            } else {
-                listOf(prevPulse, playPulse, nextPulse)
-            }
-            pulses.forEachIndexed { index, pulse ->
-                val distance = abs(index - centerIndex)
-                val targetScale = when (distance) {
-                    0 -> 1.18f // Pressed button STRETCHES OUTWARDS (spreads around outer side)
-                    1 -> 0.86f // Directly surrounded neighbor buttons CONTRACT INWARD to make room
-                    2 -> 0.93f // Secondary ripple contraction
-                    else -> 0.98f
-                }
-                val damping = if (distance == 0) 0.55f else 0.6f
-                val stiffness = if (distance == 0) 800f else 900f
-                launch {
-                    pulse.snapTo(targetScale)
-                    pulse.animateTo(1f, spring(dampingRatio = damping, stiffness = stiffness))
-                }
-            }
-        }
-    }
-
-    var firstPlayMount by remember { mutableStateOf(true) }
-    LaunchedEffect(controllerState.isPlaying) {
-        if (firstPlayMount) {
-            firstPlayMount = false
-            return@LaunchedEffect
-        }
-        val playIndex = if (showShuffleAndRepeat) 2 else 1
-        triggerTransportWave(playIndex)
-    }
-
-    // Weight expansion: pressed button grows x1.15 on fast spatial spring
     val prevWeight by animateFloatAsState(
         targetValue = if (prevPressed) SIDE_WEIGHT * PRESS_GROWTH else SIDE_WEIGHT,
         animationSpec = motionScheme.fastSpatialSpec(),
@@ -169,65 +106,10 @@ fun ExpressiveTransportRow(
         label = "nextWeight",
     )
 
-    // Coupled tactile stretch & contract physics: pressed button stretches outward while neighbors contract inward
-    val playTargetScale = when {
-        playPressed -> 1.14f // Stretches outwards!
-        prevPressed || nextPressed -> 0.88f // Adjacent buttons contract inward!
-        else -> 1f
-    }
-    val playScale by animateFloatAsState(
-        targetValue = playTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "playScale",
-    )
-
-    val prevTargetScale = when {
-        prevPressed && controllerState.isPreviousAvailable -> 1.14f // Stretches outwards!
-        playPressed -> 0.88f // Adjacent button contracts inward!
-        nextPressed -> 0.94f
-        else -> 1f
-    }
-    val prevScale by animateFloatAsState(
-        targetValue = prevTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "prevScale",
-    )
-
-    val nextTargetScale = when {
-        nextPressed && controllerState.isNextAvailable -> 1.14f // Stretches outwards!
-        playPressed -> 0.88f // Adjacent button contracts inward!
-        prevPressed -> 0.94f
-        else -> 1f
-    }
-    val nextScale by animateFloatAsState(
-        targetValue = nextTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "nextScale",
-    )
-
-    // Shape morphing:
-    // Play: 34dp (paused pill) <-> 22dp (playing squircle) <-> 16dp (pressed more square)
-    val targetPlayCorner = when {
-        playPressed -> 16.dp
-        controllerState.isPlaying -> 22.dp
-        else -> 34.dp
-    }
     val playCorner by animateDpAsState(
-        targetValue = targetPlayCorner,
-        animationSpec = if (playPressed) motionScheme.fastSpatialSpec() else motionScheme.defaultSpatialSpec(),
+        targetValue = if (controllerState.isPlaying) 22.dp else 34.dp,
+        animationSpec = motionScheme.defaultSpatialSpec(),
         label = "playCorner",
-    )
-
-    // Prev/Next: 34dp pill <-> 22dp pressed
-    val prevCorner by animateDpAsState(
-        targetValue = if (prevPressed && controllerState.isPreviousAvailable) 22.dp else 34.dp,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "prevCorner",
-    )
-    val nextCorner by animateDpAsState(
-        targetValue = if (nextPressed && controllerState.isNextAvailable) 22.dp else 34.dp,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "nextCorner",
     )
 
     Row(
@@ -242,35 +124,24 @@ fun ExpressiveTransportRow(
             ExpressiveToggleButton(
                 icon = SimpIcons.Shuffle,
                 active = controllerState.isShuffle,
-                pulse = shufflePulse,
-                onClick = {
-                    triggerTransportWave(0)
-                    onUIEvent(UIEvent.Shuffle)
-                },
+                onClick = { onUIEvent(UIEvent.Shuffle) },
             )
             Spacer(modifier = Modifier.width(TOGGLE_SEPARATION))
         }
-        // Previous — pill on secondaryContainer, morphs and compresses on press.
+        // Previous — full pill on secondaryContainer.
         Surface(
             onClick = {
                 if (controllerState.isPreviousAvailable) {
-                    val prevIndex = if (showShuffleAndRepeat) 1 else 0
-                    triggerTransportWave(prevIndex)
                     onUIEvent(UIEvent.Previous)
                 }
             },
-            shape = RoundedCornerShape(prevCorner),
+            shape = RoundedCornerShape(34.dp),
             color = colorScheme.secondaryContainer,
             interactionSource = prevInteraction,
             modifier =
                 Modifier
                     .weight(prevWeight)
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                        scaleX = prevScale * prevPulse.value
-                        scaleY = prevScale * prevPulse.value
-                        transformOrigin = TransformOrigin.Center
-                    },
+                    .fillMaxHeight(),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
@@ -284,12 +155,10 @@ fun ExpressiveTransportRow(
                 )
             }
         }
-        // Play / Pause — primary container, corner radius morphs with playback state and press, tactile spring recoil.
+        // Play / Pause — primary container, corner radius morphs with playback state.
         Surface(
             onClick = {
                 if (!loading) {
-                    val playIndex = if (showShuffleAndRepeat) 2 else 1
-                    triggerTransportWave(playIndex)
                     onUIEvent(UIEvent.PlayPause)
                 }
             },
@@ -299,69 +168,41 @@ fun ExpressiveTransportRow(
             modifier =
                 Modifier
                     .weight(playWeight)
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                        scaleX = playScale * playPulse.value
-                        scaleY = playScale * playPulse.value
-                        transformOrigin = TransformOrigin.Center
-                    },
+                    .fillMaxHeight(),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                AnimatedContent(
+                Crossfade(
                     targetState = loading,
-                    transitionSpec = {
-                        (scaleIn(
-                            initialScale = 0.8f,
-                            animationSpec = motionScheme.fastSpatialSpec(),
-                        ) + fadeIn(
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                        )).togetherWith(
-                            scaleOut(
-                                targetScale = 0.8f,
-                                animationSpec = motionScheme.fastSpatialSpec(),
-                            ) + fadeOut(
-                                animationSpec = motionScheme.fastEffectsSpec(),
-                            ),
-                        )
-                    },
-                    label = "playLoadingAnimation",
+                    animationSpec = motionScheme.fastEffectsSpec(),
+                    label = "playLoading",
                     modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center,
                 ) { isLoading ->
                     if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(22.dp),
-                            color = colorScheme.onPrimary,
-                            strokeWidth = 3.dp,
-                        )
-                    } else {
-                        AnimatedContent(
-                            targetState = controllerState.isPlaying,
-                            transitionSpec = {
-                                (scaleIn(
-                                    initialScale = 0.88f,
-                                    animationSpec = motionScheme.fastSpatialSpec(),
-                                ) + fadeIn(
-                                    animationSpec = motionScheme.fastEffectsSpec(),
-                                )).togetherWith(
-                                    scaleOut(
-                                        targetScale = 0.88f,
-                                        animationSpec = motionScheme.fastSpatialSpec(),
-                                    ) + fadeOut(
-                                        animationSpec = motionScheme.fastEffectsSpec(),
-                                    ),
-                                )
-                            },
-                            label = "playPauseIconAnimation",
+                        Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center,
-                        ) { isPlaying ->
-                            Icon(
-                                imageVector = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
-                                contentDescription = if (isPlaying) "Pause" else "Play",
-                                tint = colorScheme.onPrimary,
-                                modifier = Modifier.size(36.dp),
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(22.dp),
+                                color = colorScheme.onPrimary,
+                                strokeWidth = 3.dp,
                             )
+                        }
+                    } else {
+                        Crossfade(
+                            targetState = controllerState.isPlaying,
+                            animationSpec = motionScheme.fastEffectsSpec(),
+                            label = "playPauseIcon",
+                            modifier = Modifier.fillMaxSize(),
+                        ) { isPlaying ->
+                            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                                Icon(
+                                    imageVector = if (isPlaying) SimpIcons.Pause else SimpIcons.PlayArrow,
+                                    contentDescription = "",
+                                    tint = colorScheme.onPrimary,
+                                    modifier = Modifier.size(36.dp),
+                                )
+                            }
                         }
                     }
                 }
@@ -371,23 +212,16 @@ fun ExpressiveTransportRow(
         Surface(
             onClick = {
                 if (controllerState.isNextAvailable) {
-                    val nextIndex = if (showShuffleAndRepeat) 3 else 2
-                    triggerTransportWave(nextIndex)
                     onUIEvent(UIEvent.Next)
                 }
             },
-            shape = RoundedCornerShape(nextCorner),
+            shape = RoundedCornerShape(34.dp),
             color = colorScheme.secondaryContainer,
             interactionSource = nextInteraction,
             modifier =
                 Modifier
                     .weight(nextWeight)
-                    .fillMaxHeight()
-                    .graphicsLayer {
-                        scaleX = nextScale * nextPulse.value
-                        scaleY = nextScale * nextPulse.value
-                        transformOrigin = TransformOrigin.Center
-                    },
+                    .fillMaxHeight(),
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
                 Icon(
@@ -407,11 +241,7 @@ fun ExpressiveTransportRow(
             ExpressiveToggleButton(
                 icon = if (repeatState is RepeatState.One) SimpIcons.RepeatOne else SimpIcons.Repeat,
                 active = repeatState !is RepeatState.None,
-                pulse = repeatPulse,
-                onClick = {
-                    triggerTransportWave(4)
-                    onUIEvent(UIEvent.Repeat)
-                },
+                onClick = { onUIEvent(UIEvent.Repeat) },
             )
         }
     }
@@ -419,59 +249,29 @@ fun ExpressiveTransportRow(
 
 /**
  * Shuffle or repeat as a pill beside the transport, in the connected group's colours: primary
- * container while on, surfaceContainerHigh while off — with tactile compression and fast effects transitions.
+ * container while on, surfaceContainerHigh while off — the same pair Now Playing uses for them.
  */
 @Composable
 private fun RowScope.ExpressiveToggleButton(
     icon: ImageVector,
     active: Boolean,
-    pulse: Animatable<Float, AnimationVector1D>? = null,
     onClick: () -> Unit,
 ) {
     val colorScheme = MaterialTheme.colorScheme
-    val motionScheme = MaterialTheme.motionScheme
-    val interactionSource = remember { MutableInteractionSource() }
-    val isPressed by interactionSource.collectIsPressedAsState()
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed) 1.15f else 1f,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "toggleScale",
-    )
-    val corner by animateDpAsState(
-        targetValue = if (isPressed) 20.dp else 34.dp,
-        animationSpec = motionScheme.fastSpatialSpec(),
-        label = "toggleCorner",
-    )
-    val containerColor by animateColorAsState(
-        targetValue = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh,
-        animationSpec = motionScheme.fastEffectsSpec(),
-        label = "toggleContainerColor",
-    )
-    val iconColor by animateColorAsState(
-        targetValue = if (active) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
-        animationSpec = motionScheme.fastEffectsSpec(),
-        label = "toggleIconColor",
-    )
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(corner),
-        color = containerColor,
-        interactionSource = interactionSource,
+        shape = RoundedCornerShape(34.dp),
+        color = if (active) colorScheme.primaryContainer else colorScheme.surfaceContainerHigh,
         modifier =
             Modifier
                 .weight(TOGGLE_WEIGHT)
-                .fillMaxHeight()
-                .graphicsLayer {
-                    scaleX = scale * (pulse?.value ?: 1f)
-                    scaleY = 1.0f // function buttons (repeat, loop, shuffle) pop on X axis, not Y and Z!
-                    transformOrigin = TransformOrigin.Center
-                },
+                .fillMaxHeight(),
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Icon(
                 imageVector = icon,
                 contentDescription = "",
-                tint = iconColor,
+                tint = if (active) colorScheme.onPrimaryContainer else colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(22.dp),
             )
         }

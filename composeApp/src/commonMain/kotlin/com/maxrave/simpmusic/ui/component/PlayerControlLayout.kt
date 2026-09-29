@@ -1,16 +1,9 @@
 package com.maxrave.simpmusic.ui.component
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,18 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import kotlinx.coroutines.launch
-import kotlin.math.abs
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -82,141 +68,41 @@ fun PlayerControlLayout(
 
     val shuffleInteractionSource = remember { MutableInteractionSource() }
     val shufflePressed by shuffleInteractionSource.collectIsPressedAsState()
-
-    val prevInteractionSource = remember { MutableInteractionSource() }
-    val prevPressed by prevInteractionSource.collectIsPressedAsState()
-
-    val playPauseInteractionSource = remember { MutableInteractionSource() }
-    val playPausePressed by playPauseInteractionSource.collectIsPressedAsState()
-
-    val nextInteractionSource = remember { MutableInteractionSource() }
-    val nextPressed by nextInteractionSource.collectIsPressedAsState()
-
-    val repeatInteractionSource = remember { MutableInteractionSource() }
-    val repeatPressed by repeatInteractionSource.collectIsPressedAsState()
-
-    val motionScheme = MaterialTheme.motionScheme
-    val scope = rememberCoroutineScope()
-
-    val shufflePulse = remember { Animatable(1f) }
-    val prevPulse = remember { Animatable(1f) }
-    val playPausePulse = remember { Animatable(1f) }
-    val nextPulse = remember { Animatable(1f) }
-    val repeatPulse = remember { Animatable(1f) }
-
-    // Wave impulse function: pressed button stretches outward while surrounded buttons contract inward
-    val triggerWave: (Int) -> Unit = { centerIndex ->
-        scope.launch {
-            // 0: Shuffle, 1: Prev, 2: Play/Pause, 3: Next, 4: Repeat
-            val pulses = listOf(shufflePulse, prevPulse, playPausePulse, nextPulse, repeatPulse)
-            pulses.forEachIndexed { index, pulse ->
-                val distance = abs(index - centerIndex)
-                val targetScale = when (distance) {
-                    0 -> 1.20f // Pressed button STRETCHES OUTWARDS (spreads around outer side)
-                    1 -> 0.86f // Directly surrounded neighbor buttons CONTRACT INWARD to make room
-                    2 -> 0.93f // Secondary neighbor ripple contraction
-                    else -> 0.98f
-                }
-                val damping = if (distance == 0) 0.55f else 0.6f
-                val stiffness = if (distance == 0) 800f else 900f
-                launch {
-                    pulse.snapTo(targetScale)
-                    pulse.animateTo(1f, spring(dampingRatio = damping, stiffness = stiffness))
-                }
-            }
-        }
-    }
-
-    var firstRepeatMount by remember { mutableStateOf(true) }
-    LaunchedEffect(controllerState.repeatState) {
-        if (firstRepeatMount) {
-            firstRepeatMount = false
-            return@LaunchedEffect
-        }
-        triggerWave(4)
-    }
-
-    var firstShuffleMount by remember { mutableStateOf(true) }
-    LaunchedEffect(controllerState.isShuffle) {
-        if (firstShuffleMount) {
-            firstShuffleMount = false
-            return@LaunchedEffect
-        }
-        triggerWave(0)
-    }
-
-    var firstPlayMount by remember { mutableStateOf(true) }
-    LaunchedEffect(controllerState.isPlaying) {
-        if (firstPlayMount) {
-            firstPlayMount = false
-            return@LaunchedEffect
-        }
-        triggerWave(2)
-    }
-
-    // Coupled scales: pressed button stretches outward while adjacent buttons contract inward
-    // Shuffle (function button: pops on X axis, scaleY = 1f)
-    val shuffleTargetScale = when {
-        shufflePressed -> 1.16f // Stretches outward along X
-        prevPressed -> 0.88f // Contracts when Prev is pressed
-        playPausePressed -> 0.94f // Contracts when Play is pressed
-        else -> 1f
-    }
     val shuffleScale by animateFloatAsState(
-        targetValue = shuffleTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
+        targetValue = if (shufflePressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "shuffle_scale",
     )
 
-    // Previous
-    val prevTargetScale = when {
-        prevPressed && controllerState.isPreviousAvailable -> 1.15f // Stretches outward
-        shufflePressed || playPausePressed -> 0.88f // Contracts inward
-        nextPressed -> 0.94f
-        else -> 1f
-    }
+    val prevInteractionSource = remember { MutableInteractionSource() }
+    val prevPressed by prevInteractionSource.collectIsPressedAsState()
     val prevScale by animateFloatAsState(
-        targetValue = prevTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
+        targetValue = if (prevPressed && controllerState.isPreviousAvailable) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "prev_scale",
     )
 
-    // Play/Pause
-    val playPauseTargetScale = when {
-        playPausePressed -> 1.15f // Stretches outward
-        prevPressed || nextPressed -> 0.88f // Contracts inward
-        shufflePressed || repeatPressed -> 0.94f // Contracts slightly
-        else -> 1f
-    }
+    val playPauseInteractionSource = remember { MutableInteractionSource() }
+    val playPausePressed by playPauseInteractionSource.collectIsPressedAsState()
     val playPauseScale by animateFloatAsState(
-        targetValue = playPauseTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
+        targetValue = if (playPausePressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "play_pause_scale",
     )
 
-    // Next
-    val nextTargetScale = when {
-        nextPressed && controllerState.isNextAvailable -> 1.15f // Stretches outward
-        repeatPressed || playPausePressed -> 0.88f // Contracts inward
-        prevPressed -> 0.94f
-        else -> 1f
-    }
+    val nextInteractionSource = remember { MutableInteractionSource() }
+    val nextPressed by nextInteractionSource.collectIsPressedAsState()
     val nextScale by animateFloatAsState(
-        targetValue = nextTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
+        targetValue = if (nextPressed && controllerState.isNextAvailable) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "next_scale",
     )
 
-    // Repeat (function button / loop: pops on X axis, scaleY = 1f)
-    val repeatTargetScale = when {
-        repeatPressed -> 1.16f // Stretches outward along X
-        nextPressed -> 0.88f // Contracts when Next is pressed
-        playPausePressed -> 0.94f // Contracts when Play is pressed
-        else -> 1f
-    }
+    val repeatInteractionSource = remember { MutableInteractionSource() }
+    val repeatPressed by repeatInteractionSource.collectIsPressedAsState()
     val repeatScale by animateFloatAsState(
-        targetValue = repeatTargetScale,
-        animationSpec = motionScheme.fastSpatialSpec(),
+        targetValue = if (repeatPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "repeat_scale",
     )
 
@@ -236,30 +122,34 @@ fun PlayerControlLayout(
                         .size(smallIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = shuffleScale * shufflePulse.value
-                            scaleY = 1f // pop X axis not Y and Z
+                            scaleX = shuffleScale
+                            scaleY = shuffleScale
                         }
                         .clip(CircleShape)
                         .clickable(
                             interactionSource = shuffleInteractionSource,
                             indication = ripple(bounded = false, radius = smallIcon.second / 2),
                         ) {
-                            triggerWave(0)
                             onUIEvent(UIEvent.Shuffle)
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                Crossfade(
-                    targetState = controllerState.isShuffle,
-                    animationSpec = motionScheme.fastEffectsSpec(),
-                    label = "Shuffle Button",
-                ) { isShuffle ->
-                    Icon(
-                        imageVector = SimpIcons.Shuffle,
-                        tint = if (isShuffle) activeColor else contentColor,
-                        contentDescription = "Shuffle",
-                        modifier = Modifier.size(smallIcon.first),
-                    )
+                Crossfade(targetState = controllerState.isShuffle, label = "Shuffle Button") { isShuffle ->
+                    if (!isShuffle) {
+                        Icon(
+                            imageVector = SimpIcons.Shuffle,
+                            tint = contentColor,
+                            contentDescription = "",
+                            modifier = Modifier.size(smallIcon.first),
+                        )
+                    } else {
+                        Icon(
+                            imageVector = SimpIcons.Shuffle,
+                            tint = activeColor,
+                            contentDescription = "",
+                            modifier = Modifier.size(smallIcon.first),
+                        )
+                    }
                 }
             }
         }
@@ -270,8 +160,8 @@ fun PlayerControlLayout(
                         .size(mediumIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = prevScale * prevPulse.value
-                            scaleY = prevScale * prevPulse.value
+                            scaleX = prevScale
+                            scaleY = prevScale
                         }
                         .clip(CircleShape)
                         .clickable(
@@ -279,7 +169,6 @@ fun PlayerControlLayout(
                             indication = ripple(bounded = false, radius = mediumIcon.second / 2),
                             enabled = controllerState.isPreviousAvailable,
                         ) {
-                            triggerWave(1)
                             onUIEvent(UIEvent.Previous)
                         },
                 contentAlignment = Alignment.Center,
@@ -299,38 +188,19 @@ fun PlayerControlLayout(
                         .size(bigIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = playPauseScale * playPausePulse.value
-                            scaleY = playPauseScale * playPausePulse.value
+                            scaleX = playPauseScale
+                            scaleY = playPauseScale
                         }
                         .clip(CircleShape)
                         .clickable(
                             interactionSource = playPauseInteractionSource,
                             indication = ripple(bounded = false, radius = bigIcon.second / 2),
                         ) {
-                            triggerWave(2)
                             onUIEvent(UIEvent.PlayPause)
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                AnimatedContent(
-                    targetState = controllerState.isPlaying,
-                    transitionSpec = {
-                        (scaleIn(
-                            initialScale = 0.88f,
-                            animationSpec = motionScheme.fastSpatialSpec(),
-                        ) + fadeIn(
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                        )).togetherWith(
-                            scaleOut(
-                                targetScale = 0.88f,
-                                animationSpec = motionScheme.fastSpatialSpec(),
-                            ) + fadeOut(
-                                animationSpec = motionScheme.fastEffectsSpec(),
-                            ),
-                        )
-                    },
-                    label = "playPauseAnimatedContent",
-                ) { isPlaying ->
+                Crossfade(targetState = controllerState.isPlaying) { isPlaying ->
                     if (!isPlaying) {
                         Icon(
                             imageVector = if (plainPlayPause) SimpIcons.PlayArrow else SimpIcons.PlayCircle,
@@ -356,8 +226,8 @@ fun PlayerControlLayout(
                         .size(mediumIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = nextScale * nextPulse.value
-                            scaleY = nextScale * nextPulse.value
+                            scaleX = nextScale
+                            scaleY = nextScale
                         }
                         .clip(CircleShape)
                         .clickable(
@@ -365,7 +235,6 @@ fun PlayerControlLayout(
                             indication = ripple(bounded = false, radius = mediumIcon.second / 2),
                             enabled = controllerState.isNextAvailable,
                         ) {
-                            triggerWave(3)
                             onUIEvent(UIEvent.Next)
                         },
                 contentAlignment = Alignment.Center,
@@ -385,35 +254,47 @@ fun PlayerControlLayout(
                         .size(smallIcon.second)
                         .aspectRatio(1f)
                         .graphicsLayer {
-                            scaleX = repeatScale * repeatPulse.value
-                            scaleY = 1f // pop X axis not Y and Z
+                            scaleX = repeatScale
+                            scaleY = repeatScale
                         }
                         .clip(CircleShape)
                         .clickable(
                             interactionSource = repeatInteractionSource,
                             indication = ripple(bounded = false, radius = smallIcon.second / 2),
                         ) {
-                            triggerWave(4)
                             onUIEvent(UIEvent.Repeat)
                         },
                 contentAlignment = Alignment.Center,
             ) {
-                Crossfade(
-                    targetState = controllerState.repeatState,
-                    animationSpec = motionScheme.fastEffectsSpec(),
-                    label = "Repeat Button",
-                ) { rs ->
-                    val (icon, tint) = when (rs) {
-                        is RepeatState.None -> SimpIcons.Repeat to contentColor
-                        RepeatState.All -> SimpIcons.Repeat to activeColor
-                        RepeatState.One -> SimpIcons.RepeatOne to activeColor
+                Crossfade(targetState = controllerState.repeatState) { rs ->
+                    when (rs) {
+                        is RepeatState.None -> {
+                            Icon(
+                                imageVector = SimpIcons.Repeat,
+                                tint = contentColor,
+                                contentDescription = "",
+                                modifier = Modifier.size(smallIcon.first),
+                            )
+                        }
+
+                        RepeatState.All -> {
+                            Icon(
+                                imageVector = SimpIcons.Repeat,
+                                tint = activeColor,
+                                contentDescription = "",
+                                modifier = Modifier.size(smallIcon.first),
+                            )
+                        }
+
+                        RepeatState.One -> {
+                            Icon(
+                                imageVector = SimpIcons.RepeatOne,
+                                tint = activeColor,
+                                contentDescription = "",
+                                modifier = Modifier.size(smallIcon.first),
+                            )
+                        }
                     }
-                    Icon(
-                        imageVector = icon,
-                        tint = tint,
-                        contentDescription = "Repeat",
-                        modifier = Modifier.size(smallIcon.first),
-                    )
                 }
             }
         }
