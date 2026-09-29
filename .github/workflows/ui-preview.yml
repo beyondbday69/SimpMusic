@@ -93,7 +93,7 @@ jobs:
             -F "file=@$APK_FILE" \
             -F "platform=android")
           echo "Appetize response: $RESP"
-          PREVIEW_URL="https://appetize.io/app/$APPETIZE_PUBLIC_KEY"
+          PREVIEW_URL="https://appetize.io/app/$APPETIZE_PUBLIC_KEY?device=pixel7"
           echo "APPETIZE_PREVIEW_URL=$PREVIEW_URL" >> $GITHUB_ENV
           echo "### 📱 Live In-Browser Interactive Preview" >> $GITHUB_STEP_SUMMARY
           echo "Test and interact with this build live in your browser without installing:" >> $GITHUB_STEP_SUMMARY
