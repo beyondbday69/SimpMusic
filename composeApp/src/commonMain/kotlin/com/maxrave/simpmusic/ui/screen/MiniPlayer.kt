@@ -268,6 +268,21 @@ fun MiniPlayer(
         job4.join()
     }
 
+    var isCollapsed by rememberSaveable { mutableStateOf(false) }
+    var userInteractionCount by remember { mutableStateOf(0) }
+
+    LaunchedEffect(songEntity?.videoId) {
+        // Automatically expand when a new track starts playing
+        isCollapsed = false
+    }
+
+    LaunchedEffect(songEntity?.videoId, isCollapsed, userInteractionCount) {
+        if (!isCollapsed) {
+            delay(5000)
+            isCollapsed = true
+        }
+    }
+
     if (getPlatform() == Platform.Android) {
         val motionScheme = MaterialTheme.motionScheme
 
@@ -288,25 +303,26 @@ fun MiniPlayer(
                 label = "miniPlayerSlicePressScale",
             )
 
-            // Dynamic corner morph on the cut face (16dp at rest -> 22dp active/playing)
+            // Cut corner: 22dp when paused (active CTA), 16dp when playing
             val sliceCutCorner by animateDpAsState(
-                targetValue = if (isPlaying) 22.dp else 16.dp,
+                targetValue = if (!isPlaying) 22.dp else 16.dp,
                 animationSpec = motionScheme.defaultSpatialSpec(),
                 label = "miniPlayerSliceCutCorner",
             )
 
-            // Tactile width morph (56dp -> 62dp when playing)
-            val sliceWidth by animateDpAsState(
-                targetValue = if (isPlaying) 62.dp else 56.dp,
+            // When paused, slightly wider (60dp) to emphasize filled play action; 56dp when playing
+            val sliceBaseWidth = if (!isPlaying) 60.dp else 56.dp
+            val animatedSliceWidth by animateDpAsState(
+                targetValue = if (isCollapsed) 0.dp else sliceBaseWidth,
                 animationSpec = motionScheme.defaultSpatialSpec(),
                 label = "miniPlayerSliceWidth",
             )
 
-            // Slice background fills with primaryContainer when active/playing
+            // Fill color: filled with primary when music is paused; unfilled (surfaceContainer) when playing
             val sliceContainerColor by animateColorAsState(
                 targetValue =
-                    if (isPlaying) {
-                        MaterialTheme.colorScheme.primaryContainer
+                    if (!isPlaying) {
+                        MaterialTheme.colorScheme.primary
                     } else {
                         MaterialTheme.colorScheme.surfaceContainer
                     },
@@ -314,16 +330,41 @@ fun MiniPlayer(
                 label = "miniPlayerSliceContainerColor",
             )
 
-            // Slice content/icon color morph
+            // Content/icon color: onPrimary when paused (on filled primary); primary when playing (on surfaceContainer)
             val sliceContentColor by animateColorAsState(
                 targetValue =
-                    if (isPlaying) {
-                        MaterialTheme.colorScheme.onPrimaryContainer
+                    if (!isPlaying) {
+                        MaterialTheme.colorScheme.onPrimary
                     } else {
                         MaterialTheme.colorScheme.primary
                     },
                 animationSpec = motionScheme.fastEffectsSpec(),
                 label = "miniPlayerSliceContentColor",
+            )
+
+            // Dynamic collapse animations
+            val rowWidth by animateDpAsState(
+                targetValue = if (isCollapsed) 58.dp else fullWidth,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+                label = "miniPlayerRowWidth",
+            )
+
+            val animatedSpacing by animateDpAsState(
+                targetValue = if (isCollapsed) 0.dp else 5.dp,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+                label = "miniPlayerSpacing",
+            )
+
+            val mainPillEndCorner by animateDpAsState(
+                targetValue = if (isCollapsed) 29.dp else 16.dp,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+                label = "miniPlayerMainPillEndCorner",
+            )
+
+            val contentAlpha by animateFloatAsState(
+                targetValue = if (isCollapsed) 0f else 1f,
+                animationSpec = motionScheme.fastEffectsSpec(),
+                label = "miniPlayerContentAlpha",
             )
 
             // Main Pill interaction
@@ -338,7 +379,7 @@ fun MiniPlayer(
             Row(
                 modifier =
                     Modifier
-                        .width(fullWidth)
+                        .width(rowWidth)
                         .height(58.dp)
                         .offset { IntOffset(0, offsetY.value.roundToInt()) }
                         .graphicsLayer {
@@ -346,16 +387,16 @@ fun MiniPlayer(
                             alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
                         },
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalArrangement = Arrangement.spacedBy(animatedSpacing),
             ) {
-                // 1. Main Track Pill (Left) - matching AppBottomDock main pill shape
+                // 1. Main Track Pill (Left) - matching AppBottomDock main pill shape, morphing to Circle when collapsed
                 Surface(
                     shape =
                         RoundedCornerShape(
                             topStart = 29.dp,
                             bottomStart = 29.dp,
-                            topEnd = 16.dp,
-                            bottomEnd = 16.dp,
+                            topEnd = mainPillEndCorner,
+                            bottomEnd = mainPillEndCorner,
                         ),
                     color = MaterialTheme.colorScheme.surfaceContainer,
                     shadowElevation = 0.dp,
@@ -376,11 +417,20 @@ fun MiniPlayer(
                                 .clickable(
                                     interactionSource = mainPillInteractionSource,
                                     indication = null,
-                                    onClick = onClick,
+                                    onClick = {
+                                        if (isCollapsed) {
+                                            isCollapsed = false
+                                            userInteractionCount++
+                                        } else {
+                                            onClick()
+                                        }
+                                    },
                                 )
                                 .pointerInput(Unit) {
                                     detectVerticalDragGestures(
-                                        onDragStart = {},
+                                        onDragStart = {
+                                            userInteractionCount++
+                                        },
                                         onVerticalDrag = { change: PointerInputChange, dragAmount: Float ->
                                             if (offsetY.value + dragAmount > 0f) {
                                                 change.consume()
@@ -418,6 +468,7 @@ fun MiniPlayer(
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             // Artwork with progress ring: precisely concentric with 29dp left cap
+                            // When collapsed into 58dp circle: start 7dp + 44dp + end 7dp = 58dp!
                             Box(
                                 modifier =
                                     Modifier
@@ -491,148 +542,161 @@ fun MiniPlayer(
                             }
 
                             // Song Title & Artist text with horizontal swipe gestures
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .weight(1f)
-                                        .fillMaxHeight()
-                                        .clipToBounds(),
-                                contentAlignment = Alignment.CenterStart,
-                            ) {
-                                Row(
+                            if (rowWidth > 58.dp) {
+                                Box(
                                     modifier =
                                         Modifier
-                                            .fillMaxWidth()
-                                            .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                                            .pointerInput(Unit) {
-                                                detectHorizontalDragGestures(
-                                                    onDragStart = {},
-                                                    onHorizontalDrag = { change: PointerInputChange, dragAmount: Float ->
-                                                        change.consume()
-                                                        coroutineScope.launch {
-                                                            val current = offsetX.value
-                                                            val resistance = (1f - (kotlin.math.abs(current) / 600f)).coerceIn(0.3f, 1f)
-                                                            offsetX.snapTo(current + dragAmount * resistance)
-                                                        }
-                                                    },
-                                                    onDragCancel = {
-                                                        coroutineScope.launch {
-                                                            offsetX.animateTo(
-                                                                targetValue = 0f,
-                                                                animationSpec = motionScheme.defaultSpatialSpec(),
-                                                            )
-                                                        }
-                                                    },
-                                                    onDragEnd = {
-                                                        coroutineScope.launch {
-                                                            val finalOffset = offsetX.value
-                                                            if (finalOffset > 140f) {
-                                                                sharedViewModel.onUIEvent(UIEvent.Previous)
-                                                            } else if (finalOffset < -120f) {
-                                                                sharedViewModel.onUIEvent(UIEvent.Next)
+                                            .weight(1f)
+                                            .fillMaxHeight()
+                                            .graphicsLayer {
+                                                alpha = contentAlpha
+                                            }
+                                            .clipToBounds(),
+                                    contentAlignment = Alignment.CenterStart,
+                                ) {
+                                    Row(
+                                        modifier =
+                                            Modifier
+                                                .fillMaxWidth()
+                                                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                                                .pointerInput(Unit) {
+                                                    detectHorizontalDragGestures(
+                                                        onDragStart = {
+                                                            userInteractionCount++
+                                                        },
+                                                        onHorizontalDrag = { change: PointerInputChange, dragAmount: Float ->
+                                                            change.consume()
+                                                            coroutineScope.launch {
+                                                                val current = offsetX.value
+                                                                val resistance = (1f - (kotlin.math.abs(current) / 600f)).coerceIn(0.3f, 1f)
+                                                                offsetX.snapTo(current + dragAmount * resistance)
                                                             }
-                                                            offsetX.animateTo(
-                                                                targetValue = 0f,
-                                                                animationSpec = motionScheme.defaultSpatialSpec(),
-                                                            )
-                                                        }
-                                                    },
+                                                        },
+                                                        onDragCancel = {
+                                                            coroutineScope.launch {
+                                                                offsetX.animateTo(
+                                                                    targetValue = 0f,
+                                                                    animationSpec = motionScheme.defaultSpatialSpec(),
+                                                                )
+                                                            }
+                                                        },
+                                                        onDragEnd = {
+                                                            coroutineScope.launch {
+                                                                val finalOffset = offsetX.value
+                                                                if (finalOffset > 140f) {
+                                                                    userInteractionCount++
+                                                                    sharedViewModel.onUIEvent(UIEvent.Previous)
+                                                                } else if (finalOffset < -120f) {
+                                                                    userInteractionCount++
+                                                                    sharedViewModel.onUIEvent(UIEvent.Next)
+                                                                }
+                                                                offsetX.animateTo(
+                                                                    targetValue = 0f,
+                                                                    animationSpec = motionScheme.defaultSpatialSpec(),
+                                                                )
+                                                            }
+                                                        },
+                                                    )
+                                                },
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        AnimatedContent(
+                                            targetState = songEntity,
+                                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                                            contentAlignment = Alignment.CenterStart,
+                                            transitionSpec = {
+                                                if (targetState != initialState) {
+                                                    (
+                                                        slideInHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> width } +
+                                                            fadeIn(animationSpec = motionScheme.fastEffectsSpec())
+                                                    ).togetherWith(
+                                                        slideOutHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> -width } +
+                                                            fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
+                                                    )
+                                                } else {
+                                                    (
+                                                        slideInHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> -width } +
+                                                            fadeIn(animationSpec = motionScheme.fastEffectsSpec())
+                                                    ).togetherWith(
+                                                        slideOutHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> width } +
+                                                            fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
+                                                    )
+                                                }.using(
+                                                    SizeTransform(clip = false),
                                                 )
                                             },
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    AnimatedContent(
-                                        targetState = songEntity,
-                                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                                        contentAlignment = Alignment.CenterStart,
-                                        transitionSpec = {
-                                            if (targetState != initialState) {
-                                                (
-                                                    slideInHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> width } +
-                                                        fadeIn(animationSpec = motionScheme.fastEffectsSpec())
-                                                ).togetherWith(
-                                                    slideOutHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> -width } +
-                                                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
-                                                )
-                                            } else {
-                                                (
-                                                    slideInHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> -width } +
-                                                        fadeIn(animationSpec = motionScheme.fastEffectsSpec())
-                                                ).togetherWith(
-                                                    slideOutHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> width } +
-                                                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
-                                                )
-                                            }.using(
-                                                SizeTransform(clip = false),
-                                            )
-                                        },
-                                        label = "miniPlayerSongInfo",
-                                    ) { target ->
-                                        if (target != null) {
-                                            Column(
-                                                modifier =
-                                                    Modifier
-                                                        .wrapContentHeight()
-                                                        .align(Alignment.CenterVertically)
-                                                        .onGloballyPositioned { coordinates ->
-                                                            onTextPositioned?.invoke(coordinates.boundsInRoot())
-                                                        },
-                                            ) {
-                                                Text(
-                                                    text = (target.title ?: "").toString(),
-                                                    style = typo().titleSmall,
-                                                    color = textColor,
-                                                    maxLines = 1,
+                                            label = "miniPlayerSongInfo",
+                                        ) { target ->
+                                            if (target != null) {
+                                                Column(
                                                     modifier =
                                                         Modifier
-                                                            .fillMaxWidth()
-                                                            .wrapContentHeight(Alignment.CenterVertically)
-                                                            .basicMarquee(
-                                                                iterations = Int.MAX_VALUE,
-                                                                animationMode = MarqueeAnimationMode.Immediately,
-                                                            ).focusable(),
-                                                )
-                                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    AnimatedVisibility(visible = target.isExplicit == true) {
-                                                        ExplicitBadge(
-                                                            modifier =
-                                                                Modifier
-                                                                    .size(20.dp)
-                                                                    .padding(end = 4.dp),
-                                                        )
-                                                    }
+                                                            .wrapContentHeight()
+                                                            .align(Alignment.CenterVertically)
+                                                            .onGloballyPositioned { coordinates ->
+                                                                onTextPositioned?.invoke(coordinates.boundsInRoot())
+                                                            },
+                                                ) {
                                                     Text(
-                                                        text = (target.artistName?.connectArtists() ?: ""),
-                                                        style = typo().bodySmall.copy(fontSize = 10.sp),
+                                                        text = (target.title ?: "").toString(),
+                                                        style = typo().titleSmall,
+                                                        color = textColor,
                                                         maxLines = 1,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                                                         modifier =
                                                             Modifier
-                                                                .weight(1f)
+                                                                .fillMaxWidth()
                                                                 .wrapContentHeight(Alignment.CenterVertically)
                                                                 .basicMarquee(
                                                                     iterations = Int.MAX_VALUE,
                                                                     animationMode = MarqueeAnimationMode.Immediately,
                                                                 ).focusable(),
                                                     )
+                                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                                        AnimatedVisibility(visible = target.isExplicit == true) {
+                                                            ExplicitBadge(
+                                                                modifier =
+                                                                    Modifier
+                                                                        .size(20.dp)
+                                                                        .padding(end = 4.dp),
+                                                            )
+                                                        }
+                                                        Text(
+                                                            text = (target.artistName?.connectArtists() ?: ""),
+                                                            style = typo().bodySmall.copy(fontSize = 10.sp),
+                                                            maxLines = 1,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                            modifier =
+                                                                Modifier
+                                                                    .weight(1f)
+                                                                    .wrapContentHeight(Alignment.CenterVertically)
+                                                                    .basicMarquee(
+                                                                        iterations = Int.MAX_VALUE,
+                                                                        animationMode = MarqueeAnimationMode.Immediately,
+                                                                    ).focusable(),
+                                                        )
+                                                    }
                                                 }
                                             }
                                         }
                                     }
                                 }
-                            }
 
-                            // Like / Heart button on the right side of the main pill
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .padding(end = 6.dp)
-                                        .size(36.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                HeartCheckBox(checked = liked, size = 26, tint = textColor) {
-                                    sharedViewModel.onUIEvent(UIEvent.ToggleLike)
+                                // Like / Heart button on the right side of the main pill
+                                Box(
+                                    modifier =
+                                        Modifier
+                                            .padding(end = 6.dp)
+                                            .size(36.dp)
+                                            .graphicsLayer {
+                                                alpha = contentAlpha
+                                            },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    HeartCheckBox(checked = liked, size = 26, tint = textColor) {
+                                        userInteractionCount++
+                                        sharedViewModel.onUIEvent(UIEvent.ToggleLike)
+                                    }
                                 }
                             }
                         }
@@ -640,61 +704,68 @@ fun MiniPlayer(
                 }
 
                 // 2. Compact Slice (Right) - Play / Pause button pill with smoothed cut edge & M3 spring physics
-                Surface(
-                    shape =
-                        RoundedCornerShape(
-                            topStart = sliceCutCorner,
-                            bottomStart = sliceCutCorner,
-                            topEnd = 29.dp,
-                            bottomEnd = 29.dp,
-                        ),
-                    color = sliceContainerColor,
-                    shadowElevation = 0.dp,
-                    tonalElevation = 0.dp,
-                    modifier =
-                        Modifier
-                            .height(58.dp)
-                            .width(sliceWidth),
-                ) {
-                    Box(
+                if (animatedSliceWidth > 1.dp) {
+                    Surface(
+                        shape =
+                            RoundedCornerShape(
+                                topStart = sliceCutCorner,
+                                bottomStart = sliceCutCorner,
+                                topEnd = 29.dp,
+                                bottomEnd = 29.dp,
+                            ),
+                        color = sliceContainerColor,
+                        shadowElevation = 0.dp,
+                        tonalElevation = 0.dp,
                         modifier =
                             Modifier
-                                .fillMaxSize()
+                                .height(58.dp)
+                                .width(animatedSliceWidth)
                                 .graphicsLayer {
-                                    scaleX = slicePressScale
-                                    scaleY = slicePressScale
+                                    alpha = contentAlpha
                                 }
-                                .clickable(
-                                    interactionSource = sliceInteractionSource,
-                                    indication = null,
-                                ) {
-                                    sharedViewModel.onUIEvent(UIEvent.PlayPause)
-                                },
-                        contentAlignment = Alignment.Center,
+                                .clipToBounds(),
                     ) {
-                        Crossfade(
-                            targetState = loading,
-                            animationSpec = motionScheme.fastEffectsSpec(),
-                            label = "miniPlayerSliceLoading",
-                        ) { isLoading ->
-                            if (isLoading) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
-                                    color = sliceContentColor,
-                                    strokeWidth = 2.5.dp,
-                                )
-                            } else {
-                                Crossfade(
-                                    targetState = isPlaying,
-                                    animationSpec = motionScheme.fastEffectsSpec(),
-                                    label = "miniPlayerSlicePlayPause",
-                                ) { playing ->
-                                    Icon(
-                                        imageVector = if (playing) SimpIcons.Pause else SimpIcons.PlayArrow,
-                                        contentDescription = if (playing) "Pause" else "Play",
-                                        tint = sliceContentColor,
-                                        modifier = Modifier.size(26.dp),
+                        Box(
+                            modifier =
+                                Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = slicePressScale
+                                        scaleY = slicePressScale
+                                    }
+                                    .clickable(
+                                        interactionSource = sliceInteractionSource,
+                                        indication = null,
+                                    ) {
+                                        userInteractionCount++
+                                        sharedViewModel.onUIEvent(UIEvent.PlayPause)
+                                    },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Crossfade(
+                                targetState = loading,
+                                animationSpec = motionScheme.fastEffectsSpec(),
+                                label = "miniPlayerSliceLoading",
+                            ) { isLoading ->
+                                if (isLoading) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(20.dp),
+                                        color = sliceContentColor,
+                                        strokeWidth = 2.5.dp,
                                     )
+                                } else {
+                                    Crossfade(
+                                        targetState = isPlaying,
+                                        animationSpec = motionScheme.fastEffectsSpec(),
+                                        label = "miniPlayerSlicePlayPause",
+                                    ) { playing ->
+                                        Icon(
+                                            imageVector = if (playing) SimpIcons.Pause else SimpIcons.PlayArrow,
+                                            contentDescription = if (playing) "Pause" else "Play",
+                                            tint = sliceContentColor,
+                                            modifier = Modifier.size(26.dp),
+                                        )
+                                    }
                                 }
                             }
                         }
