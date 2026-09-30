@@ -137,6 +137,7 @@ import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.ArrowForwardIos
 import com.maxrave.simpmusic.ui.icon.ArrowOutward
 import com.maxrave.simpmusic.ui.icon.Close
+import com.maxrave.simpmusic.ui.icon.Error
 import com.maxrave.simpmusic.ui.icon.History
 import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.Search
@@ -398,6 +399,13 @@ fun SearchScreen(
         ) {
             when (it) {
                 SearchUIType.SEARCH_SUGGESTIONS -> {
+                    val suggestSongs = remember(searchScreenState.suggestYTItems) {
+                        searchScreenState.suggestYTItems.filter { it is SongsResult || it is VideosResult }
+                    }
+                    val suggestOtherEntities = remember(searchScreenState.suggestYTItems) {
+                        searchScreenState.suggestYTItems.filter { it !is SongsResult && it !is VideosResult }
+                    }
+
                     LazyColumn(
                         modifier =
                             Modifier
@@ -407,10 +415,11 @@ fun SearchScreen(
                         contentPadding = PaddingValues(top = searchBarHeight + 8.dp, bottom = 120.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        if (searchScreenState.suggestYTItems.isNotEmpty()) {
-                            item(key = "header_top_results") {
+                        // 1. Songs & Playable Tracks FIRST
+                        if (suggestSongs.isNotEmpty()) {
+                            item(key = "header_songs") {
                                 Text(
-                                    text = stringResource(Res.string.popular),
+                                    text = stringResource(Res.string.song),
                                     style = typo().titleSmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.primary,
@@ -426,14 +435,11 @@ fun SearchScreen(
                                 )
                             }
                             items(
-                                items = searchScreenState.suggestYTItems,
+                                items = suggestSongs,
                                 key = { item ->
                                     when (item) {
                                         is SongsResult -> "song_${item.videoId}"
                                         is VideosResult -> "video_${item.videoId}"
-                                        is ArtistsResult -> "artist_${item.browseId}"
-                                        is AlbumsResult -> "album_${item.browseId}"
-                                        is PlaylistsResult -> "playlist_${item.browseId}"
                                         else -> item.hashCode().toString()
                                     }
                                 },
@@ -488,6 +494,7 @@ fun SearchScreen(
                             }
                         }
 
+                        // 2. Suggestions Keywords SECOND
                         if (searchScreenState.suggestQueries.isNotEmpty()) {
                             item(key = "header_suggestions") {
                                 Text(
@@ -501,7 +508,7 @@ fun SearchScreen(
                                             .padding(
                                                 start = 4.dp,
                                                 end = 4.dp,
-                                                top = if (searchScreenState.suggestYTItems.isNotEmpty()) 12.dp else 4.dp,
+                                                top = if (suggestSongs.isNotEmpty()) 12.dp else 4.dp,
                                                 bottom = 2.dp,
                                             )
                                             .animateItem(
@@ -536,6 +543,91 @@ fun SearchScreen(
                                     onInsertClick = {
                                         searchText = suggestion
                                         focusRequester.requestFocus()
+                                    },
+                                    modifier =
+                                        Modifier.animateItem(
+                                            fadeInSpec = motionScheme.fastEffectsSpec(),
+                                            fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                            placementSpec = motionScheme.defaultSpatialSpec(),
+                                        ),
+                                )
+                            }
+                        }
+
+                        // 3. Other Entities (Artists, Albums, Playlists) THIRD
+                        if (suggestOtherEntities.isNotEmpty()) {
+                            item(key = "header_other_entities") {
+                                Text(
+                                    text = stringResource(Res.string.popular),
+                                    style = typo().titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                start = 4.dp,
+                                                end = 4.dp,
+                                                top = 12.dp,
+                                                bottom = 2.dp,
+                                            )
+                                            .animateItem(
+                                                fadeInSpec = motionScheme.fastEffectsSpec(),
+                                                fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                                placementSpec = motionScheme.defaultSpatialSpec(),
+                                            ),
+                                )
+                            }
+                            items(
+                                items = suggestOtherEntities,
+                                key = { item ->
+                                    when (item) {
+                                        is ArtistsResult -> "artist_${item.browseId}"
+                                        is AlbumsResult -> "album_${item.browseId}"
+                                        is PlaylistsResult -> "playlist_${item.browseId}"
+                                        else -> item.hashCode().toString()
+                                    }
+                                },
+                            ) { item ->
+                                SuggestItemRow(
+                                    searchResult = item,
+                                    onItemClick = { clickedItem ->
+                                        when (clickedItem) {
+                                            is SongsResult, is VideosResult -> {
+                                                val firstTrack: Track = (clickedItem as? SongsResult)?.toTrack() ?: (clickedItem as VideosResult).toTrack()
+                                                searchViewModel.setQueueData(
+                                                    QueueData.Data(
+                                                        listTracks = arrayListOf(firstTrack),
+                                                        firstPlayedTrack = firstTrack,
+                                                        playlistId = "RDAMVM${firstTrack.videoId}",
+                                                        playlistName = "\"${searchText}\" ${getStringBlocking(Res.string.in_search)}",
+                                                        playlistType = PlaylistType.RADIO,
+                                                        continuation = null,
+                                                    ),
+                                                )
+                                                searchViewModel.loadMediaItem(firstTrack, type = Config.SONG_CLICK)
+                                            }
+
+                                            is ArtistsResult -> {
+                                                navController.navigate(
+                                                    ArtistDestination(clickedItem.browseId),
+                                                )
+                                            }
+
+                                            is AlbumsResult -> {
+                                                navController.navigate(
+                                                    AlbumDestination(clickedItem.browseId),
+                                                )
+                                            }
+
+                                            is PlaylistsResult -> {
+                                                navController.navigate(
+                                                    PlaylistDestination(
+                                                        clickedItem.browseId,
+                                                    ),
+                                                )
+                                            }
+                                        }
                                     },
                                     modifier =
                                         Modifier.animateItem(
@@ -796,7 +888,10 @@ fun SearchScreen(
                                 )
                             },
                         ) {
-                            Crossfade(targetState = uiState) { uiState ->
+                            Crossfade(
+                                targetState = uiState,
+                                animationSpec = motionScheme.fastEffectsSpec(),
+                            ) { uiState ->
                                 when (uiState) {
                                     is SearchScreenUIState.Loading -> {
                                         // Loading state — same top inset as the results list, or
@@ -804,12 +899,24 @@ fun SearchScreen(
                                         LazyColumn(
                                             contentPadding =
                                                 PaddingValues(
-                                                    top = searchBarHeight,
-                                                    bottom = 10.dp,
+                                                    start = 8.dp,
+                                                    end = 8.dp,
+                                                    top = searchBarHeight + 8.dp,
+                                                    bottom = 120.dp,
                                                 ),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
                                         ) {
                                             items(10) {
-                                                ShimmerSearchItem()
+                                                Box(
+                                                    modifier =
+                                                        Modifier.animateItem(
+                                                            fadeInSpec = motionScheme.fastEffectsSpec(),
+                                                            fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                                            placementSpec = motionScheme.defaultSpatialSpec(),
+                                                        ),
+                                                ) {
+                                                    ShimmerSearchItem()
+                                                }
                                             }
                                         }
                                     }
@@ -830,160 +937,213 @@ fun SearchScreen(
                                                     SearchType.PODCASTS -> searchScreenState.searchPodcastsResult
                                                 }
 
-                                            Crossfade(targetState = currentResults.isNotEmpty()) {
-                                                if (it) {
+                                            Crossfade(
+                                                targetState = currentResults.isNotEmpty(),
+                                                animationSpec = motionScheme.fastEffectsSpec(),
+                                            ) { hasResults ->
+                                                if (hasResults) {
                                                     LazyColumn(
                                                         contentPadding =
                                                             PaddingValues(
-                                                                start = 4.dp,
-                                                                end = 4.dp,
-                                                                top = searchBarHeight,
-                                                                bottom = 10.dp,
+                                                                start = 8.dp,
+                                                                end = 8.dp,
+                                                                top = searchBarHeight + 8.dp,
+                                                                bottom = 120.dp,
                                                             ),
                                                         state = resultsState,
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp),
                                                     ) {
-                                                        items(currentResults) { result ->
-                                                            when (result) {
-                                                                is SongsResult -> {
-                                                                    SongFullWidthItems(
-                                                                        track = result.toTrack(),
-                                                                        isPlaying = result.videoId == currentVideoId,
-                                                                        modifier = Modifier,
-                                                                        onMoreClickListener = {
-                                                                            onMoreClick(result.toTrack().toSongEntity())
-                                                                        },
-                                                                        onClickListener = {
-                                                                            val firstTrack = result.toTrack()
-                                                                            searchViewModel.setQueueData(
-                                                                                QueueData.Data(
-                                                                                    listTracks = arrayListOf(firstTrack),
-                                                                                    firstPlayedTrack = firstTrack,
-                                                                                    playlistId = "RDAMVM${result.videoId}",
-                                                                                    playlistName =
-                                                                                        "\"${searchText}\" ${
-                                                                                            getStringBlocking(
-                                                                                                Res.string.in_search,
-                                                                                            )
-                                                                                        }",
-                                                                                    playlistType = PlaylistType.RADIO,
-                                                                                    continuation = null,
-                                                                                ),
-                                                                            )
-                                                                            searchViewModel.loadMediaItem(firstTrack, Config.SONG_CLICK)
-                                                                        },
-                                                                        onAddToQueue = {
-                                                                            sharedViewModel.addListToQueue(
-                                                                                arrayListOf(result.toTrack()),
-                                                                            )
-                                                                        },
-                                                                        selectionMode = selectionState.isActive,
-                                                                        isSelected = selectionState.isSelected(result.videoId),
-                                                                        onLongClick = { selectionState.start(it) },
-                                                                        onSelectToggle = { selectionState.toggle(it) },
-                                                                    )
+                                                        items(
+                                                            items = currentResults,
+                                                            key = { result ->
+                                                                when (result) {
+                                                                    is SongsResult -> "song_${result.videoId}"
+                                                                    is VideosResult -> "video_${result.videoId}"
+                                                                    is AlbumsResult -> "album_${result.browseId}"
+                                                                    is ArtistsResult -> "artist_${result.browseId}"
+                                                                    is PlaylistsResult -> "playlist_${result.browseId}"
+                                                                    else -> result.hashCode().toString()
                                                                 }
+                                                            },
+                                                        ) { result ->
+                                                            Box(
+                                                                modifier =
+                                                                    Modifier.animateItem(
+                                                                        fadeInSpec = motionScheme.fastEffectsSpec(),
+                                                                        fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                                                        placementSpec = motionScheme.defaultSpatialSpec(),
+                                                                    ),
+                                                            ) {
+                                                                when (result) {
+                                                                    is SongsResult -> {
+                                                                        SongFullWidthItems(
+                                                                            track = result.toTrack(),
+                                                                            isPlaying = result.videoId == currentVideoId,
+                                                                            modifier = Modifier,
+                                                                            onMoreClickListener = {
+                                                                                onMoreClick(result.toTrack().toSongEntity())
+                                                                            },
+                                                                            onClickListener = {
+                                                                                val firstTrack = result.toTrack()
+                                                                                searchViewModel.setQueueData(
+                                                                                    QueueData.Data(
+                                                                                        listTracks = arrayListOf(firstTrack),
+                                                                                        firstPlayedTrack = firstTrack,
+                                                                                        playlistId = "RDAMVM${result.videoId}",
+                                                                                        playlistName =
+                                                                                            "\"${searchText}\" ${
+                                                                                                getStringBlocking(
+                                                                                                    Res.string.in_search,
+                                                                                                )
+                                                                                            }",
+                                                                                        playlistType = PlaylistType.RADIO,
+                                                                                        continuation = null,
+                                                                                    ),
+                                                                                )
+                                                                                searchViewModel.loadMediaItem(firstTrack, Config.SONG_CLICK)
+                                                                            },
+                                                                            onAddToQueue = {
+                                                                                sharedViewModel.addListToQueue(
+                                                                                    arrayListOf(result.toTrack()),
+                                                                                )
+                                                                            },
+                                                                            selectionMode = selectionState.isActive,
+                                                                            isSelected = selectionState.isSelected(result.videoId),
+                                                                            onLongClick = { selectionState.start(it) },
+                                                                            onSelectToggle = { selectionState.toggle(it) },
+                                                                        )
+                                                                    }
 
-                                                                is VideosResult -> {
-                                                                    SongFullWidthItems(
-                                                                        track = result.toTrack(),
-                                                                        isPlaying = result.videoId == currentVideoId,
-                                                                        modifier = Modifier,
-                                                                        onMoreClickListener = {
-                                                                            onMoreClick(result.toTrack().toSongEntity())
-                                                                        },
-                                                                        onClickListener = {
-                                                                            val firstTrack = result.toTrack()
-                                                                            searchViewModel.setQueueData(
-                                                                                QueueData.Data(
-                                                                                    listTracks = arrayListOf(firstTrack),
-                                                                                    firstPlayedTrack = firstTrack,
-                                                                                    playlistId = "RDAMVM${result.videoId}",
-                                                                                    playlistName =
-                                                                                        "\"${searchText}\" ${
-                                                                                            getStringBlocking(
-                                                                                                Res.string.in_search,
-                                                                                            )
-                                                                                        }",
-                                                                                    playlistType = PlaylistType.RADIO,
-                                                                                    continuation = null,
-                                                                                ),
-                                                                            )
-                                                                            searchViewModel.loadMediaItem(firstTrack, Config.VIDEO_CLICK)
-                                                                        },
-                                                                        onAddToQueue = {
-                                                                            sharedViewModel.addListToQueue(
-                                                                                arrayListOf(result.toTrack()),
-                                                                            )
-                                                                        },
-                                                                        selectionMode = selectionState.isActive,
-                                                                        isSelected = selectionState.isSelected(result.videoId),
-                                                                        onLongClick = { selectionState.start(it) },
-                                                                        onSelectToggle = { selectionState.toggle(it) },
-                                                                    )
-                                                                }
+                                                                    is VideosResult -> {
+                                                                        SongFullWidthItems(
+                                                                            track = result.toTrack(),
+                                                                            isPlaying = result.videoId == currentVideoId,
+                                                                            modifier = Modifier,
+                                                                            onMoreClickListener = {
+                                                                                onMoreClick(result.toTrack().toSongEntity())
+                                                                            },
+                                                                            onClickListener = {
+                                                                                val firstTrack = result.toTrack()
+                                                                                searchViewModel.setQueueData(
+                                                                                    QueueData.Data(
+                                                                                        listTracks = arrayListOf(firstTrack),
+                                                                                        firstPlayedTrack = firstTrack,
+                                                                                        playlistId = "RDAMVM${result.videoId}",
+                                                                                        playlistName =
+                                                                                            "\"${searchText}\" ${
+                                                                                                getStringBlocking(
+                                                                                                    Res.string.in_search,
+                                                                                                )
+                                                                                            }",
+                                                                                        playlistType = PlaylistType.RADIO,
+                                                                                        continuation = null,
+                                                                                    ),
+                                                                                )
+                                                                                searchViewModel.loadMediaItem(firstTrack, Config.VIDEO_CLICK)
+                                                                            },
+                                                                            onAddToQueue = {
+                                                                                sharedViewModel.addListToQueue(
+                                                                                    arrayListOf(result.toTrack()),
+                                                                                )
+                                                                            },
+                                                                            selectionMode = selectionState.isActive,
+                                                                            isSelected = selectionState.isSelected(result.videoId),
+                                                                            onLongClick = { selectionState.start(it) },
+                                                                            onSelectToggle = { selectionState.toggle(it) },
+                                                                        )
+                                                                    }
 
-                                                                is AlbumsResult -> {
-                                                                    PlaylistFullWidthItems(
-                                                                        data = result,
-                                                                        onClickListener = {
-                                                                            navController.navigate(
-                                                                                AlbumDestination(
-                                                                                    result.browseId,
-                                                                                ),
-                                                                            )
-                                                                        },
-                                                                    )
-                                                                }
-
-                                                                is ArtistsResult -> {
-                                                                    ArtistFullWidthItems(
-                                                                        data = result,
-                                                                        onClickListener = {
-                                                                            navController.navigate(
-                                                                                ArtistDestination(
-                                                                                    result.browseId,
-                                                                                ),
-                                                                            )
-                                                                        },
-                                                                    )
-                                                                }
-
-                                                                is PlaylistsResult -> {
-                                                                    PlaylistFullWidthItems(
-                                                                        data = result,
-                                                                        onClickListener = {
-                                                                            if (result.resultType == "Podcast") {
+                                                                    is AlbumsResult -> {
+                                                                        PlaylistFullWidthItems(
+                                                                            data = result,
+                                                                            onClickListener = {
                                                                                 navController.navigate(
-                                                                                    PodcastDestination(
+                                                                                    AlbumDestination(
                                                                                         result.browseId,
                                                                                     ),
                                                                                 )
-                                                                            } else {
+                                                                            },
+                                                                        )
+                                                                    }
+
+                                                                    is ArtistsResult -> {
+                                                                        ArtistFullWidthItems(
+                                                                            data = result,
+                                                                            onClickListener = {
                                                                                 navController.navigate(
-                                                                                    PlaylistDestination(
+                                                                                    ArtistDestination(
                                                                                         result.browseId,
                                                                                     ),
                                                                                 )
-                                                                            }
-                                                                        },
-                                                                    )
+                                                                            },
+                                                                        )
+                                                                    }
+
+                                                                    is PlaylistsResult -> {
+                                                                        PlaylistFullWidthItems(
+                                                                            data = result,
+                                                                            onClickListener = {
+                                                                                if (result.resultType == "Podcast") {
+                                                                                    navController.navigate(
+                                                                                        PodcastDestination(
+                                                                                            result.browseId,
+                                                                                        ),
+                                                                                    )
+                                                                                } else {
+                                                                                    navController.navigate(
+                                                                                        PlaylistDestination(
+                                                                                            result.browseId,
+                                                                                        ),
+                                                                                    )
+                                                                                }
+                                                                            },
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         }
-                                                        // Space at bottom to account for bottom navigation and mini player
-                                                        item { Spacer(modifier = Modifier.height(150.dp)) }
                                                     }
                                                 } else {
                                                     Box(
-                                                        modifier = Modifier.fillMaxSize(),
+                                                        modifier =
+                                                            Modifier
+                                                                .fillMaxSize()
+                                                                .padding(horizontal = 24.dp),
                                                         contentAlignment = Alignment.Center,
                                                     ) {
-                                                        Text(
-                                                            text = stringResource(Res.string.no_results_found),
-                                                            style = typo().titleMedium,
-                                                            textAlign = TextAlign.Center,
-                                                            modifier = Modifier.fillMaxWidth(),
-                                                        )
+                                                        Column(
+                                                            modifier =
+                                                                Modifier
+                                                                    .fillMaxWidth()
+                                                                    .clip(RoundedCornerShape(24.dp))
+                                                                    .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                                    .padding(32.dp),
+                                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                                        ) {
+                                                            Box(
+                                                                modifier =
+                                                                    Modifier
+                                                                        .size(56.dp)
+                                                                        .clip(CircleShape)
+                                                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                                                contentAlignment = Alignment.Center,
+                                                            ) {
+                                                                Icon(
+                                                                    imageVector = SimpIcons.Search,
+                                                                    contentDescription = null,
+                                                                    tint = MaterialTheme.colorScheme.primary,
+                                                                    modifier = Modifier.size(28.dp),
+                                                                )
+                                                            }
+                                                            Spacer(modifier = Modifier.height(16.dp))
+                                                            Text(
+                                                                text = stringResource(Res.string.no_results_found),
+                                                                style = typo().titleMedium,
+                                                                fontWeight = FontWeight.SemiBold,
+                                                                textAlign = TextAlign.Center,
+                                                                color = MaterialTheme.colorScheme.onSurface,
+                                                            )
+                                                        }
                                                     }
                                                 }
                                             }
@@ -991,20 +1151,46 @@ fun SearchScreen(
                                     }
 
                                     is SearchScreenUIState.Error -> {
-                                        Box {
-                                            // Error state
+                                        Box(
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 24.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
                                             Column(
-                                                modifier = Modifier.align(Alignment.Center),
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(24.dp))
+                                                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                        .padding(32.dp),
                                                 horizontalAlignment = Alignment.CenterHorizontally,
                                             ) {
+                                                Box(
+                                                    modifier =
+                                                        Modifier
+                                                            .size(56.dp)
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.errorContainer),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    Icon(
+                                                        imageVector = SimpIcons.Error,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.onErrorContainer,
+                                                        modifier = Modifier.size(28.dp),
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(16.dp))
                                                 Text(
                                                     text = stringResource(Res.string.error_occurred),
                                                     style = typo().titleMedium,
-                                                    fontWeight = FontWeight.Bold,
+                                                    fontWeight = FontWeight.SemiBold,
                                                     textAlign = TextAlign.Center,
-                                                    modifier = Modifier.fillMaxWidth(),
+                                                    color = MaterialTheme.colorScheme.onSurface,
                                                 )
-                                                Spacer(modifier = Modifier.height(10.dp))
+                                                Spacer(modifier = Modifier.height(16.dp))
                                                 Button(onClick = {
                                                     if (searchText.isNotEmpty()) {
                                                         searchViewModel.searchAll(searchText)
@@ -1017,17 +1203,46 @@ fun SearchScreen(
                                     }
 
                                     SearchScreenUIState.Empty -> {
-                                        // Empty state
                                         Box(
-                                            modifier = Modifier.fillMaxSize(),
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxSize()
+                                                    .padding(horizontal = 24.dp),
                                             contentAlignment = Alignment.Center,
                                         ) {
-                                            Text(
-                                                text = stringResource(Res.string.no_results_found),
-                                                style = typo().titleMedium,
-                                                textAlign = TextAlign.Center,
-                                                modifier = Modifier.fillMaxWidth(),
-                                            )
+                                            Column(
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .clip(RoundedCornerShape(24.dp))
+                                                        .background(MaterialTheme.colorScheme.surfaceContainerLow)
+                                                        .padding(32.dp),
+                                                horizontalAlignment = Alignment.CenterHorizontally,
+                                            ) {
+                                                Box(
+                                                    modifier =
+                                                        Modifier
+                                                            .size(56.dp)
+                                                            .clip(CircleShape)
+                                                            .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                                    contentAlignment = Alignment.Center,
+                                                ) {
+                                                    Icon(
+                                                        imageVector = SimpIcons.Search,
+                                                        contentDescription = null,
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.size(28.dp),
+                                                    )
+                                                }
+                                                Spacer(modifier = Modifier.height(16.dp))
+                                                Text(
+                                                    text = stringResource(Res.string.no_results_found),
+                                                    style = typo().titleMedium,
+                                                    fontWeight = FontWeight.SemiBold,
+                                                    textAlign = TextAlign.Center,
+                                                    color = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
                                         }
                                     }
                                 }
