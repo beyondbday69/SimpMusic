@@ -3,12 +3,8 @@ package com.maxrave.simpmusic.ui.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -149,6 +145,7 @@ fun AppBottomDock(
 
     // Cache typo once per composition — avoids re-allocating Typography on every item in the loop
     val labelStyle = typo().labelMedium
+    val motionScheme = MaterialTheme.motionScheme
 
     // Uniform pill width across all tabs keeps the total dock width perfectly constant while switching
     val selectedItemWidth =
@@ -180,11 +177,7 @@ fun AppBottomDock(
                     .wrapContentWidth()
                     .height(58.dp)
                     .animateContentSize(
-                        animationSpec =
-                            spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = 500f,
-                            ),
+                        animationSpec = motionScheme.defaultSpatialSpec(),
                     ),
         ) {
             Row(
@@ -212,7 +205,7 @@ fun AppBottomDock(
 
         val settingsPressScale by animateFloatAsState(
             targetValue = if (isSettingsPressed) 0.90f else 1.0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
+            animationSpec = motionScheme.fastSpatialSpec(),
             label = "settingsPressScale",
         )
         val settingsContentColor by animateColorAsState(
@@ -222,7 +215,7 @@ fun AppBottomDock(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
-            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            animationSpec = motionScheme.fastEffectsSpec(),
             label = "settingsContentColor",
         )
 
@@ -234,33 +227,33 @@ fun AppBottomDock(
                 } else {
                     MaterialTheme.colorScheme.surfaceContainer
                 },
-            animationSpec = tween(280, easing = FastOutSlowInEasing),
+            animationSpec = motionScheme.fastEffectsSpec(),
             label = "settingsSurfaceColor",
         )
 
         // Dynamic corner morph on the cut face (16dp -> 24dp)
         val settingsCutCorner by animateDpAsState(
             targetValue = if (isSettingsSelected) 24.dp else 16.dp,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 400f),
+            animationSpec = motionScheme.defaultSpatialSpec(),
             label = "settingsCutCorner",
         )
 
-        // Tactile width morph (54dp -> 58dp)
+        // Tactile width morph (54dp -> 62dp)
         val settingsWidth by animateDpAsState(
-            targetValue = if (isSettingsSelected) 58.dp else 54.dp,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 400f),
+            targetValue = if (isSettingsSelected) 62.dp else 54.dp,
+            animationSpec = motionScheme.defaultSpatialSpec(),
             label = "settingsWidth",
         )
 
         // Gear icon fluid 90-degree elastic turn on selection
         val gearRotation by animateFloatAsState(
             targetValue = if (isSettingsSelected) 90f else 0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 320f),
+            animationSpec = motionScheme.defaultSpatialSpec(),
             label = "settingsGearRotation",
         )
         val gearScale by animateFloatAsState(
             targetValue = if (isSettingsSelected) 1.08f else 1.0f,
-            animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = 400f),
+            animationSpec = motionScheme.defaultSpatialSpec(),
             label = "settingsGearScale",
         )
 
@@ -335,12 +328,13 @@ private fun AppBottomDockItem(
     labelStyle: androidx.compose.ui.text.TextStyle,
     onSelect: (BottomNavScreen) -> Unit,
 ) {
+    val motionScheme = MaterialTheme.motionScheme
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
     val pressScale by animateFloatAsState(
         targetValue = if (isPressed) 0.92f else 1.0f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 600f),
+        animationSpec = motionScheme.fastSpatialSpec(),
         label = "dockPressScale",
     )
     val contentColor by animateColorAsState(
@@ -350,7 +344,7 @@ private fun AppBottomDockItem(
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
-        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        animationSpec = motionScheme.fastEffectsSpec(),
         label = "dockContentColor",
     )
 
@@ -362,7 +356,7 @@ private fun AppBottomDockItem(
             } else {
                 androidx.compose.ui.graphics.Color.Transparent
             },
-        animationSpec = tween(200, easing = FastOutSlowInEasing),
+        animationSpec = motionScheme.fastEffectsSpec(),
         label = "dockPillBackgroundColor",
     )
 
@@ -371,10 +365,7 @@ private fun AppBottomDockItem(
     // their sum is constant and eliminating 1px resize jitter completely.
     val itemWidth by animateDpAsState(
         targetValue = if (selected) selectedWidth else 44.dp,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = 500f,
-        ),
+        animationSpec = motionScheme.defaultSpatialSpec(),
         label = "dockItemWidth",
     )
 
@@ -406,16 +397,16 @@ private fun AppBottomDockItem(
             AnimatedVisibility(
                 visible = selected,
                 enter =
-                    fadeIn(tween(140, delayMillis = 40)) +
+                    fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
                         expandHorizontally(
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
+                            animationSpec = motionScheme.defaultSpatialSpec(),
                             expandFrom = Alignment.Start,
                             clip = true,
                         ),
                 exit =
-                    fadeOut(tween(90)) +
+                    fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
                         shrinkHorizontally(
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = 500f),
+                            animationSpec = motionScheme.defaultSpatialSpec(),
                             shrinkTowards = Alignment.Start,
                             clip = true,
                         ),
