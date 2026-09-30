@@ -417,7 +417,7 @@ fun SearchScreen(
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
-                                            .padding(horizontal = 4.dp, top = 4.dp, bottom = 2.dp)
+                                            .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 2.dp)
                                             .animateItem(
                                                 fadeInSpec = motionScheme.fastEffectsSpec(),
                                                 fadeOutSpec = motionScheme.fastEffectsSpec(),
@@ -499,7 +499,8 @@ fun SearchScreen(
                                         Modifier
                                             .fillMaxWidth()
                                             .padding(
-                                                horizontal = 4.dp,
+                                                start = 4.dp,
+                                                end = 4.dp,
                                                 top = if (searchScreenState.suggestYTItems.isNotEmpty()) 12.dp else 4.dp,
                                                 bottom = 2.dp,
                                             )
