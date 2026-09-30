@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -19,6 +20,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -78,6 +80,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
@@ -131,9 +134,11 @@ import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
 import com.maxrave.simpmusic.ui.component.selection.rememberSongSelectionState
 import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
+import com.maxrave.simpmusic.ui.icon.ArrowForwardIos
 import com.maxrave.simpmusic.ui.icon.ArrowOutward
 import com.maxrave.simpmusic.ui.icon.Close
 import com.maxrave.simpmusic.ui.icon.History
+import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.Search
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.navigation.destination.home.MoodDestination
@@ -155,6 +160,7 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import simpmusic.composeapp.generated.resources.Res
+import simpmusic.composeapp.generated.resources.album
 import simpmusic.composeapp.generated.resources.albums
 import simpmusic.composeapp.generated.resources.artists
 import simpmusic.composeapp.generated.resources.clear_search_history
@@ -162,12 +168,15 @@ import simpmusic.composeapp.generated.resources.error_occurred
 import simpmusic.composeapp.generated.resources.everything_you_need
 import simpmusic.composeapp.generated.resources.in_search
 import simpmusic.composeapp.generated.resources.no_results_found
+import simpmusic.composeapp.generated.resources.playlist
 import simpmusic.composeapp.generated.resources.playlists
 import simpmusic.composeapp.generated.resources.podcasts
+import simpmusic.composeapp.generated.resources.popular
 import simpmusic.composeapp.generated.resources.retry
 import simpmusic.composeapp.generated.resources.search_for
 import simpmusic.composeapp.generated.resources.search_for_songs_artists_albums_playlists_and_more
 import simpmusic.composeapp.generated.resources.song
+import simpmusic.composeapp.generated.resources.suggest
 import simpmusic.composeapp.generated.resources.videos
 import simpmusic.composeapp.generated.resources.what_do_you_want_to_listen_to
 
@@ -180,6 +189,7 @@ fun SearchScreen(
 ) {
     val uriHandler = LocalUriHandler.current
     val focusManager = LocalFocusManager.current
+    val motionScheme = MaterialTheme.motionScheme
     val searchScreenState by searchViewModel.searchScreenState.collectAsStateWithLifecycle()
     val uiState by searchViewModel.searchScreenUIState.collectAsStateWithLifecycle()
     val searchHistory by searchViewModel.searchHistory.collectAsStateWithLifecycle()
@@ -383,109 +393,172 @@ fun SearchScreen(
         // equal to the bar's measured height to keep its first item clear of it.
         Crossfade(
             targetState = searchUIType,
+            animationSpec = motionScheme.fastEffectsSpec(),
             modifier = Modifier.fillMaxSize(),
         ) {
             when (it) {
                 SearchUIType.SEARCH_SUGGESTIONS -> {
                     LazyColumn(
-                        Modifier.padding(horizontal = 16.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
                         state = suggestionsState,
-                        contentPadding = PaddingValues(top = searchBarHeight, bottom = 10.dp),
+                        contentPadding = PaddingValues(top = searchBarHeight + 8.dp, bottom = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        items(searchScreenState.suggestYTItems) { item ->
-                            SuggestItemRow(
-                                searchResult = item,
-                                onItemClick = { item ->
+                        if (searchScreenState.suggestYTItems.isNotEmpty()) {
+                            item(key = "header_top_results") {
+                                Text(
+                                    text = stringResource(Res.string.popular),
+                                    style = typo().titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 4.dp, top = 4.dp, bottom = 2.dp)
+                                            .animateItem(
+                                                fadeInSpec = motionScheme.fastEffectsSpec(),
+                                                fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                                placementSpec = motionScheme.defaultSpatialSpec(),
+                                            ),
+                                )
+                            }
+                            items(
+                                items = searchScreenState.suggestYTItems,
+                                key = { item ->
                                     when (item) {
-                                        is SongsResult, is VideosResult -> {
-                                            val firstTrack: Track = (item as? SongsResult)?.toTrack() ?: (item as VideosResult).toTrack()
-                                            searchViewModel.setQueueData(
-                                                QueueData.Data(
-                                                    listTracks = arrayListOf(firstTrack),
-                                                    firstPlayedTrack = firstTrack,
-                                                    playlistId = "RDAMVM${firstTrack.videoId}",
-                                                    playlistName = "\"${searchText}\" ${getStringBlocking(Res.string.in_search)}",
-                                                    playlistType = PlaylistType.RADIO,
-                                                    continuation = null,
-                                                ),
-                                            )
-                                            searchViewModel.loadMediaItem(firstTrack, type = Config.SONG_CLICK)
-                                        }
-
-                                        is ArtistsResult -> {
-                                            navController.navigate(
-                                                ArtistDestination(item.browseId),
-                                            )
-                                        }
-
-                                        is AlbumsResult -> {
-                                            navController.navigate(
-                                                AlbumDestination(item.browseId),
-                                            )
-                                        }
-
-                                        is PlaylistsResult -> {
-                                            navController.navigate(
-                                                PlaylistDestination(
-                                                    item.browseId,
-                                                ),
-                                            )
-                                        }
+                                        is SongsResult -> "song_${item.videoId}"
+                                        is VideosResult -> "video_${item.videoId}"
+                                        is ArtistsResult -> "artist_${item.browseId}"
+                                        is AlbumsResult -> "album_${item.browseId}"
+                                        is PlaylistsResult -> "playlist_${item.browseId}"
+                                        else -> item.hashCode().toString()
                                     }
                                 },
-                            )
-                        }
-                        items(searchScreenState.suggestQueries) { suggestion ->
-                            Row(
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
-                                            indication = ripple(),
-                                            onClick = {
-                                                searchText = suggestion
-                                                focusManager.clearFocus()
-                                                isSearchSubmitted = true
-                                                searchViewModel.insertSearchHistory(suggestion)
-                                                when (searchScreenState.searchType) {
-                                                    SearchType.ALL -> searchViewModel.searchAll(suggestion)
-                                                    SearchType.SONGS -> searchViewModel.searchSongs(suggestion)
-                                                    SearchType.VIDEOS -> searchViewModel.searchVideos(suggestion)
-                                                    SearchType.ALBUMS -> searchViewModel.searchAlbums(suggestion)
-                                                    SearchType.ARTISTS -> searchViewModel.searchArtists(suggestion)
-                                                    SearchType.PLAYLISTS -> searchViewModel.searchPlaylists(suggestion)
-                                                    SearchType.FEATURED_PLAYLISTS -> searchViewModel.searchFeaturedPlaylist(suggestion)
-                                                    SearchType.PODCASTS -> searchViewModel.searchPodcast(suggestion)
-                                                }
-                                            },
-                                        ).padding(horizontal = 12.dp, vertical = 2.dp)
-                                        .clip(RoundedCornerShape(8.dp)),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    text = suggestion,
-                                    style = typo().bodyMedium,
+                            ) { item ->
+                                SuggestItemRow(
+                                    searchResult = item,
+                                    onItemClick = { clickedItem ->
+                                        when (clickedItem) {
+                                            is SongsResult, is VideosResult -> {
+                                                val firstTrack: Track = (clickedItem as? SongsResult)?.toTrack() ?: (clickedItem as VideosResult).toTrack()
+                                                searchViewModel.setQueueData(
+                                                    QueueData.Data(
+                                                        listTracks = arrayListOf(firstTrack),
+                                                        firstPlayedTrack = firstTrack,
+                                                        playlistId = "RDAMVM${firstTrack.videoId}",
+                                                        playlistName = "\"${searchText}\" ${getStringBlocking(Res.string.in_search)}",
+                                                        playlistType = PlaylistType.RADIO,
+                                                        continuation = null,
+                                                    ),
+                                                )
+                                                searchViewModel.loadMediaItem(firstTrack, type = Config.SONG_CLICK)
+                                            }
+
+                                            is ArtistsResult -> {
+                                                navController.navigate(
+                                                    ArtistDestination(clickedItem.browseId),
+                                                )
+                                            }
+
+                                            is AlbumsResult -> {
+                                                navController.navigate(
+                                                    AlbumDestination(clickedItem.browseId),
+                                                )
+                                            }
+
+                                            is PlaylistsResult -> {
+                                                navController.navigate(
+                                                    PlaylistDestination(
+                                                        clickedItem.browseId,
+                                                    ),
+                                                )
+                                            }
+                                        }
+                                    },
+                                    modifier =
+                                        Modifier.animateItem(
+                                            fadeInSpec = motionScheme.fastEffectsSpec(),
+                                            fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                            placementSpec = motionScheme.defaultSpatialSpec(),
+                                        ),
                                 )
-                                Spacer(modifier = Modifier.weight(1f))
-                                IconButton(
-                                    onClick = {
+                            }
+                        }
+
+                        if (searchScreenState.suggestQueries.isNotEmpty()) {
+                            item(key = "header_suggestions") {
+                                Text(
+                                    text = stringResource(Res.string.suggest),
+                                    style = typo().titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .padding(
+                                                horizontal = 4.dp,
+                                                top = if (searchScreenState.suggestYTItems.isNotEmpty()) 12.dp else 4.dp,
+                                                bottom = 2.dp,
+                                            )
+                                            .animateItem(
+                                                fadeInSpec = motionScheme.fastEffectsSpec(),
+                                                fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                                placementSpec = motionScheme.defaultSpatialSpec(),
+                                            ),
+                                )
+                            }
+                            items(
+                                items = searchScreenState.suggestQueries,
+                                key = { "query_$it" },
+                            ) { suggestion ->
+                                SuggestQueryRow(
+                                    suggestion = suggestion,
+                                    onQueryClick = {
+                                        searchText = suggestion
+                                        focusManager.clearFocus()
+                                        isSearchSubmitted = true
+                                        searchViewModel.insertSearchHistory(suggestion)
+                                        when (searchScreenState.searchType) {
+                                            SearchType.ALL -> searchViewModel.searchAll(suggestion)
+                                            SearchType.SONGS -> searchViewModel.searchSongs(suggestion)
+                                            SearchType.VIDEOS -> searchViewModel.searchVideos(suggestion)
+                                            SearchType.ALBUMS -> searchViewModel.searchAlbums(suggestion)
+                                            SearchType.ARTISTS -> searchViewModel.searchArtists(suggestion)
+                                            SearchType.PLAYLISTS -> searchViewModel.searchPlaylists(suggestion)
+                                            SearchType.FEATURED_PLAYLISTS -> searchViewModel.searchFeaturedPlaylist(suggestion)
+                                            SearchType.PODCASTS -> searchViewModel.searchPodcast(suggestion)
+                                        }
+                                    },
+                                    onInsertClick = {
                                         searchText = suggestion
                                         focusRequester.requestFocus()
                                     },
-                                ) {
-                                    Icon(
-                                        imageVector = SimpIcons.ArrowOutward,
-                                        contentDescription = "Search suggestion",
-                                        modifier = Modifier.size(24.dp),
-                                    )
-                                }
+                                    modifier =
+                                        Modifier.animateItem(
+                                            fadeInSpec = motionScheme.fastEffectsSpec(),
+                                            fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                            placementSpec = motionScheme.defaultSpatialSpec(),
+                                        ),
+                                )
                             }
                         }
-                        item {
-                            EndOfPage(
-                                withoutCredit = true,
-                            )
+
+                        item(key = "end_of_page") {
+                            Box(
+                                modifier =
+                                    Modifier.animateItem(
+                                        fadeInSpec = motionScheme.fastEffectsSpec(),
+                                        fadeOutSpec = motionScheme.fastEffectsSpec(),
+                                        placementSpec = motionScheme.defaultSpatialSpec(),
+                                    ),
+                            ) {
+                                EndOfPage(
+                                    withoutCredit = true,
+                                )
+                            }
                         }
                     }
                 }
@@ -1227,51 +1300,129 @@ fun SearchScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SuggestItemRow(
     searchResult: SearchResultType,
     onItemClick: (SearchResultType) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .clickable { onItemClick(searchResult) }
-                .padding(vertical = 8.dp, horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        val url =
-            when (searchResult) {
-                is SongsResult -> {
-                    searchResult.thumbnails?.lastOrNull()?.url
-                }
+    val motionScheme = MaterialTheme.motionScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+    )
 
-                is AlbumsResult -> {
-                    searchResult.thumbnails.lastOrNull()?.url
-                }
-
-                is ArtistsResult -> {
-                    searchResult.thumbnails.lastOrNull()?.url
-                }
-
-                is PlaylistsResult -> {
-                    searchResult.thumbnails.lastOrNull()?.url
-                }
-
-                is VideosResult -> {
-                    searchResult.thumbnails?.lastOrNull()?.url
-                }
-
-                else -> {
-                    null
-                }
+    val url =
+        when (searchResult) {
+            is SongsResult -> {
+                searchResult.thumbnails?.lastOrNull()?.url
             }
 
+            is AlbumsResult -> {
+                searchResult.thumbnails.lastOrNull()?.url
+            }
+
+            is ArtistsResult -> {
+                searchResult.thumbnails.lastOrNull()?.url
+            }
+
+            is PlaylistsResult -> {
+                searchResult.thumbnails.lastOrNull()?.url
+            }
+
+            is VideosResult -> {
+                searchResult.thumbnails?.lastOrNull()?.url
+            }
+
+            else -> {
+                null
+            }
+        }
+
+    val title =
+        when (searchResult) {
+            is SongsResult -> {
+                searchResult.title
+            }
+
+            is AlbumsResult -> {
+                searchResult.title
+            }
+
+            is ArtistsResult -> {
+                searchResult.artist
+            }
+
+            is PlaylistsResult -> {
+                searchResult.title
+            }
+
+            is VideosResult -> {
+                searchResult.title
+            }
+
+            else -> {
+                null
+            }
+        } ?: "Unknown"
+
+    val subtitle =
+        when (searchResult) {
+            is SongsResult -> searchResult.artists?.map { it.name }?.connectArtists()
+            is AlbumsResult -> searchResult.artists.map { it.name }.connectArtists()
+            is PlaylistsResult -> searchResult.author.ifEmpty { "YouTube Music" }
+            is ArtistsResult -> null
+            is VideosResult -> searchResult.artists?.map { it.name }?.connectArtists()
+            else -> null
+        } ?: ""
+
+    val badgeText =
+        when (searchResult) {
+            is SongsResult -> stringResource(Res.string.song)
+            is ArtistsResult -> stringResource(Res.string.artists)
+            is AlbumsResult -> stringResource(Res.string.album)
+            is PlaylistsResult -> stringResource(Res.string.playlist)
+            is VideosResult -> stringResource(Res.string.videos)
+            else -> null
+        }
+
+    val isPlayable = searchResult is SongsResult || searchResult is VideosResult
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    if (isPressed) MaterialTheme.colorScheme.surfaceContainerHigh
+                    else MaterialTheme.colorScheme.surfaceContainerLow,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClick = { onItemClick(searchResult) },
+                )
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Box(
             modifier =
                 Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(4.dp)),
+                    .size(52.dp)
+                    .clip(
+                        if (searchResult is ArtistsResult) {
+                            CircleShape
+                        } else {
+                            RoundedCornerShape(12.dp)
+                        },
+                    ),
         ) {
             AsyncImage(
                 model =
@@ -1280,82 +1431,171 @@ fun SuggestItemRow(
                         .data(url)
                         .diskCachePolicy(CachePolicy.ENABLED)
                         .diskCacheKey(url)
-                        
+                        .crossfade(true)
                         .build(),
                 placeholder = rememberHolderPainter(),
                 error = rememberHolderPainter(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier =
-                    Modifier
-                        .size(40.dp)
-                        .clip(
-                            if (searchResult is ArtistsResult) {
-                                CircleShape
-                            } else {
-                                RoundedCornerShape(4.dp)
-                            },
-                        ),
+                modifier = Modifier.fillMaxSize(),
             )
         }
 
-        Spacer(modifier = Modifier.padding(horizontal = 12.dp))
-
-        Column(modifier = Modifier.weight(1f)) {
-            val title =
-                when (searchResult) {
-                    is SongsResult -> {
-                        searchResult.title
-                    }
-
-                    is AlbumsResult -> {
-                        searchResult.title
-                    }
-
-                    is ArtistsResult -> {
-                        searchResult.artist
-                    }
-
-                    is PlaylistsResult -> {
-                        searchResult.title
-                    }
-
-                    is VideosResult -> {
-                        searchResult.title
-                    }
-
-                    else -> {
-                        null
-                    }
-                } ?: "Unknown"
+        Column(
+            modifier =
+                Modifier
+                    .weight(1f)
+                    .padding(horizontal = 12.dp),
+        ) {
+            if (badgeText != null) {
+                Box(
+                    modifier =
+                        Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.secondaryContainer)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = typo().labelSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+                Spacer(modifier = Modifier.height(3.dp))
+            }
 
             Text(
                 text = title,
-                style = typo().labelSmall,
+                style = typo().titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(modifier = Modifier.height(2.dp))
-
-            val subtitle =
-                when (searchResult) {
-                    is SongsResult -> searchResult.artists?.map { it.name }?.connectArtists()
-                    is AlbumsResult -> searchResult.artists.map { it.name }.connectArtists()
-                    is PlaylistsResult -> searchResult.author.ifEmpty { "YouTube Music" }
-                    is ArtistsResult -> stringResource(Res.string.artists)
-                    is VideosResult -> searchResult.artists?.map { it.name }?.connectArtists()
-                    else -> null
-                } ?: "Unknown"
 
             if (subtitle.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = subtitle,
-                    style = typo().bodySmall,
+                    style = typo().bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
+        }
+
+        if (isPlayable) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(38.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = SimpIcons.PlayArrow,
+                    contentDescription = "Play",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        } else {
+            Box(
+                modifier =
+                    Modifier
+                        .size(34.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = SimpIcons.ArrowForwardIos,
+                    contentDescription = "Open",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(14.dp),
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SuggestQueryRow(
+    suggestion: String,
+    onQueryClick: () -> Unit,
+    onInsertClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val motionScheme = MaterialTheme.motionScheme
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.98f else 1f,
+        animationSpec = motionScheme.fastSpatialSpec(),
+    )
+
+    Row(
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (isPressed) MaterialTheme.colorScheme.surfaceContainerHigh
+                    else MaterialTheme.colorScheme.surfaceContainerLowest,
+                )
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = ripple(),
+                    onClick = onQueryClick,
+                )
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier =
+                Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = SimpIcons.Search,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Text(
+            text = suggestion,
+            style = typo().bodyLarge,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+
+        IconButton(
+            onClick = onInsertClick,
+            modifier = Modifier.size(36.dp),
+        ) {
+            Icon(
+                imageVector = SimpIcons.ArrowOutward,
+                contentDescription = "Insert suggestion",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(20.dp),
+            )
         }
     }
 }
