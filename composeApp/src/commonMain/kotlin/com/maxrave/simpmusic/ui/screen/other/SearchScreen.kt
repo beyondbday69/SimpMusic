@@ -3,9 +3,15 @@ package com.maxrave.simpmusic.ui.screen.other
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -124,6 +130,7 @@ import com.maxrave.simpmusic.ui.component.SongFullWidthItems
 import com.maxrave.simpmusic.ui.component.selection.SelectedSongsBottomSheet
 import com.maxrave.simpmusic.ui.component.selection.SongSelectionTopAppBar
 import com.maxrave.simpmusic.ui.component.selection.rememberSongSelectionState
+import com.maxrave.simpmusic.ui.icon.ArrowBackIosNew
 import com.maxrave.simpmusic.ui.icon.ArrowOutward
 import com.maxrave.simpmusic.ui.icon.Close
 import com.maxrave.simpmusic.ui.icon.History
@@ -956,10 +963,41 @@ fun SearchScreen(
                 }
             }
         }
+        val motionScheme = MaterialTheme.motionScheme
+
+        // Material 3 Expressive SearchBar morphing physics:
+        // Pill (28dp) when idle -> softly rounded (16dp) when focused
+        val searchBarCorner by animateDpAsState(
+            targetValue = if (isFocused) 16.dp else 28.dp,
+            animationSpec = motionScheme.defaultSpatialSpec(),
+            label = "searchBarCorner",
+        )
+        // Horizontal padding eases in/out: expands outward from 16dp to 8dp on focus
+        val searchBarPaddingHorizontal by animateDpAsState(
+            targetValue = if (isFocused) 8.dp else 16.dp,
+            animationSpec = motionScheme.defaultSpatialSpec(),
+            label = "searchBarPaddingHorizontal",
+        )
+        // M3 tonal container color transition
+        val searchBarContainerColor by animateColorAsState(
+            targetValue =
+                if (isFocused) {
+                    MaterialTheme.colorScheme.surfaceContainerHighest
+                } else if (!isContentAtTop) {
+                    MaterialTheme.colorScheme.surfaceContainerHigh
+                } else {
+                    MaterialTheme.colorScheme.surfaceContainer
+                },
+            animationSpec = motionScheme.fastEffectsSpec(),
+            label = "searchBarContainerColor",
+        )
+
         AnimatedContent(
             targetState = isContentAtTop,
             transitionSpec = {
-                fadeIn(tween(300)).togetherWith(fadeOut(tween(300)))
+                fadeIn(animationSpec = motionScheme.fastEffectsSpec()).togetherWith(
+                    fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
+                )
             },
             modifier =
                 Modifier
@@ -980,133 +1018,188 @@ fun SearchScreen(
                         ).windowInsetsPadding(WindowInsets.statusBars)
                         .padding(vertical = 10.dp),
             ) {
-        AnimatedVisibility(visible = selectionState.isActive) {
-            SongSelectionTopAppBar(
-                state = selectionState,
-                onSelectAll = {
-                    val visible =
-                        when (searchScreenState.searchType) {
-                            SearchType.SONGS -> searchScreenState.searchSongsResult.map { it.videoId }
-                            SearchType.VIDEOS -> searchScreenState.searchVideosResult.map { it.videoId }
-                            SearchType.ALL ->
-                                searchScreenState.searchAllResult.mapNotNull {
-                                    (it as? SongsResult)?.videoId ?: (it as? VideosResult)?.videoId
+                AnimatedVisibility(visible = selectionState.isActive) {
+                    SongSelectionTopAppBar(
+                        state = selectionState,
+                        onSelectAll = {
+                            val visible =
+                                when (searchScreenState.searchType) {
+                                    SearchType.SONGS -> searchScreenState.searchSongsResult.map { it.videoId }
+                                    SearchType.VIDEOS -> searchScreenState.searchVideosResult.map { it.videoId }
+                                    SearchType.ALL ->
+                                        searchScreenState.searchAllResult.mapNotNull {
+                                            (it as? SongsResult)?.videoId ?: (it as? VideosResult)?.videoId
+                                        }
+                                    else -> emptyList()
                                 }
-                            else -> emptyList()
-                        }
-                    selectionState.toggleSelectAll(visible)
-                },
-                onOpenActions = { showSelectionSheet = true },
-                containerColor = Color.Transparent,
-                // Zero here AND on the SearchBar below: the Column that holds them both consumes
-                // the status bar once, for the whole stack. Leaving it on either child reserves it
-                // a second time — which is the slab of padding this screen used to show.
-                windowInsets = WindowInsets(0),
-            )
-        }
-        // Search Bar with Animated Placeholder
-        SearchBar(
-            inputField = {
-                SearchBarDefaults.InputField(
-                    query = searchText,
-                    onQueryChange = { newText ->
-                        searchText = newText
-                    },
-                    onSearch = { query ->
-                        // A pasted YouTube link is a destination, not a query. Translating it into
-                        // the app's own deep link hands it to the same intent flow that handles
-                        // shared links, so it plays or opens straight away instead of being
-                        // searched for as text. Anything else falls through to a normal search.
-                        val deepLink = query.toAppDeepLinkOrNull()
-                        if (deepLink != null) {
-                            focusManager.clearFocus()
-                            sharedViewModel.setIntent(GenericIntent(data = deepLink))
-                        } else if (query.isNotEmpty()) {
-                            isSearchSubmitted = true
-                            focusManager.clearFocus()
-                            searchViewModel.insertSearchHistory(query)
-                            when (searchScreenState.searchType) {
-                                SearchType.ALL -> searchViewModel.searchAll(query)
-                                SearchType.SONGS -> searchViewModel.searchSongs(query)
-                                SearchType.VIDEOS -> searchViewModel.searchVideos(query)
-                                SearchType.ALBUMS -> searchViewModel.searchAlbums(query)
-                                SearchType.ARTISTS -> searchViewModel.searchArtists(query)
-                                SearchType.PLAYLISTS -> searchViewModel.searchPlaylists(query)
-                                SearchType.FEATURED_PLAYLISTS -> searchViewModel.searchFeaturedPlaylist(query)
-                                SearchType.PODCASTS -> searchViewModel.searchPodcast(query)
-                            }
-                        }
+                            selectionState.toggleSelectAll(visible)
+                        },
+                        onOpenActions = { showSelectionSheet = true },
+                        containerColor = Color.Transparent,
+                        // Zero here AND on the SearchBar below: the Column that holds them both consumes
+                        // the status bar once, for the whole stack. Leaving it on either child reserves it
+                        // a second time — which is the slab of padding this screen used to show.
+                        windowInsets = WindowInsets(0),
+                    )
+                }
+                // Material 3 SearchBar with motion physics
+                SearchBar(
+                    inputField = {
+                        SearchBarDefaults.InputField(
+                            query = searchText,
+                            onQueryChange = { newText ->
+                                searchText = newText
+                            },
+                            onSearch = { query ->
+                                // A pasted YouTube link is a destination, not a query. Translating it into
+                                // the app's own deep link hands it to the same intent flow that handles
+                                // shared links, so it plays or opens straight away instead of being
+                                // searched for as text. Anything else falls through to a normal search.
+                                val deepLink = query.toAppDeepLinkOrNull()
+                                if (deepLink != null) {
+                                    focusManager.clearFocus()
+                                    sharedViewModel.setIntent(GenericIntent(data = deepLink))
+                                } else if (query.isNotEmpty()) {
+                                    isSearchSubmitted = true
+                                    focusManager.clearFocus()
+                                    searchViewModel.insertSearchHistory(query)
+                                    when (searchScreenState.searchType) {
+                                        SearchType.ALL -> searchViewModel.searchAll(query)
+                                        SearchType.SONGS -> searchViewModel.searchSongs(query)
+                                        SearchType.VIDEOS -> searchViewModel.searchVideos(query)
+                                        SearchType.ALBUMS -> searchViewModel.searchAlbums(query)
+                                        SearchType.ARTISTS -> searchViewModel.searchArtists(query)
+                                        SearchType.PLAYLISTS -> searchViewModel.searchPlaylists(query)
+                                        SearchType.FEATURED_PLAYLISTS -> searchViewModel.searchFeaturedPlaylist(query)
+                                        SearchType.PODCASTS -> searchViewModel.searchPodcast(query)
+                                    }
+                                }
+                            },
+                            expanded = false,
+                            onExpandedChange = {},
+                            enabled = true,
+                            placeholder = {
+                                // Animated placeholder text with M3 motion physics
+                                AnimatedContent(
+                                    targetState = currentPlaceholderIndex,
+                                    transitionSpec = {
+                                        (
+                                            fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
+                                                slideInVertically(animationSpec = motionScheme.defaultSpatialSpec()) { height -> height / 2 }
+                                        ).togetherWith(
+                                            fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
+                                                slideOutVertically(animationSpec = motionScheme.defaultSpatialSpec()) { height -> -height / 2 },
+                                        )
+                                    },
+                                    label = "placeholder_animation",
+                                ) { index ->
+                                    Text(
+                                        text = placeholderTexts[index],
+                                        style = typo().bodyLarge,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                            },
+                            leadingIcon = {
+                                AnimatedContent(
+                                    targetState = isFocused,
+                                    transitionSpec = {
+                                        (
+                                            fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
+                                                scaleIn(animationSpec = motionScheme.fastSpatialSpec(), initialScale = 0.8f)
+                                        ).togetherWith(
+                                            fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
+                                                scaleOut(animationSpec = motionScheme.fastSpatialSpec(), targetScale = 0.8f)
+                                        )
+                                    },
+                                    label = "search_leading_icon",
+                                ) { focused ->
+                                    if (focused) {
+                                        IconButton(
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                isExpanded = false
+                                            },
+                                        ) {
+                                            Icon(
+                                                imageVector = SimpIcons.ArrowBackIosNew,
+                                                contentDescription = "Back",
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    } else {
+                                        Box(
+                                            modifier = Modifier.size(48.dp),
+                                            contentAlignment = Alignment.Center,
+                                        ) {
+                                            Icon(
+                                                imageVector = SimpIcons.Search,
+                                                contentDescription = "Search",
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            )
+                                        }
+                                    }
+                                }
+                            },
+                            trailingIcon = {
+                                AnimatedVisibility(
+                                    visible = searchText.isNotEmpty(),
+                                    enter =
+                                        fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
+                                            scaleIn(animationSpec = motionScheme.fastSpatialSpec(), initialScale = 0.7f),
+                                    exit =
+                                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
+                                            scaleOut(animationSpec = motionScheme.fastSpatialSpec(), targetScale = 0.7f),
+                                ) {
+                                    IconButton(
+                                        modifier = Modifier.clip(CircleShape),
+                                        onClick = {
+                                            searchText = ""
+                                            isSearchSubmitted = false
+                                        },
+                                    ) {
+                                        Icon(
+                                            imageVector = SimpIcons.Close,
+                                            contentDescription = "Clear search",
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            },
+                        )
                     },
                     expanded = false,
                     onExpandedChange = {},
-                    enabled = true,
-                    placeholder = {
-                        // Animated placeholder text
-                        AnimatedContent(
-                            targetState = currentPlaceholderIndex,
-                            transitionSpec = {
-                                (
-                                    fadeIn(animationSpec = tween(500)) +
-                                        slideInVertically { height -> height }
-                                ).togetherWith(
-                                    fadeOut(animationSpec = tween(500)) +
-                                        slideOutVertically { height -> -height },
-                                )
+                    modifier =
+                        Modifier
+                            .widthIn(max = 720.dp)
+                            .fillMaxWidth()
+                            .align(Alignment.CenterHorizontally)
+                            .padding(horizontal = searchBarPaddingHorizontal)
+                            .focusRequester(focusRequester)
+                            .onFocusChanged {
+                                isFocused = it.isFocused
                             },
-                            label = "placeholder_animation",
-                        ) { index ->
-                            Text(
-                                text = placeholderTexts[index],
-                                style = typo().labelMedium,
-                            )
-                        }
-                    },
-                    leadingIcon = {
-                        Icon(
-                            imageVector = SimpIcons.Search,
-                            contentDescription = "Search",
-                        )
-                    },
-                    trailingIcon = {
-                        // X button only shows when there's text
-                        if (searchText.isNotEmpty()) {
-                            IconButton(
-                                modifier = Modifier.clip(CircleShape),
-                                onClick = {
-                                    searchText = ""
-                                    isSearchSubmitted = false
-                                },
-                            ) {
-                                Icon(
-                                    imageVector = SimpIcons.Close,
-                                    contentDescription = "Clear search",
-                                )
-                            }
-                        }
-                    },
+                    shape = RoundedCornerShape(searchBarCorner),
+                    colors =
+                        SearchBarDefaults.colors(
+                            containerColor = searchBarContainerColor,
+                        ),
+                    // See the note on SongSelectionTopAppBar above — the Column owns the status-bar inset.
+                    windowInsets = WindowInsets(0),
+                    content = {},
                 )
-            },
-            expanded = false,
-            onExpandedChange = {},
-            modifier =
-                Modifier
-                    .widthIn(max = 720.dp)
-                    .fillMaxWidth()
-                    .align(Alignment.CenterHorizontally)
-                    .focusRequester(focusRequester)
-                    .onFocusChanged {
-                        isFocused = it.isFocused
-                    }.padding(horizontal = 16.dp),
-            shape = RoundedCornerShape(8.dp),
-            // See the note on SongSelectionTopAppBar above — the Column owns the status-bar inset.
-            windowInsets = WindowInsets(0),
-            content = {},
-        )
                 // Filter chips ride along inside the blurred block instead of sitting in the
                 // results branch. That way searchBarHeight covers them too, results scroll
                 // underneath the whole thing, and the glass has something to blur.
                 AnimatedVisibility(
                     visible = searchUIType == SearchUIType.SEARCH_RESULTS,
+                    enter =
+                        fadeIn(animationSpec = motionScheme.fastEffectsSpec()) +
+                            expandVertically(animationSpec = motionScheme.defaultSpatialSpec()),
+                    exit =
+                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()) +
+                            shrinkVertically(animationSpec = motionScheme.defaultSpatialSpec()),
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 ) {
                     SingleChoiceSegmentedButtonRow(
