@@ -37,6 +37,7 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +70,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -136,7 +138,9 @@ import com.maxrave.simpmusic.ui.component.liquidGlass
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
 import com.maxrave.simpmusic.ui.icon.Close
 import com.maxrave.simpmusic.ui.icon.OpenInFull
+import com.maxrave.simpmusic.ui.icon.Pause
 import com.maxrave.simpmusic.ui.icon.PictureInPictureAlt
+import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.QueueMusic
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.icon.VolumeOff
@@ -264,201 +268,241 @@ fun MiniPlayer(
         job4.join()
     }
 
-    var isCollapsed by rememberSaveable { mutableStateOf(false) }
-    var userInteractionCount by remember { mutableStateOf(0) }
-
-    LaunchedEffect(songEntity?.videoId, isCollapsed, userInteractionCount) {
-        if (!isCollapsed) {
-            delay(5000)
-            isCollapsed = true
-        }
-    }
-
     if (getPlatform() == Platform.Android) {
-        // One shape for both the Card and the clip below.
-        val miniPlayerShape = CircleShape
-        // Solid color rendering without blur/translucency for maximum performance
-        val cardColor = MaterialTheme.colorScheme.surfaceContainer
-        val isFlat = true
+        val motionScheme = MaterialTheme.motionScheme
 
         BoxWithConstraints(
             modifier = modifier.fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
             val fullWidth = (maxWidth * (if (isTablet) 0.65f else 0.94f)).coerceAtMost(560.dp)
-            val cardHeight = 58.dp
-            val targetWidth = if (isCollapsed) cardHeight else fullWidth
-            val animatedWidth by animateDpAsState(
-                targetValue = targetWidth,
-                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
-                label = "MiniPlayerWidth",
-            )
-            val contentAlpha by animateFloatAsState(
-                targetValue = if (isCollapsed) 0f else 1f,
-                animationSpec = tween(durationMillis = if (isCollapsed) 160 else 240, easing = FastOutSlowInEasing),
-                label = "MiniPlayerContentAlpha",
+
+            // Dynamic states for compact slice (Play/Pause button pill)
+            val sliceInteractionSource = remember { MutableInteractionSource() }
+            val isSlicePressed by sliceInteractionSource.collectIsPressedAsState()
+
+            // Tactile spring press scale on M3 fast spatial spring
+            val slicePressScale by animateFloatAsState(
+                targetValue = if (isSlicePressed) 0.90f else 1.0f,
+                animationSpec = motionScheme.fastSpatialSpec(),
+                label = "miniPlayerSlicePressScale",
             )
 
-            Card(
-                shape = miniPlayerShape,
-                colors =
-                    CardDefaults.cardColors(
-                        containerColor = cardColor,
-                        disabledContainerColor = cardColor,
-                    ),
+            // Dynamic corner morph on the cut face (16dp at rest -> 22dp active/playing)
+            val sliceCutCorner by animateDpAsState(
+                targetValue = if (isPlaying) 22.dp else 16.dp,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+                label = "miniPlayerSliceCutCorner",
+            )
+
+            // Tactile width morph (56dp -> 62dp when playing)
+            val sliceWidth by animateDpAsState(
+                targetValue = if (isPlaying) 62.dp else 56.dp,
+                animationSpec = motionScheme.defaultSpatialSpec(),
+                label = "miniPlayerSliceWidth",
+            )
+
+            // Slice background fills with primaryContainer when active/playing
+            val sliceContainerColor by animateColorAsState(
+                targetValue =
+                    if (isPlaying) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.surfaceContainer
+                    },
+                animationSpec = motionScheme.fastEffectsSpec(),
+                label = "miniPlayerSliceContainerColor",
+            )
+
+            // Slice content/icon color morph
+            val sliceContentColor by animateColorAsState(
+                targetValue =
+                    if (isPlaying) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    },
+                animationSpec = motionScheme.fastEffectsSpec(),
+                label = "miniPlayerSliceContentColor",
+            )
+
+            // Main Pill interaction
+            val mainPillInteractionSource = remember { MutableInteractionSource() }
+            val isMainPillPressed by mainPillInteractionSource.collectIsPressedAsState()
+            val mainPillPressScale by animateFloatAsState(
+                targetValue = if (isMainPillPressed) 0.985f else 1.0f,
+                animationSpec = motionScheme.fastSpatialSpec(),
+                label = "miniPlayerMainPillPressScale",
+            )
+
+            Row(
                 modifier =
                     Modifier
-                        .width(animatedWidth)
-                        .height(cardHeight)
-                        .clip(miniPlayerShape)
+                        .width(fullWidth)
+                        .height(58.dp)
                         .offset { IntOffset(0, offsetY.value.roundToInt()) }
-                        .clickable {
-                            if (isCollapsed) {
-                                isCollapsed = false
-                                userInteractionCount++
-                            } else {
-                                onClick()
-                            }
-                        }
-                        .pointerInput(Unit) {
-                            detectVerticalDragGestures(
-                                onDragStart = {},
-                                onVerticalDrag = { change: PointerInputChange, dragAmount: Float ->
-                                    if (offsetY.value + dragAmount > 0f) {
-                                        change.consume()
-                                        coroutineScope.launch {
-                                            val current = offsetY.value
-                                            val resistance = (1f - (current / 400f)).coerceIn(0.3f, 1f)
-                                            offsetY.snapTo(current + dragAmount * resistance)
-                                        }
-                                    }
-                                },
-                                onDragCancel = {
-                                    coroutineScope.launch {
-                                        offsetY.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMediumLow,
-                                            ),
-                                        )
-                                    }
-                                },
-                                onDragEnd = {
-                                    coroutineScope.launch {
-                                        if (offsetY.value > 70f) {
-                                            onClose()
-                                        }
-                                        offsetY.animateTo(
-                                            targetValue = 0f,
-                                            animationSpec = spring(
-                                                dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                stiffness = Spring.StiffnessMediumLow,
-                                            ),
-                                        )
-                                    }
-                                },
-                            )
+                        .graphicsLayer {
+                            // Smooth continuous fade-out: 1.0 at rest, 0.0 at 0.15 progress
+                            alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
                         },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.CenterVertically,
+                // 1. Main Track Pill (Left) - matching AppBottomDock main pill shape
+                Surface(
+                    shape =
+                        RoundedCornerShape(
+                            topStart = 29.dp,
+                            bottomStart = 29.dp,
+                            topEnd = 16.dp,
+                            bottomEnd = 16.dp,
+                        ),
+                    color = MaterialTheme.colorScheme.surfaceContainer,
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                    modifier =
+                        Modifier
+                            .weight(1f)
+                            .height(58.dp),
                 ) {
-                    // Unified persistent artwork with wavy or classic circular progress ring
-                    // Centered precisely: start padding 7dp + 44dp size + 7dp end = 58dp
                     Box(
                         modifier =
                             Modifier
-                                .padding(start = 7.dp)
-                                .size(44.dp)
+                                .fillMaxSize()
                                 .graphicsLayer {
-                                    // Smooth continuous fade-out: 1.0 at rest, 0.0 at 0.15 progress
-                                    alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
+                                    scaleX = mainPillPressScale
+                                    scaleY = mainPillPressScale
+                                }
+                                .clickable(
+                                    interactionSource = mainPillInteractionSource,
+                                    indication = null,
+                                    onClick = onClick,
+                                )
+                                .pointerInput(Unit) {
+                                    detectVerticalDragGestures(
+                                        onDragStart = {},
+                                        onVerticalDrag = { change: PointerInputChange, dragAmount: Float ->
+                                            if (offsetY.value + dragAmount > 0f) {
+                                                change.consume()
+                                                coroutineScope.launch {
+                                                    val current = offsetY.value
+                                                    val resistance = (1f - (current / 400f)).coerceIn(0.3f, 1f)
+                                                    offsetY.snapTo(current + dragAmount * resistance)
+                                                }
+                                            }
+                                        },
+                                        onDragCancel = {
+                                            coroutineScope.launch {
+                                                offsetY.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = motionScheme.defaultSpatialSpec(),
+                                                )
+                                            }
+                                        },
+                                        onDragEnd = {
+                                            coroutineScope.launch {
+                                                if (offsetY.value > 70f) {
+                                                    onClose()
+                                                }
+                                                offsetY.animateTo(
+                                                    targetValue = 0f,
+                                                    animationSpec = motionScheme.defaultSpatialSpec(),
+                                                )
+                                            }
+                                        },
+                                    )
                                 },
-                        contentAlignment = Alignment.Center,
                     ) {
-                        val density = LocalDensity.current
-                        val ringStroke =
-                            remember(density) {
-                                Stroke(width = with(density) { 3.dp.toPx() }, cap = StrokeCap.Round)
-                            }
-                        when (waveStyle) {
-                            SharedViewModel.WAVE_STYLE_FLAT -> {
-                                CircularProgressIndicator(
-                                    progress = { progressState.floatValue },
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    strokeWidth = 3.dp,
-                                    strokeCap = StrokeCap.Round,
-                                )
-                            }
-                            SharedViewModel.WAVE_STYLE_GENTLE -> {
-                                CircularWavyProgressIndicator(
-                                    progress = { progressState.floatValue },
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    stroke = ringStroke,
-                                    trackStroke = ringStroke,
-                                    amplitude = { p -> if (p > 0f && isPlaying) 0.5f else 0f },
-                                )
-                            }
-                            else -> {
-                                CircularWavyProgressIndicator(
-                                    progress = { progressState.floatValue },
-                                    modifier = Modifier.fillMaxSize(),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                                    stroke = ringStroke,
-                                    trackStroke = ringStroke,
-                                    amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
-                                )
-                            }
-                        }
-                        val context = LocalPlatformContext.current
-                        AsyncImage(
-                            model =
-                                remember(songEntity?.thumbnails) {
-                                    ImageRequest
-                                        .Builder(context)
-                                        .data(songEntity?.thumbnails)
-                                        .build()
-                                },
-                            placeholder = rememberHolderPainter(),
-                            error = rememberHolderPainter(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            onSuccess = { state ->
-                                sharedViewModel.setBitmap(state.result.image.toImageBitmap())
-                            },
-                            modifier =
-                                Modifier
-                                    .size(28.dp)
-                                    .clip(CircleShape)
-                                    .onGloballyPositioned { coordinates ->
-                                        onArtworkPositioned?.invoke(coordinates.boundsInRoot())
-                                    },
-                        )
-                    }
-
-                    // Content on the right: song info, like button, play/pause button
-                    if (animatedWidth > cardHeight) {
                         Row(
+                            modifier = Modifier.fillMaxSize(),
                             verticalAlignment = Alignment.CenterVertically,
-                            modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .graphicsLayer {
-                                        alpha = contentAlpha
-                                    }.clipToBounds(),
                         ) {
-                            Box(modifier = Modifier.weight(1F)) {
+                            // Artwork with progress ring: precisely concentric with 29dp left cap
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .padding(start = 7.dp)
+                                        .size(44.dp),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                val density = LocalDensity.current
+                                val ringStroke =
+                                    remember(density) {
+                                        Stroke(width = with(density) { 3.dp.toPx() }, cap = StrokeCap.Round)
+                                    }
+                                when (waveStyle) {
+                                    SharedViewModel.WAVE_STYLE_FLAT -> {
+                                        CircularProgressIndicator(
+                                            progress = { progressState.floatValue },
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            strokeWidth = 3.dp,
+                                            strokeCap = StrokeCap.Round,
+                                        )
+                                    }
+                                    SharedViewModel.WAVE_STYLE_GENTLE -> {
+                                        CircularWavyProgressIndicator(
+                                            progress = { progressState.floatValue },
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            stroke = ringStroke,
+                                            trackStroke = ringStroke,
+                                            amplitude = { p -> if (p > 0f && isPlaying) 0.5f else 0f },
+                                        )
+                                    }
+                                    else -> {
+                                        CircularWavyProgressIndicator(
+                                            progress = { progressState.floatValue },
+                                            modifier = Modifier.fillMaxSize(),
+                                            color = MaterialTheme.colorScheme.primary,
+                                            trackColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                                            stroke = ringStroke,
+                                            trackStroke = ringStroke,
+                                            amplitude = { p -> if (p > 0f && isPlaying) 1f else 0f },
+                                        )
+                                    }
+                                }
+                                val context = LocalPlatformContext.current
+                                AsyncImage(
+                                    model =
+                                        remember(songEntity?.thumbnails) {
+                                            ImageRequest
+                                                .Builder(context)
+                                                .data(songEntity?.thumbnails)
+                                                .build()
+                                        },
+                                    placeholder = rememberHolderPainter(),
+                                    error = rememberHolderPainter(),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    onSuccess = { state ->
+                                        sharedViewModel.setBitmap(state.result.image.toImageBitmap())
+                                    },
+                                    modifier =
+                                        Modifier
+                                            .size(28.dp)
+                                            .clip(CircleShape)
+                                            .onGloballyPositioned { coordinates ->
+                                                onArtworkPositioned?.invoke(coordinates.boundsInRoot())
+                                            },
+                                )
+                            }
+
+                            // Song Title & Artist text with horizontal swipe gestures
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clipToBounds(),
+                                contentAlignment = Alignment.CenterStart,
+                            ) {
                                 Row(
                                     modifier =
                                         Modifier
+                                            .fillMaxWidth()
                                             .offset { IntOffset(offsetX.value.roundToInt(), 0) }
                                             .pointerInput(Unit) {
                                                 detectHorizontalDragGestures(
@@ -475,73 +519,68 @@ fun MiniPlayer(
                                                         coroutineScope.launch {
                                                             offsetX.animateTo(
                                                                 targetValue = 0f,
-                                                                animationSpec =
-                                                                    spring(
-                                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                                        stiffness = Spring.StiffnessMediumLow,
-                                                                    ),
+                                                                animationSpec = motionScheme.defaultSpatialSpec(),
                                                             )
                                                         }
                                                     },
                                                     onDragEnd = {
                                                         coroutineScope.launch {
                                                             val finalOffset = offsetX.value
-                                                            if (finalOffset > 160f) {
+                                                            if (finalOffset > 140f) {
                                                                 sharedViewModel.onUIEvent(UIEvent.Previous)
                                                             } else if (finalOffset < -120f) {
                                                                 sharedViewModel.onUIEvent(UIEvent.Next)
                                                             }
                                                             offsetX.animateTo(
                                                                 targetValue = 0f,
-                                                                animationSpec =
-                                                                    spring(
-                                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                                                                        stiffness = Spring.StiffnessMediumLow,
-                                                                    ),
+                                                                animationSpec = motionScheme.defaultSpatialSpec(),
                                                             )
                                                         }
                                                     },
                                                 )
                                             },
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
                                     AnimatedContent(
                                         targetState = songEntity,
-                                        modifier = Modifier.weight(1F).fillMaxHeight(),
+                                        modifier = Modifier.weight(1f).fillMaxHeight(),
                                         contentAlignment = Alignment.CenterStart,
                                         transitionSpec = {
                                             if (targetState != initialState) {
                                                 (
-                                                    slideInHorizontally { width -> width } + fadeIn()
+                                                    slideInHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> width } +
+                                                        fadeIn(animationSpec = motionScheme.fastEffectsSpec())
                                                 ).togetherWith(
-                                                    slideOutHorizontally { width -> +width } + fadeOut(),
+                                                    slideOutHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> -width } +
+                                                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
                                                 )
                                             } else {
                                                 (
-                                                    slideInHorizontally { width -> +width } + fadeIn()
+                                                    slideInHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> -width } +
+                                                        fadeIn(animationSpec = motionScheme.fastEffectsSpec())
                                                 ).togetherWith(
-                                                    slideOutHorizontally { width -> width } + fadeOut(),
+                                                    slideOutHorizontally(animationSpec = motionScheme.defaultSpatialSpec()) { width -> width } +
+                                                        fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
                                                 )
                                             }.using(
                                                 SizeTransform(clip = false),
                                             )
                                         },
+                                        label = "miniPlayerSongInfo",
                                     ) { target ->
                                         if (target != null) {
                                             Column(
-                                                Modifier
-                                                    .wrapContentHeight()
-                                                    .align(Alignment.CenterVertically)
-                                                    .onGloballyPositioned { coordinates ->
-                                                        onTextPositioned?.invoke(coordinates.boundsInRoot())
-                                                    }
-                                                    .graphicsLayer {
-                                                        // Fade out resting text smoothly as the morph takes flight
-                                                        alpha = if (morphProgress <= 0.001f) 1f else (1f - (morphProgress / 0.15f)).coerceIn(0f, 1f)
-                                                    },
+                                                modifier =
+                                                    Modifier
+                                                        .wrapContentHeight()
+                                                        .align(Alignment.CenterVertically)
+                                                        .onGloballyPositioned { coordinates ->
+                                                            onTextPositioned?.invoke(coordinates.boundsInRoot())
+                                                        },
                                             ) {
                                                 Text(
-                                                    text = (songEntity?.title ?: "").toString(),
+                                                    text = (target.title ?: "").toString(),
                                                     style = typo().titleSmall,
                                                     color = textColor,
                                                     maxLines = 1,
@@ -555,7 +594,7 @@ fun MiniPlayer(
                                                             ).focusable(),
                                                 )
                                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                                    androidx.compose.animation.AnimatedVisibility(visible = songEntity?.isExplicit == true) {
+                                                    AnimatedVisibility(visible = target.isExplicit == true) {
                                                         ExplicitBadge(
                                                             modifier =
                                                                 Modifier
@@ -564,7 +603,7 @@ fun MiniPlayer(
                                                         )
                                                     }
                                                     Text(
-                                                        text = (songEntity?.artistName?.connectArtists() ?: ""),
+                                                        text = (target.artistName?.connectArtists() ?: ""),
                                                         style = typo().bodySmall.copy(fontSize = 10.sp),
                                                         maxLines = 1,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -583,47 +622,81 @@ fun MiniPlayer(
                                     }
                                 }
                             }
-                            val controlSize = 38.dp
-                            val playColor = MaterialTheme.colorScheme.onPrimary
-                            Spacer(modifier = Modifier.width(8.dp))
+
+                            // Like / Heart button on the right side of the main pill
                             Box(
                                 modifier =
                                     Modifier
-                                        .size(controlSize)
-                                        .background(MaterialTheme.colorScheme.surfaceContainerHighest, CircleShape),
+                                        .padding(end = 6.dp)
+                                        .size(36.dp),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                HeartCheckBox(checked = liked, size = 28, tint = textColor) {
-                                    userInteractionCount++
+                                HeartCheckBox(checked = liked, size = 26, tint = textColor) {
                                     sharedViewModel.onUIEvent(UIEvent.ToggleLike)
                                 }
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Box(
-                                modifier =
-                                    Modifier
-                                        .size(controlSize)
-                                        .background(MaterialTheme.colorScheme.primary, CircleShape),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Crossfade(targetState = loading, label = "") {
-                                    if (it) {
-                                        Box(modifier = Modifier.size(controlSize), contentAlignment = Alignment.Center) {
-                                            CircularProgressIndicator(
-                                                modifier = Modifier.size(18.dp),
-                                                color = playColor,
-                                                strokeWidth = 3.dp,
-                                            )
-                                        }
-                                    } else {
-                                        PlayPauseButton(isPlaying = isPlaying, modifier = Modifier.size(controlSize), tint = playColor) {
-                                            userInteractionCount++
-                                            sharedViewModel.onUIEvent(UIEvent.PlayPause)
-                                        }
-                                    }
+                        }
+                    }
+                }
+
+                // 2. Compact Slice (Right) - Play / Pause button pill with smoothed cut edge & M3 spring physics
+                Surface(
+                    shape =
+                        RoundedCornerShape(
+                            topStart = sliceCutCorner,
+                            bottomStart = sliceCutCorner,
+                            topEnd = 29.dp,
+                            bottomEnd = 29.dp,
+                        ),
+                    color = sliceContainerColor,
+                    shadowElevation = 0.dp,
+                    tonalElevation = 0.dp,
+                    modifier =
+                        Modifier
+                            .height(58.dp)
+                            .width(sliceWidth),
+                ) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .fillMaxSize()
+                                .graphicsLayer {
+                                    scaleX = slicePressScale
+                                    scaleY = slicePressScale
+                                }
+                                .clickable(
+                                    interactionSource = sliceInteractionSource,
+                                    indication = null,
+                                ) {
+                                    sharedViewModel.onUIEvent(UIEvent.PlayPause)
+                                },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Crossfade(
+                            targetState = loading,
+                            animationSpec = motionScheme.fastEffectsSpec(),
+                            label = "miniPlayerSliceLoading",
+                        ) { isLoading ->
+                            if (isLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = sliceContentColor,
+                                    strokeWidth = 2.5.dp,
+                                )
+                            } else {
+                                Crossfade(
+                                    targetState = isPlaying,
+                                    animationSpec = motionScheme.fastEffectsSpec(),
+                                    label = "miniPlayerSlicePlayPause",
+                                ) { playing ->
+                                    Icon(
+                                        imageVector = if (playing) SimpIcons.Pause else SimpIcons.PlayArrow,
+                                        contentDescription = if (playing) "Pause" else "Play",
+                                        tint = sliceContentColor,
+                                        modifier = Modifier.size(26.dp),
+                                    )
                                 }
                             }
-                            Spacer(modifier = Modifier.width(8.dp))
                         }
                     }
                 }
