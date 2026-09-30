@@ -1901,15 +1901,15 @@ fun SearchResultItemRow(
             is ArtistsResult -> searchResult.artist
             is PlaylistsResult -> searchResult.title
             is VideosResult -> searchResult.title
-            else -> "Unknown"
-        }
+            else -> null
+        } ?: "Unknown"
 
     val subtitle =
         when (searchResult) {
             is SongsResult -> searchResult.artists?.map { it.name }?.connectArtists()
             is AlbumsResult -> searchResult.artists.map { it.name }.connectArtists()
             is PlaylistsResult -> searchResult.author.ifEmpty { "YouTube Music" }
-            is ArtistsResult -> searchResult.subscribers
+            is ArtistsResult -> null
             is VideosResult -> searchResult.artists?.map { it.name }?.connectArtists()
             else -> null
         } ?: ""
