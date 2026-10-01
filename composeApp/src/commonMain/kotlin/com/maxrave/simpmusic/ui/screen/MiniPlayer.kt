@@ -695,7 +695,7 @@ fun MiniPlayer(
                             // Material 3 Linear Progress Bar along the bottom edge of the track pill
                             if (!isCollapsed) {
                                 LinearProgressIndicator(
-                                    progress = { progressState.floatValue },
+                                    progress = progressState.floatValue,
                                     modifier =
                                         Modifier
                                             .fillMaxWidth()
