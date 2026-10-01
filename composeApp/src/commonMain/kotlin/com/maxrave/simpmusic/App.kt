@@ -551,8 +551,10 @@ fun App(
         val desktopWindow = if (isLightScheme) desktopWindowLight else desktopWindowDark
         val desktopPanel =
             if (isLightScheme) MaterialTheme.colorScheme.surfaceContainer else desktopPanelDark
+        val effectiveMorphProgress =
+            if (isTabletLandscape && isShowNowPlaylistScreen) 1f else morphProgress
         CompositionLocalProvider(
-            LocalNowPlayingMorphProgress provides morphProgress,
+            LocalNowPlayingMorphProgress provides effectiveMorphProgress,
             LocalNowPlayingArtworkBounds provides nowPlayingArtworkBoundsState,
             LocalNowPlayingTextBounds provides nowPlayingTextBoundsState,
         ) {
@@ -751,14 +753,30 @@ fun App(
                                 isShowNowPlaylistScreen,
                                 enter =
                                     slideInHorizontally(
-                                        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioLowBouncy,
+                                            stiffness = Spring.StiffnessMediumLow,
+                                        ),
                                         initialOffsetX = { it },
-                                    ) + fadeIn(animationSpec = tween(300)),
+                                    ) + fadeIn(
+                                        animationSpec = tween(
+                                            durationMillis = 250,
+                                            easing = FastOutSlowInEasing,
+                                        ),
+                                    ),
                                 exit =
                                     slideOutHorizontally(
-                                        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+                                        animationSpec = tween(
+                                            durationMillis = 280,
+                                            easing = FastOutSlowInEasing,
+                                        ),
                                         targetOffsetX = { it },
-                                    ) + fadeOut(animationSpec = tween(300)),
+                                    ) + fadeOut(
+                                        animationSpec = tween(
+                                            durationMillis = 200,
+                                            easing = FastOutSlowInEasing,
+                                        ),
+                                    ),
                             ) {
                                 Row(
                                     Modifier
@@ -786,23 +804,27 @@ fun App(
                                                     Modifier
                                                 },
                                             ).clip(
-                                                RoundedCornerShape(12.dp),
+                                                RoundedCornerShape(16.dp),
                                             ).then(
                                                 if (isDesktopShell) {
                                                     Modifier.background(desktopPanel)
                                                 } else {
-                                                    Modifier
+                                                    Modifier.background(MaterialTheme.colorScheme.surfaceContainer)
                                                 },
                                             ),
                                     ) {
-                                        ForceDarkContent {
-                                            NowPlayingScreenContent(
-                                                navController = navController,
-                                                sharedViewModel = viewModel,
-                                                isExpanded = true,
-                                                dismissIcon = SimpIcons.ArrowForwardIos,
-                                            ) {
-                                                isShowNowPlaylistScreen = false
+                                        CompositionLocalProvider(
+                                            LocalNowPlayingMorphProgress provides 1f,
+                                        ) {
+                                            ForceDarkContent {
+                                                NowPlayingScreenContent(
+                                                    navController = navController,
+                                                    sharedViewModel = viewModel,
+                                                    isExpanded = true,
+                                                    dismissIcon = SimpIcons.ArrowForwardIos,
+                                                ) {
+                                                    isShowNowPlaylistScreen = false
+                                                }
                                             }
                                         }
                                     }
@@ -1112,28 +1134,30 @@ fun App(
                 val currentArtworkUrl =
                     nowPlayingDataState.value?.songEntity?.thumbnails
                         ?: nowPlayingDataState.value?.mediaItem?.metadata?.artworkUri
-                MorphingArtworkOverlay(
-                    artworkUrl = currentArtworkUrl,
-                    progress = morphProgress,
-                    fromBounds = sourceArtworkBounds,
-                    toBounds = targetArtworkBounds,
-                )
-                val currentSong = nowPlayingDataState.value?.songEntity
-                val currentTitle =
-                    currentSong?.title
-                        ?: nowPlayingDataState.value?.mediaItem?.metadata?.title?.toString()
-                val currentArtist =
-                    currentSong?.artistName?.connectArtists()
-                        ?: nowPlayingDataState.value?.mediaItem?.metadata?.artist?.toString()
-                val isExplicit = currentSong?.isExplicit == true
-                MorphingTextOverlay(
-                    title = currentTitle,
-                    artist = currentArtist,
-                    isExplicit = isExplicit,
-                    progress = morphProgress,
-                    fromBounds = sourceTextBounds,
-                    toBounds = targetTextBounds,
-                )
+                if (!isTabletLandscape) {
+                    MorphingArtworkOverlay(
+                        artworkUrl = currentArtworkUrl,
+                        progress = morphProgress,
+                        fromBounds = sourceArtworkBounds,
+                        toBounds = targetArtworkBounds,
+                    )
+                    val currentSong = nowPlayingDataState.value?.songEntity
+                    val currentTitle =
+                        currentSong?.title
+                            ?: nowPlayingDataState.value?.mediaItem?.metadata?.title?.toString()
+                    val currentArtist =
+                        currentSong?.artistName?.connectArtists()
+                            ?: nowPlayingDataState.value?.mediaItem?.metadata?.artist?.toString()
+                    val isExplicit = currentSong?.isExplicit == true
+                    MorphingTextOverlay(
+                        title = currentTitle,
+                        artist = currentArtist,
+                        isExplicit = isExplicit,
+                        progress = morphProgress,
+                        fromBounds = sourceTextBounds,
+                        toBounds = targetTextBounds,
+                    )
+                }
             }
         }
     }
