@@ -143,8 +143,7 @@ import com.maxrave.simpmusic.ui.icon.PictureInPictureAlt
 import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.QueueMusic
 import com.maxrave.simpmusic.ui.icon.SimpIcons
-import com.maxrave.simpmusic.ui.icon.SkipNext
-import com.maxrave.simpmusic.ui.icon.SkipPrevious
+
 import com.maxrave.simpmusic.ui.icon.VolumeOff
 import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
@@ -302,8 +301,8 @@ fun MiniPlayer(
                 label = "miniPlayerSliceCutCorner",
             )
 
-            // Width for Material 3 transport cluster: Back, Play/Pause, Forward
-            val sliceBaseWidth = if (!isPlaying) 124.dp else 120.dp
+            // Width for Play/Pause button
+            val sliceBaseWidth = if (!isPlaying) 60.dp else 56.dp
             val animatedSliceWidth by animateDpAsState(
                 targetValue = if (isCollapsed) 0.dp else sliceBaseWidth,
                 animationSpec = motionScheme.defaultSpatialSpec(),
@@ -692,33 +691,10 @@ fun MiniPlayer(
                                 }
                             }
                         }
-
-                        // Material 3 Linear Progress Bar along the bottom edge of the track pill
-                        if (!isCollapsed) {
-                            LinearProgressIndicator(
-                                progress = progressState.floatValue,
-                                modifier =
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .height(3.dp)
-                                        .align(Alignment.BottomCenter)
-                                        .graphicsLayer {
-                                            alpha = contentAlpha
-                                        }
-                                        .clip(
-                                            RoundedCornerShape(
-                                                bottomStart = 29.dp,
-                                                bottomEnd = mainPillEndCorner,
-                                            ),
-                                        ),
-                                color = MaterialTheme.colorScheme.primary,
-                                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                            )
-                        }
                     }
                 }
 
-                // 2. Compact Slice (Right) - Material 3 Back, Play/Pause, Forward transport cluster with smoothed cut edge & M3 spring physics
+                // 2. Compact Slice (Right) - Material 3 Play/Pause with smoothed cut edge & M3 spring physics
                 if (animatedSliceWidth > 1.dp) {
                     Surface(
                         shape =
@@ -740,30 +716,10 @@ fun MiniPlayer(
                                 }
                                 .clipToBounds(),
                     ) {
-                        Row(
-                            modifier =
-                                Modifier
-                                    .fillMaxSize()
-                                    .padding(horizontal = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
                         ) {
-                            // Back / Previous Button
-                            IconButton(
-                                onClick = {
-                                    userInteractionCount++
-                                    sharedViewModel.onUIEvent(UIEvent.Previous)
-                                },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    imageVector = SimpIcons.SkipPrevious,
-                                    contentDescription = "Previous",
-                                    tint = sliceContentColor.copy(alpha = 0.85f),
-                                    modifier = Modifier.size(20.dp),
-                                )
-                            }
-
                             // Play / Pause Button with Material 3 filled / tonal container
                             Surface(
                                 shape = CircleShape,
@@ -820,22 +776,6 @@ fun MiniPlayer(
                                         }
                                     }
                                 }
-                            }
-
-                            // Forward / Next Button
-                            IconButton(
-                                onClick = {
-                                    userInteractionCount++
-                                    sharedViewModel.onUIEvent(UIEvent.Next)
-                                },
-                                modifier = Modifier.size(32.dp),
-                            ) {
-                                Icon(
-                                    imageVector = SimpIcons.SkipNext,
-                                    contentDescription = "Next",
-                                    tint = sliceContentColor.copy(alpha = 0.85f),
-                                    modifier = Modifier.size(20.dp),
-                                )
                             }
                         }
                     }
