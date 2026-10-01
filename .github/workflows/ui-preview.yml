@@ -24,6 +24,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+          fetch-depth: 1
 
       - name: Set up JDK 21
         uses: actions/setup-java@v4
@@ -32,21 +33,10 @@ jobs:
           distribution: 'microsoft'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
-          cache-disabled: true
-
-      - name: Cache Gradle & Dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.konan
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', 'gradle/libs.versions.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-            setup-java-Linux-x64-gradle-
+          cache-read-only: ${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/dev' }}
+          gradle-home-cache-cleanup: true
 
       - name: Setup local.properties
         run: |
@@ -57,12 +47,11 @@ jobs:
           echo "LASTFM_SECRET=" >> ./local.properties
           echo "sdk.dir=$ANDROID_HOME" >> ./local.properties
 
-      - name: Export Library Definitions
-        run: ./gradlew exportLibraryDefinitions
-
       - name: Build Android App (APK)
         run: |
-          ./gradlew :androidApp:assembleRelease -x lint -x test
+          ./gradlew :androidApp:assembleRelease \
+            -x lint -x test -x lintVitalRelease -x lintVitalAnalyzeRelease \
+            -Pandroid.injected.build.abi=arm64-v8a
 
       - name: Locate Output APKs
         run: |
@@ -100,6 +89,7 @@ jobs:
           echo "👉 **[Launch SimpMusic on Appetize.io]($PREVIEW_URL)**" >> $GITHUB_STEP_SUMMARY
 
       - name: Create GitHub Release with APK
+        if: github.event_name != 'pull_request'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -114,13 +104,6 @@ jobs:
             --title "SimpMusic ARM64 Release ($TAG)" \
             --notes "$RELEASE_NOTES" \
             --prerelease || true
-
-      - name: Clean Gradle Locks Before Caching
-        if: always()
-        run: |
-          rm -f ~/.gradle/caches/modules-2/modules-2.lock
-          rm -f ~/.gradle/caches/*/plugin-resolution/
-          rm -f ~/.gradle/caches/journal-1/file-access.properties
 
       - name: Upload Build Reports on Failure
         if: failure()

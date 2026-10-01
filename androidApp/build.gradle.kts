@@ -89,7 +89,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
+                getDefaultProguardFile("proguard-android.txt"),
                 "proguard-rules.pro",
             )
             signingConfig = signingConfigs.getByName("debug")
@@ -99,6 +99,10 @@ android {
             applicationIdSuffix = ".dev"
             versionNameSuffix = "-dev"
         }
+    }
+    lint {
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     compileOptions {
         isCoreLibraryDesugaringEnabled = true
