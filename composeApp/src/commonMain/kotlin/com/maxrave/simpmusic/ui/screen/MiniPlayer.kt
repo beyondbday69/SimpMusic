@@ -143,6 +143,8 @@ import com.maxrave.simpmusic.ui.icon.PictureInPictureAlt
 import com.maxrave.simpmusic.ui.icon.PlayArrow
 import com.maxrave.simpmusic.ui.icon.QueueMusic
 import com.maxrave.simpmusic.ui.icon.SimpIcons
+import com.maxrave.simpmusic.ui.icon.SkipNext
+import com.maxrave.simpmusic.ui.icon.SkipPrevious
 import com.maxrave.simpmusic.ui.icon.VolumeOff
 import com.maxrave.simpmusic.ui.icon.VolumeUp
 import com.maxrave.simpmusic.ui.theme.LocalIsDarkTheme
@@ -292,17 +294,7 @@ fun MiniPlayer(
         ) {
             val fullWidth = (maxWidth * (if (isTablet) 0.65f else 0.94f)).coerceAtMost(560.dp)
 
-            // Dynamic states for compact slice (Play/Pause button pill)
-            val sliceInteractionSource = remember { MutableInteractionSource() }
-            val isSlicePressed by sliceInteractionSource.collectIsPressedAsState()
-
-            // Tactile spring press scale on M3 fast spatial spring
-            val slicePressScale by animateFloatAsState(
-                targetValue = if (isSlicePressed) 0.90f else 1.0f,
-                animationSpec = motionScheme.fastSpatialSpec(),
-                label = "miniPlayerSlicePressScale",
-            )
-
+            // Dynamic states for compact slice (M3 transport cluster)
             // Cut corner: 22dp when paused (active CTA), 16dp when playing
             val sliceCutCorner by animateDpAsState(
                 targetValue = if (!isPlaying) 22.dp else 16.dp,
@@ -310,8 +302,8 @@ fun MiniPlayer(
                 label = "miniPlayerSliceCutCorner",
             )
 
-            // When paused, slightly wider (60dp) to emphasize filled play action; 56dp when playing
-            val sliceBaseWidth = if (!isPlaying) 60.dp else 56.dp
+            // Width for Material 3 transport cluster: Back, Play/Pause, Forward
+            val sliceBaseWidth = if (!isPlaying) 124.dp else 120.dp
             val animatedSliceWidth by animateDpAsState(
                 targetValue = if (isCollapsed) 0.dp else sliceBaseWidth,
                 animationSpec = motionScheme.defaultSpatialSpec(),
@@ -699,11 +691,34 @@ fun MiniPlayer(
                                     }
                                 }
                             }
+
+                            // Material 3 Linear Progress Bar along the bottom edge of the track pill
+                            if (!isCollapsed) {
+                                LinearProgressIndicator(
+                                    progress = { progressState.floatValue },
+                                    modifier =
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(3.dp)
+                                            .align(Alignment.BottomCenter)
+                                            .graphicsLayer {
+                                                alpha = contentAlpha
+                                            }
+                                            .clip(
+                                                RoundedCornerShape(
+                                                    bottomStart = 29.dp,
+                                                    bottomEnd = mainPillEndCorner,
+                                                ),
+                                            ),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                                )
+                            }
                         }
                     }
                 }
 
-                // 2. Compact Slice (Right) - Play / Pause button pill with smoothed cut edge & M3 spring physics
+                // 2. Compact Slice (Right) - Material 3 Back, Play/Pause, Forward transport cluster with smoothed cut edge & M3 spring physics
                 if (animatedSliceWidth > 1.dp) {
                     Surface(
                         shape =
@@ -725,48 +740,102 @@ fun MiniPlayer(
                                 }
                                 .clipToBounds(),
                     ) {
-                        Box(
+                        Row(
                             modifier =
                                 Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer {
-                                        scaleX = slicePressScale
-                                        scaleY = slicePressScale
-                                    }
-                                    .clickable(
-                                        interactionSource = sliceInteractionSource,
-                                        indication = null,
-                                    ) {
-                                        userInteractionCount++
-                                        sharedViewModel.onUIEvent(UIEvent.PlayPause)
-                                    },
-                            contentAlignment = Alignment.Center,
+                                    .padding(horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceEvenly,
                         ) {
-                            Crossfade(
-                                targetState = loading,
-                                animationSpec = motionScheme.fastEffectsSpec(),
-                                label = "miniPlayerSliceLoading",
-                            ) { isLoading ->
-                                if (isLoading) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(20.dp),
-                                        color = sliceContentColor,
-                                        strokeWidth = 2.5.dp,
-                                    )
-                                } else {
+                            // Back / Previous Button
+                            IconButton(
+                                onClick = {
+                                    userInteractionCount++
+                                    sharedViewModel.onUIEvent(UIEvent.Previous)
+                                },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    imageVector = SimpIcons.SkipPrevious,
+                                    contentDescription = "Previous",
+                                    tint = sliceContentColor.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(20.dp),
+                                )
+                            }
+
+                            // Play / Pause Button with Material 3 filled / tonal container
+                            Surface(
+                                shape = CircleShape,
+                                color =
+                                    if (!isPlaying) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    },
+                                modifier = Modifier.size(38.dp),
+                                onClick = {
+                                    userInteractionCount++
+                                    sharedViewModel.onUIEvent(UIEvent.PlayPause)
+                                },
+                            ) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center,
+                                ) {
                                     Crossfade(
-                                        targetState = isPlaying,
+                                        targetState = loading,
                                         animationSpec = motionScheme.fastEffectsSpec(),
-                                        label = "miniPlayerSlicePlayPause",
-                                    ) { playing ->
-                                        Icon(
-                                            imageVector = if (playing) SimpIcons.Pause else SimpIcons.PlayArrow,
-                                            contentDescription = if (playing) "Pause" else "Play",
-                                            tint = sliceContentColor,
-                                            modifier = Modifier.size(26.dp),
-                                        )
+                                        label = "miniPlayerSliceLoading",
+                                    ) { isLoading ->
+                                        if (isLoading) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                color =
+                                                    if (!isPlaying) {
+                                                        MaterialTheme.colorScheme.onPrimary
+                                                    } else {
+                                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                                    },
+                                                strokeWidth = 2.dp,
+                                            )
+                                        } else {
+                                            Crossfade(
+                                                targetState = isPlaying,
+                                                animationSpec = motionScheme.fastEffectsSpec(),
+                                                label = "miniPlayerSlicePlayPause",
+                                            ) { playing ->
+                                                Icon(
+                                                    imageVector = if (playing) SimpIcons.Pause else SimpIcons.PlayArrow,
+                                                    contentDescription = if (playing) "Pause" else "Play",
+                                                    tint =
+                                                        if (!isPlaying) {
+                                                            MaterialTheme.colorScheme.onPrimary
+                                                        } else {
+                                                            MaterialTheme.colorScheme.onPrimaryContainer
+                                                        },
+                                                    modifier = Modifier.size(22.dp),
+                                                )
+                                            }
+                                        }
                                     }
                                 }
+                            }
+
+                            // Forward / Next Button
+                            IconButton(
+                                onClick = {
+                                    userInteractionCount++
+                                    sharedViewModel.onUIEvent(UIEvent.Next)
+                                },
+                                modifier = Modifier.size(32.dp),
+                            ) {
+                                Icon(
+                                    imageVector = SimpIcons.SkipNext,
+                                    contentDescription = "Next",
+                                    tint = sliceContentColor.copy(alpha = 0.85f),
+                                    modifier = Modifier.size(20.dp),
+                                )
                             }
                         }
                     }
