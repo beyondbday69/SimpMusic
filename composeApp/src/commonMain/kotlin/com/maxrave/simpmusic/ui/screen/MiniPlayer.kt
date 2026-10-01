@@ -22,6 +22,8 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -297,25 +299,34 @@ fun MiniPlayer(
             val sliceInteractionSource = remember { MutableInteractionSource() }
             val isSlicePressed by sliceInteractionSource.collectIsPressedAsState()
 
-            // Tactile spring press scale on M3 fast spatial spring
+            // Tactile spring press scale with M3 bouncy physics
             val slicePressScale by animateFloatAsState(
-                targetValue = if (isSlicePressed) 0.90f else 1.0f,
-                animationSpec = motionScheme.fastSpatialSpec(),
+                targetValue = if (isSlicePressed) 0.88f else 1.0f,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
                 label = "miniPlayerSlicePressScale",
             )
 
-            // Cut corner: 22dp when paused (active CTA), 16dp when playing
+            // Cut corner: 22dp when paused (active CTA), 16dp when playing - M3 ease in-out
             val sliceCutCorner by animateDpAsState(
                 targetValue = if (!isPlaying) 22.dp else 16.dp,
-                animationSpec = motionScheme.defaultSpatialSpec(),
+                animationSpec = tween(
+                    durationMillis = 350,
+                    easing = FastOutSlowInEasing,
+                ),
                 label = "miniPlayerSliceCutCorner",
             )
 
-            // Width for Play/Pause button
+            // Width for Play/Pause button: 60dp when paused (prominent action), 56dp when playing
             val sliceBaseWidth = if (!isPlaying) 60.dp else 56.dp
             val animatedSliceWidth by animateDpAsState(
                 targetValue = if (isCollapsed) 0.dp else sliceBaseWidth,
-                animationSpec = motionScheme.defaultSpatialSpec(),
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioLowBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
                 label = "miniPlayerSliceWidth",
             )
 
@@ -327,7 +338,10 @@ fun MiniPlayer(
                     } else {
                         MaterialTheme.colorScheme.surfaceContainer
                     },
-                animationSpec = motionScheme.fastEffectsSpec(),
+                animationSpec = tween(
+                    durationMillis = 300,
+                    easing = FastOutSlowInEasing,
+                ),
                 label = "miniPlayerSliceContainerColor",
             )
 
@@ -339,7 +353,10 @@ fun MiniPlayer(
                     } else {
                         MaterialTheme.colorScheme.primary
                     },
-                animationSpec = motionScheme.fastEffectsSpec(),
+                animationSpec = tween(
+                    durationMillis = 250,
+                    easing = FastOutSlowInEasing,
+                ),
                 label = "miniPlayerSliceContentColor",
             )
 
@@ -755,9 +772,26 @@ fun MiniPlayer(
                                         strokeWidth = 2.5.dp,
                                     )
                                 } else {
-                                    Crossfade(
+                                    AnimatedContent(
                                         targetState = isPlaying,
-                                        animationSpec = motionScheme.fastEffectsSpec(),
+                                        transitionSpec = {
+                                            (fadeIn(
+                                                animationSpec = tween(220, delayMillis = 30, easing = FastOutSlowInEasing),
+                                            ) + scaleIn(
+                                                initialScale = 0.65f,
+                                                animationSpec = spring(
+                                                    dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                    stiffness = Spring.StiffnessMediumLow,
+                                                ),
+                                            )).togetherWith(
+                                                fadeOut(
+                                                    animationSpec = tween(150, easing = FastOutSlowInEasing),
+                                                ) + scaleOut(
+                                                    targetScale = 0.65f,
+                                                    animationSpec = tween(150, easing = FastOutSlowInEasing),
+                                                ),
+                                            )
+                                        },
                                         label = "miniPlayerSlicePlayPause",
                                     ) { playing ->
                                         Icon(
