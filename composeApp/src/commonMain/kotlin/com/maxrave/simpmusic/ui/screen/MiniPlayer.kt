@@ -691,29 +691,29 @@ fun MiniPlayer(
                                     }
                                 }
                             }
+                        }
 
-                            // Material 3 Linear Progress Bar along the bottom edge of the track pill
-                            if (!isCollapsed) {
-                                LinearProgressIndicator(
-                                    progress = progressState.floatValue,
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .height(3.dp)
-                                            .align(Alignment.BottomCenter)
-                                            .graphicsLayer {
-                                                alpha = contentAlpha
-                                            }
-                                            .clip(
-                                                RoundedCornerShape(
-                                                    bottomStart = 29.dp,
-                                                    bottomEnd = mainPillEndCorner,
-                                                ),
+                        // Material 3 Linear Progress Bar along the bottom edge of the track pill
+                        if (!isCollapsed) {
+                            LinearProgressIndicator(
+                                progress = progressState.floatValue,
+                                modifier =
+                                    Modifier
+                                        .fillMaxWidth()
+                                        .height(3.dp)
+                                        .align(Alignment.BottomCenter)
+                                        .graphicsLayer {
+                                            alpha = contentAlpha
+                                        }
+                                        .clip(
+                                            RoundedCornerShape(
+                                                bottomStart = 29.dp,
+                                                bottomEnd = mainPillEndCorner,
                                             ),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
-                                )
-                            }
+                                        ),
+                                color = MaterialTheme.colorScheme.primary,
+                                trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
+                            )
                         }
                     }
                 }
