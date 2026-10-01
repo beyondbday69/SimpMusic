@@ -37,11 +37,9 @@ compose.resources {
     generateResClass = always
 }
 
-if (providers.gradleProperty("enableComposeCompilerReports").orNull == "true") {
-    composeCompiler {
-        reportsDestination = layout.buildDirectory.dir("compose_compiler")
-        metricsDestination = layout.buildDirectory.dir("compose_compiler")
-    }
+composeCompiler {
+    reportsDestination = layout.buildDirectory.dir("compose_compiler")
+    metricsDestination = layout.buildDirectory.dir("compose_compiler")
 }
 
 
