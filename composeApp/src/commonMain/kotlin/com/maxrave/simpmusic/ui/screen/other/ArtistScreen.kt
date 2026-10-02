@@ -59,16 +59,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.style.TextAlign
@@ -319,11 +314,9 @@ fun ArtistScreen(
                                                 placeholder = rememberHolderPainter(),
                                                 error = rememberHolderPainter(),
                                                 contentDescription = null,
-                                                // FillWidth fits the square source into the square portrait
-                                                // frame. The landscape frame takes the banner's own aspect,
-                                                // so Crop trims nothing once it has decoded.
-                                                contentScale =
-                                                    if (isPortrait) ContentScale.FillWidth else ContentScale.Crop,
+                                                // Crop properly fills the frame in both portrait (1:1 square)
+                                                // and landscape/tablet modes without letterboxing or empty bands.
+                                                contentScale = ContentScale.Crop,
                                                 // Always decoded so the page background color can be extracted
                                                 // from the artwork palette, even when a canvas is playing.
                                                 onSuccess = {
@@ -336,37 +329,6 @@ fun ArtistScreen(
                                                         .fillMaxSize()
                                                         .alpha(if (headerCanvas != null) 0f else 1f),
                                             )
-                                            // The artwork's bottom 200dp melts into the page through a
-                                            // Modifier.blur copy of it, faded in by a DstIn gradient. At
-                                            // the top of the ramp the copy is fully transparent, so there
-                                            // is no seam — haze's HazeProgressive drew a visible line
-                                            // there on Android (and crashes on skiko). Below Android 12
-                                            // blur is a no-op and the copy is pixel-identical to the
-                                            // artwork, leaving just the colour scrim. Skipped under a
-                                            // canvas, where the artwork itself is hidden.
-                                            if (headerCanvas == null) {
-                                                AsyncImage(
-                                                    model = headerImageUrl,
-                                                    contentDescription = null,
-                                                    contentScale =
-                                                        if (isPortrait) ContentScale.FillWidth else ContentScale.Crop,
-                                                    modifier =
-                                                        Modifier
-                                                            .fillMaxSize()
-                                                            .drawWithContent {
-                                                                drawContent()
-                                                                drawRect(
-                                                                    brush =
-                                                                        Brush.verticalGradient(
-                                                                            colors = listOf(Color.Transparent, Color.Black),
-                                                                            startY = size.height - 200.dp.toPx(),
-                                                                            endY = size.height,
-                                                                        ),
-                                                                    blendMode = BlendMode.DstIn,
-                                                                )
-                                                            },
-                                                )
-                                            }
                                             // Canvas (Spotify) plays AS the background when present;
                                             // otherwise the static artwork above is the fallback.
                                             headerCanvas?.let { canvas ->
@@ -380,7 +342,7 @@ fun ArtistScreen(
                                                 )
                                             }
                                         } // end media layer
-                                        // 5% black over the artwork/canvas, under the fade and scrim, so
+                                        // 5% black over the artwork/canvas, under the scrim, so
                                         // a bright photo sits back a little behind the title.
                                         Box(
                                             modifier =
@@ -388,17 +350,14 @@ fun ArtistScreen(
                                                     .fillMaxSize()
                                                     .background(Color.Black.copy(alpha = 0.05f)),
                                         )
-                                        // Color scrim is a SEPARATE, taller box: the blur stays at 200dp so
-                                        // its cost doesn't grow, while the color gets 70% of the artwork
-                                        // to ramp over. A short ramp means a steep alpha, and a steep
-                                        // alpha is what reads as a visible edge. 70% of the frame's own
-                                        // height in both orientations — measured off the frame, since the
-                                        // landscape one now follows the banner rather than the window.
+                                        // Color scrim: smoothly fades into the page background (mutedPaletteBg)
+                                        // over the bottom 40% of the header, keeping the artist title and
+                                        // controls legible while leaving the artist picture clear and unblocked.
                                         Box(
                                             modifier =
                                                 Modifier
                                                     .fillMaxWidth()
-                                                    .fillMaxHeight(0.7f)
+                                                    .fillMaxHeight(0.40f)
                                                     .align(Alignment.BottomCenter)
                                                     .background(artworkScrimBrush(mutedPaletteBg)),
                                         )
