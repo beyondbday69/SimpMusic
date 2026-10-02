@@ -11,6 +11,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -58,6 +59,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -99,11 +101,14 @@ import com.maxrave.common.Config
 import com.maxrave.domain.data.model.browse.album.Track
 import com.maxrave.domain.data.model.home.Content
 import com.maxrave.domain.data.model.searchResult.songs.Artist
+import com.maxrave.domain.data.player.GenericCastState
 import com.maxrave.domain.mediaservice.handler.PlaylistType
 import com.maxrave.domain.mediaservice.handler.QueueData
 import com.maxrave.domain.utils.toSongEntity
 import com.maxrave.simpmusic.expect.shareUrl
 import com.maxrave.simpmusic.expect.ui.MediaPlayerView
+import com.maxrave.simpmusic.expect.ui.PlatformCastButton
+import com.maxrave.simpmusic.expect.ui.isPlatformCastAvailable
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.expect.ui.toImageBitmap
@@ -151,7 +156,9 @@ import com.maxrave.simpmusic.viewModel.ArtistScreenState
 import com.maxrave.simpmusic.viewModel.ArtistViewModel
 import com.maxrave.simpmusic.viewModel.SharedViewModel
 import com.maxrave.simpmusic.viewModel.SongSelectionViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.getString
 import org.jetbrains.compose.resources.painterResource
@@ -246,8 +253,25 @@ fun ArtistScreen(
     val sectionTint = paletteState.palette.getColorFromPalette()
 
     // Accent color for the action buttons, sourced from the artist name-logo image's dominant
-    // color (hidden catalog). Falls back to white until the logo loads (or if none exists).
-    val artistAccent = artistLogo?.bgColorHex?.hexToColorOrNull() ?: Color.White
+    // color (hidden catalog). Falls back to the theme's primary when no logo exists — a real
+    // tonal colour rather than flat white, so the row still reads on light artwork.
+    val logoAccent = artistLogo?.bgColorHex?.hexToColorOrNull()
+    val themePrimary = MaterialTheme.colorScheme.primary
+    val accentSeed = remember(logoAccent, themePrimary) {
+        logoAccent ?: themePrimary
+    }
+    // Glide between accents when the artist changes rather than snapping: the logo colour
+    // arrives after the screen has already opened, and a hard swap reads as a flicker.
+    val accentAnimatable = remember { Animatable(accentSeed) }
+    LaunchedEffect(accentSeed) {
+        accentAnimatable.animateTo(
+            targetValue = accentSeed,
+            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        )
+    }
+    val artistAccent = accentAnimatable.value
+    // Cast session state, so the row's Cast slot tints to signal an active route.
+    val castState by sharedViewModel.castState.collectAsStateWithLifecycle()
     val lazyState = rememberLazyListState()
     val firstItemVisible by remember {
         derivedStateOf { lazyState.firstVisibleItemIndex == 0 }
@@ -478,13 +502,14 @@ fun ArtistScreen(
                                     }
                                 }
 
-                                // Material 3 Expressive action row: [Radio / Station][Shuffle Pill CTA][Follow]
+                                // Material 3 Expressive action row: [Radio][Cast][Shuffle Pill CTA][Follow]
                                 // Built with tactile spring physics, morphing shapes, and ease-in-out transitions.
                                 ArtistActionRow(
                                     state = state,
                                     artistAccent = artistAccent,
                                     mutedPaletteBg = mutedPaletteBg,
                                     isFollowed = isFollowed,
+                                    castState = castState,
                                     viewModel = viewModel,
                                 )
                             }
@@ -631,13 +656,18 @@ fun ArtistScreen(
 }
 
 /**
- * Material 3 Expressive Action Row: [Radio / Cast / Station][Shuffle Pill CTA][Follow].
+ * Material 3 Expressive Action Row: [Radio][Cast][Shuffle Pill CTA][Follow].
  *
  * Implements M3 Expressive motion physics:
  * - Tactile bouncy spring physics on press (dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow).
+ * - Staggered spring entrance: each button pops in 70ms apart, scale 0 → 1 with a bouncy
+ *   spring, so the row assembles itself when the artist page opens.
  * - Smooth ease-in-out shape morphing (26dp pill ↔ 16dp squircle) with FastOutSlowInEasing.
  * - Dynamic color transitions with FastOutSlowInEasing.
  * - Bouncy icon scale and ease-in-out fade transitions for the Follow toggle state.
+ *
+ * The Cast slot renders only where Cast exists ([isPlatformCastAvailable]); the surrounding
+ * container belongs to the row, so it is gated here rather than by the button itself.
  */
 @Composable
 private fun ArtistActionRow(
@@ -645,9 +675,38 @@ private fun ArtistActionRow(
     artistAccent: Color,
     mutedPaletteBg: Color,
     isFollowed: Boolean,
+    castState: GenericCastState,
     viewModel: ArtistViewModel,
     modifier: Modifier = Modifier,
 ) {
+    // === Entrance: staggered spring pop-in, one button per 70ms ===
+    val radioAppearance = remember { Animatable(0f) }
+    val shuffleAppearance = remember { Animatable(0f) }
+    val followAppearance = remember { Animatable(0f) }
+    LaunchedEffect(state.data.channelId) {
+        // Re-run whenever the artist changes.
+        radioAppearance.snapTo(0f)
+        shuffleAppearance.snapTo(0f)
+        followAppearance.snapTo(0f)
+        val appearanceSpring = spring<Float>(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        )
+        // Cast rides the Radio step: it is adjacent to it in the row, so the two land together
+        // and the row never appears to grow a slot after it has already assembled.
+        launch {
+            radioAppearance.animateTo(1f, appearanceSpring)
+        }
+        launch {
+            delay(ENTRANCE_STAGGER_STEP_MS)
+            shuffleAppearance.animateTo(1f, appearanceSpring)
+        }
+        launch {
+            delay(ENTRANCE_STAGGER_STEP_MS * 2)
+            followAppearance.animateTo(1f, appearanceSpring)
+        }
+    }
+
     val radioInteraction = remember { MutableInteractionSource() }
     val isRadioPressed by radioInteraction.collectIsPressedAsState()
     val radioScale by animateFloatAsState(
@@ -672,6 +731,26 @@ private fun ArtistActionRow(
         targetValue = artistAccent.copy(alpha = if (isRadioPressed) 0.85f else 0.40f),
         animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
         label = "artistRadioBorder",
+    )
+
+    // Cast shares the Radio button's container language — same squircle in the same row — but
+    // its colour and border also react to an active route, so the session state is legible
+    // without the glyph alone.
+    val isCastRemote = castState.isRemote
+    val castCorner by animateDpAsState(
+        targetValue = if (isCastRemote) 16.dp else 26.dp,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "artistCastCorner",
+    )
+    val castContainerColor by animateColorAsState(
+        targetValue = if (isCastRemote) artistAccent.copy(alpha = 0.28f) else artistAccent.copy(alpha = 0.10f),
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "artistCastContainer",
+    )
+    val castBorderColor by animateColorAsState(
+        targetValue = if (isCastRemote) artistAccent.copy(alpha = 0.85f) else artistAccent.copy(alpha = 0.40f),
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "artistCastBorder",
     )
 
     val shuffleInteraction = remember { MutableInteractionSource() }
@@ -729,7 +808,7 @@ private fun ArtistActionRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // Radio / Cast / Stations Button
+        // Radio / Stations Button
         Surface(
             onClick = {
                 val param = state.data.radioParam
@@ -746,8 +825,9 @@ private fun ArtistActionRow(
             modifier = Modifier
                 .size(52.dp)
                 .graphicsLayer {
-                    scaleX = radioScale
-                    scaleY = radioScale
+                    scaleX = radioScale * radioAppearance.value
+                    scaleY = radioScale * radioAppearance.value
+                    alpha = radioAppearance.value
                 },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -757,6 +837,32 @@ private fun ArtistActionRow(
                     tint = artistAccent,
                     modifier = Modifier.size(24.dp),
                 )
+            }
+        }
+
+        // Cast Button — the platform button owns its own click handling and hides itself when
+        // no receiver is reachable, so it is hosted in a NON-clickable container gated on the
+        // same availability flag (a clickable wrapper would swallow its taps). Tint signals an
+        // active session.
+        if (isPlatformCastAvailable()) {
+            Surface(
+                shape = RoundedCornerShape(castCorner),
+                color = castContainerColor,
+                border = BorderStroke(1.5.dp, castBorderColor),
+                modifier = Modifier
+                    .size(52.dp)
+                    .graphicsLayer {
+                        scaleX = radioAppearance.value
+                        scaleY = radioAppearance.value
+                        alpha = radioAppearance.value
+                    },
+            ) {
+                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                    PlatformCastButton(
+                        modifier = Modifier.size(24.dp),
+                        tint = if (isCastRemote) artistAccent else artistAccent.copy(alpha = 0.85f),
+                    )
+                }
             }
         }
 
@@ -777,8 +883,9 @@ private fun ArtistActionRow(
             modifier = Modifier
                 .height(52.dp)
                 .graphicsLayer {
-                    scaleX = shuffleScale
-                    scaleY = shuffleScale
+                    scaleX = shuffleScale * shuffleAppearance.value
+                    scaleY = shuffleScale * shuffleAppearance.value
+                    alpha = shuffleAppearance.value
                 },
         ) {
             Row(
@@ -818,8 +925,9 @@ private fun ArtistActionRow(
             modifier = Modifier
                 .size(52.dp)
                 .graphicsLayer {
-                    scaleX = followScale
-                    scaleY = followScale
+                    scaleX = followScale * followAppearance.value
+                    scaleY = followScale * followAppearance.value
+                    alpha = followAppearance.value
                 },
         ) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
@@ -856,6 +964,9 @@ private fun ArtistActionRow(
         }
     }
 }
+
+/** Per-button step of [ArtistActionRow]'s staggered entrance. */
+private const val ENTRANCE_STAGGER_STEP_MS = 70L
 
 /**
  * Shared artist body (Popular → Description). Used by both the portrait Apple-Music layout
