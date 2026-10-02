@@ -257,19 +257,14 @@ fun ArtistScreen(
     // tonal colour rather than flat white, so the row still reads on light artwork.
     val logoAccent = artistLogo?.bgColorHex?.hexToColorOrNull()
     val themePrimary = MaterialTheme.colorScheme.primary
-    val accentSeed = remember(logoAccent, themePrimary) {
-        logoAccent ?: themePrimary
-    }
+    val accentSeed = logoAccent ?: themePrimary
     // Glide between accents when the artist changes rather than snapping: the logo colour
     // arrives after the screen has already opened, and a hard swap reads as a flicker.
-    val accentAnimatable = remember { Animatable(accentSeed) }
-    LaunchedEffect(accentSeed) {
-        accentAnimatable.animateTo(
-            targetValue = accentSeed,
-            animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
-        )
-    }
-    val artistAccent = accentAnimatable.value
+    val artistAccent by animateColorAsState(
+        targetValue = accentSeed,
+        animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+        label = "artistAccent",
+    )
     // Cast session state, so the row's Cast slot tints to signal an active route.
     val castState by sharedViewModel.castState.collectAsStateWithLifecycle()
     val lazyState = rememberLazyListState()
