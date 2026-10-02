@@ -1,11 +1,23 @@
 package com.maxrave.simpmusic.ui.screen.other
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.MarqueeAnimationMode
 import androidx.compose.foundation.background
@@ -13,6 +25,8 @@ import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,6 +57,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -64,8 +79,10 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -153,8 +170,10 @@ import simpmusic.composeapp.generated.resources.liked_songs_count
 import simpmusic.composeapp.generated.resources.more
 import simpmusic.composeapp.generated.resources.no_description
 import simpmusic.composeapp.generated.resources.popular
+import simpmusic.composeapp.generated.resources.radio
 import simpmusic.composeapp.generated.resources.related_artists
 import simpmusic.composeapp.generated.resources.share
+import simpmusic.composeapp.generated.resources.shuffle
 import simpmusic.composeapp.generated.resources.singles
 import simpmusic.composeapp.generated.resources.unknown
 import simpmusic.composeapp.generated.resources.videos
@@ -458,94 +477,15 @@ fun ArtistScreen(
                                     }
                                 }
 
-                                // Apple Music-style action row: [Radio][Shuffle pill][Follow] centered.
-                                // In SimpMusic "play" an artist == shuffle, so the big middle button is Shuffle.
-                                Row(
-                                    modifier =
-                                        Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 32.dp)
-                                            .padding(vertical = 8.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    // Radio — side button: outlined accent (yellow) circle with an
-                                    // accent-tinted icon over a transparent fill, matching the reference.
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(48.dp)
-                                                .clip(CircleShape)
-                                                .border(1.5.dp, artistAccent, CircleShape)
-                                                .clickable {
-                                                    val param = state.data.radioParam
-                                                    if (param != null) {
-                                                        viewModel.onRadioClick(param)
-                                                    } else {
-                                                        viewModel.makeToast(runBlocking { getString(Res.string.error) })
-                                                    }
-                                                },
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            imageVector = SimpIcons.Sensors,
-                                            contentDescription = "Radio",
-                                            tint = artistAccent,
-                                            modifier = Modifier.size(22.dp),
-                                        )
-                                    }
-                                    // Shuffle — primary "play" for an artist. Circular icon button filled
-                                    // with the artist accent (white fallback); icon uses the dark page
-                                    // background color so it stays legible on a bright accent.
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(64.dp)
-                                                .clip(CircleShape)
-                                                .background(artistAccent)
-                                                .clickable {
-                                                    val param = state.data.shuffleParam
-                                                    if (param != null) {
-                                                        viewModel.onShuffleClick(param)
-                                                    } else {
-                                                        viewModel.makeToast(runBlocking { getString(Res.string.error) })
-                                                    }
-                                                },
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            imageVector = SimpIcons.Shuffle,
-                                            contentDescription = "Shuffle",
-                                            tint = mutedPaletteBg,
-                                            modifier = Modifier.size(28.dp),
-                                        )
-                                    }
-                                    // Follow — side button matching Radio: outlined accent (yellow)
-                                    // circle when not following; fills with the accent (icon flips to
-                                    // the dark page bg) once followed, so the state reads at a glance.
-                                    Box(
-                                        modifier =
-                                            Modifier
-                                                .size(48.dp)
-                                                .clip(CircleShape)
-                                                .background(if (isFollowed) artistAccent else Color.Transparent)
-                                                .border(1.5.dp, artistAccent, CircleShape)
-                                                .clickable {
-                                                    viewModel.updateFollowed(
-                                                        if (isFollowed) 0 else 1,
-                                                        state.data.channelId ?: return@clickable,
-                                                    )
-                                                },
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isFollowed) SimpIcons.Check else SimpIcons.PersonAdd,
-                                            contentDescription = if (isFollowed) "Followed" else "Follow",
-                                            tint = if (isFollowed) mutedPaletteBg else artistAccent,
-                                            modifier = Modifier.size(22.dp),
-                                        )
-                                    }
-                                }
+                                // Material 3 Expressive action row: [Radio / Station][Shuffle Pill CTA][Follow]
+                                // Built with tactile spring physics, morphing shapes, and ease-in-out transitions.
+                                ArtistActionRow(
+                                    state = state,
+                                    artistAccent = artistAccent,
+                                    mutedPaletteBg = mutedPaletteBg,
+                                    isFollowed = isFollowed,
+                                    viewModel = viewModel,
+                                )
                             }
                         }
                         item(contentType = "sections") {
@@ -684,6 +624,233 @@ fun ArtistScreen(
             is ArtistScreenState.Error -> {
                 viewModel.makeToast(state.message ?: stringResource(Res.string.error))
                 navController.navigateUp()
+            }
+        }
+    }
+}
+
+/**
+ * Material 3 Expressive Action Row: [Radio / Cast / Station][Shuffle Pill CTA][Follow].
+ *
+ * Implements M3 Expressive motion physics:
+ * - Tactile bouncy spring physics on press (dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow).
+ * - Smooth ease-in-out shape morphing (26dp pill ↔ 16dp squircle) with FastOutSlowInEasing.
+ * - Dynamic color transitions with FastOutSlowInEasing.
+ * - Bouncy icon scale and ease-in-out fade transitions for the Follow toggle state.
+ */
+@Composable
+private fun ArtistActionRow(
+    state: ArtistScreenState.Success,
+    artistAccent: Color,
+    mutedPaletteBg: Color,
+    isFollowed: Boolean,
+    viewModel: ArtistViewModel,
+    modifier: Modifier = Modifier,
+) {
+    val radioInteraction = remember { MutableInteractionSource() }
+    val isRadioPressed by radioInteraction.collectIsPressedAsState()
+    val radioScale by animateFloatAsState(
+        targetValue = if (isRadioPressed) 0.88f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "artistRadioScale",
+    )
+    val radioCorner by animateDpAsState(
+        targetValue = if (isRadioPressed) 16.dp else 26.dp,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "artistRadioCorner",
+    )
+    val radioContainerColor by animateColorAsState(
+        targetValue = artistAccent.copy(alpha = if (isRadioPressed) 0.22f else 0.10f),
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "artistRadioContainer",
+    )
+    val radioBorderColor by animateColorAsState(
+        targetValue = artistAccent.copy(alpha = if (isRadioPressed) 0.85f else 0.40f),
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "artistRadioBorder",
+    )
+
+    val shuffleInteraction = remember { MutableInteractionSource() }
+    val isShufflePressed by shuffleInteraction.collectIsPressedAsState()
+    val shuffleScale by animateFloatAsState(
+        targetValue = if (isShufflePressed) 0.92f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "artistShuffleScale",
+    )
+    val shuffleCorner by animateDpAsState(
+        targetValue = if (isShufflePressed) 16.dp else 26.dp,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "artistShuffleCorner",
+    )
+
+    val followInteraction = remember { MutableInteractionSource() }
+    val isFollowPressed by followInteraction.collectIsPressedAsState()
+    val followScale by animateFloatAsState(
+        targetValue = if (isFollowPressed) 0.88f else 1.0f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "artistFollowScale",
+    )
+    val followCorner by animateDpAsState(
+        targetValue = if (isFollowPressed) 16.dp else 26.dp,
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "artistFollowCorner",
+    )
+    val followContainerColor by animateColorAsState(
+        targetValue = if (isFollowed) artistAccent else artistAccent.copy(alpha = if (isFollowPressed) 0.22f else 0.10f),
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "artistFollowContainer",
+    )
+    val followBorderColor by animateColorAsState(
+        targetValue = if (isFollowed) Color.Transparent else artistAccent.copy(alpha = if (isFollowPressed) 0.85f else 0.40f),
+        animationSpec = tween(durationMillis = 300, easing = FastOutSlowInEasing),
+        label = "artistFollowBorder",
+    )
+    val followContentColor by animateColorAsState(
+        targetValue = if (isFollowed) mutedPaletteBg else artistAccent,
+        animationSpec = tween(durationMillis = 250, easing = FastOutSlowInEasing),
+        label = "artistFollowContent",
+    )
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp)
+            .padding(vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        // Radio / Cast / Stations Button
+        Surface(
+            onClick = {
+                val param = state.data.radioParam
+                if (param != null) {
+                    viewModel.onRadioClick(param)
+                } else {
+                    viewModel.makeToast(runBlocking { getString(Res.string.error) })
+                }
+            },
+            shape = RoundedCornerShape(radioCorner),
+            color = radioContainerColor,
+            border = BorderStroke(1.5.dp, radioBorderColor),
+            interactionSource = radioInteraction,
+            modifier = Modifier
+                .size(52.dp)
+                .graphicsLayer {
+                    scaleX = radioScale
+                    scaleY = radioScale
+                },
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                Icon(
+                    imageVector = SimpIcons.Sensors,
+                    contentDescription = stringResource(Res.string.radio),
+                    tint = artistAccent,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
+        }
+
+        // Shuffle Primary Hero CTA Pill Button
+        Surface(
+            onClick = {
+                val param = state.data.shuffleParam
+                if (param != null) {
+                    viewModel.onShuffleClick(param)
+                } else {
+                    viewModel.makeToast(runBlocking { getString(Res.string.error) })
+                }
+            },
+            shape = RoundedCornerShape(shuffleCorner),
+            color = artistAccent,
+            contentColor = mutedPaletteBg,
+            interactionSource = shuffleInteraction,
+            modifier = Modifier
+                .height(52.dp)
+                .graphicsLayer {
+                    scaleX = shuffleScale
+                    scaleY = shuffleScale
+                },
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    imageVector = SimpIcons.Shuffle,
+                    contentDescription = stringResource(Res.string.shuffle),
+                    modifier = Modifier.size(24.dp),
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(Res.string.shuffle),
+                    style = typo().labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                )
+            }
+        }
+
+        // Follow Toggle Button with Bouncy Icon Scale & Morphing
+        Surface(
+            onClick = {
+                state.data.channelId?.let { chId ->
+                    viewModel.updateFollowed(
+                        if (isFollowed) 0 else 1,
+                        chId,
+                    )
+                }
+            },
+            shape = RoundedCornerShape(followCorner),
+            color = followContainerColor,
+            border = if (!isFollowed) BorderStroke(1.5.dp, followBorderColor) else null,
+            interactionSource = followInteraction,
+            modifier = Modifier
+                .size(52.dp)
+                .graphicsLayer {
+                    scaleX = followScale
+                    scaleY = followScale
+                },
+        ) {
+            Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
+                AnimatedContent(
+                    targetState = isFollowed,
+                    transitionSpec = {
+                        (fadeIn(
+                            animationSpec = tween(220, delayMillis = 30, easing = FastOutSlowInEasing),
+                        ) + scaleIn(
+                            initialScale = 0.65f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
+                        )).togetherWith(
+                            fadeOut(
+                                animationSpec = tween(150, easing = FastOutSlowInEasing),
+                            ) + scaleOut(
+                                targetScale = 0.65f,
+                                animationSpec = tween(150, easing = FastOutSlowInEasing),
+                            ),
+                        )
+                    },
+                    label = "artistFollowIconMorph",
+                ) { followed ->
+                    Icon(
+                        imageVector = if (followed) SimpIcons.Check else SimpIcons.PersonAdd,
+                        contentDescription = if (followed) "Followed" else "Follow",
+                        tint = followContentColor,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
