@@ -1328,32 +1328,28 @@ fun SearchScreen(
             label = "searchBarContainerColor",
         )
 
-        AnimatedContent(
-            targetState = isContentAtTop,
-            transitionSpec = {
-                fadeIn(animationSpec = motionScheme.fastEffectsSpec()).togetherWith(
-                    fadeOut(animationSpec = motionScheme.fastEffectsSpec()),
-                )
-            },
+        // The scrim colour is animated directly on the Column. This used to be an
+        // AnimatedContent(targetState = isContentAtTop) wrapping the whole Column just to
+        // crossfade Transparent <-> background — but AnimatedContent unmounts and recreates
+        // its content on every target change, and isContentAtTop flips on the first pixel of
+        // scroll. That destroyed the SearchBar's InputField, dropping focus and dismissing the
+        // keyboard the moment results or suggestions moved. Animating only the colour keeps the
+        // SearchBar permanently mounted, so scrolling never disturbs focus.
+        val scrimBackground by animateColorAsState(
+            targetValue = if (isContentAtTop) Color.Transparent else MaterialTheme.colorScheme.background,
+            animationSpec = motionScheme.fastEffectsSpec(),
+            label = "search_bar_scrim_color",
+        )
+        Column(
             modifier =
                 Modifier
                     .align(Alignment.TopCenter)
-                    .onGloballyPositioned { searchBarHeightPx = it.size.height },
-            label = "search_bar_scrim",
-        ) { atTop ->
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .then(
-                            if (atTop) {
-                                Modifier.background(Color.Transparent)
-                            } else {
-                                Modifier.background(MaterialTheme.colorScheme.background)
-                            },
-                        ).windowInsetsPadding(WindowInsets.statusBars)
-                        .padding(vertical = 10.dp),
-            ) {
+                    .fillMaxWidth()
+                    .background(scrimBackground)
+                    .onGloballyPositioned { searchBarHeightPx = it.size.height }
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(vertical = 10.dp),
+        ) {
                 AnimatedVisibility(visible = selectionState.isActive) {
                     SongSelectionTopAppBar(
                         state = selectionState,
@@ -1559,7 +1555,6 @@ fun SearchScreen(
                     }
                 }
             }
-        }
     }
 }
 
