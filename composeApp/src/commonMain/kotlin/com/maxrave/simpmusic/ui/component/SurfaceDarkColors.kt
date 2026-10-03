@@ -5,43 +5,42 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 import com.maxrave.simpmusic.ui.theme.LocalForceDarkText
+import com.maxrave.simpmusic.ui.theme.LocalForcedDarkColorScheme
 
 /**
- * Color set for overlay surfaces (bottom sheets & dialogs) that must **inherit force-dark** from the
- * screen that opened them.
+ * Color set for overlay surfaces (bottom sheets & dialogs) that dynamically inherit Material 3
+ * colors from the screen that opened them.
  *
- * Compose renders sheets/dialogs in a Popup that keeps the parent composition's CompositionLocals, so
- * [LocalForceDarkText] flows in from the caller: opened from a force-dark screen (Artist/Album/Playlist/
- * LocalPlaylist/NowPlaying/FullscreenPlayer/Podcast) it stays the original dark look; opened from a
- * normal screen it follows the app theme (light on a light screen).
- *
- * Keep `Color.Transparent` and `scrimColor = Color.Black.copy(...)` as-is — the scrim is a dim over the
- * content behind the sheet and is dark in both themes.
+ * When opened from a force-dark screen (Artist/Album/Playlist/LocalPlaylist/NowPlaying/
+ * FullscreenPlayer/Podcast), it resolves against [LocalForcedDarkColorScheme], dynamically tinted
+ * by the current track's album art seed / dynamic palette.
+ * When opened from a normal screen, it follows the app theme [MaterialTheme.colorScheme].
  */
 @Immutable
 data class SurfaceDarkColors(
-    val container: Color, // sheet/dialog background + inner cards (old #242424 / black)
-    val handle: Color, // drag handle (old #474545)
-    val content: Color, // primary text + icons (old white)
-    val subtitle: Color, // secondary text (old #B0B0A0 / #CCCCCC / #D0D0C0)
-    val disabled: Color, // disabled text/icons + dividers (old gray / #555555 / #3D3D3D)
+    val container: Color, // sheet/dialog background + inner cards
+    val handle: Color, // drag handle
+    val content: Color, // primary text + icons
+    val subtitle: Color, // secondary text
+    val disabled: Color, // disabled text/icons + dividers
 )
 
 @Composable
 fun rememberSurfaceDarkColors(): SurfaceDarkColors {
     val cs = MaterialTheme.colorScheme
+    val darkScheme = LocalForcedDarkColorScheme.current ?: cs
     return if (LocalForceDarkText.current) {
         SurfaceDarkColors(
-            container = Color(0xFF242424),
-            handle = Color(0xFF474545),
-            content = Color.White,
-            subtitle = Color(0xFFB0B0A0),
-            disabled = Color.Gray,
+            container = darkScheme.surfaceContainer,
+            handle = darkScheme.onSurfaceVariant.copy(alpha = 0.4f),
+            content = darkScheme.onSurface,
+            subtitle = darkScheme.onSurfaceVariant,
+            disabled = darkScheme.onSurface.copy(alpha = 0.38f),
         )
     } else {
         SurfaceDarkColors(
             container = cs.surfaceContainerLow,
-            handle = cs.outlineVariant,
+            handle = cs.onSurfaceVariant.copy(alpha = 0.4f),
             content = cs.onSurface,
             subtitle = cs.onSurfaceVariant,
             disabled = cs.onSurfaceVariant.copy(alpha = 0.38f),

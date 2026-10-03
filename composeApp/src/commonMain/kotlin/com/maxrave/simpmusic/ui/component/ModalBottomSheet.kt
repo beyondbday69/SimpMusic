@@ -2,7 +2,13 @@ package com.maxrave.simpmusic.ui.component
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -12,6 +18,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.horizontalScroll
@@ -90,6 +98,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -103,6 +112,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1283,7 +1293,7 @@ fun QueueItemBottomSheet(
                 Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
         ) {
             Column(
@@ -1652,96 +1662,104 @@ fun NowPlayingBottomSheet(
             scrimColor = Color.Black.copy(alpha = .5f),
             contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         ) {
+            val colors = rememberSurfaceDarkColors()
             Card(
                 modifier =
                     Modifier
                         .fillMaxWidth()
                         .wrapContentHeight(),
-                shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
-                colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+                colors = CardDefaults.cardColors().copy(containerColor = colors.container),
             ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier.verticalScroll(rememberScrollState()),
                 ) {
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Card(
+                    Box(
                         modifier =
                             Modifier
-                                .width(60.dp)
-                                .height(4.dp),
-                        colors =
-                            CardDefaults.cardColors().copy(
-                                containerColor = rememberSurfaceDarkColors().handle,
-                            ),
-                        shape = RoundedCornerShape(50),
-                    ) {}
-                    Spacer(modifier = Modifier.height(5.dp))
-                    Row(
+                                .padding(top = 14.dp, bottom = 10.dp)
+                                .size(width = 36.dp, height = 4.dp)
+                                .clip(CircleShape)
+                                .background(colors.handle),
+                    )
+                    Surface(
                         modifier =
                             Modifier
                                 .fillMaxWidth()
-                                .height(65.dp)
-                                .padding(10.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                                .padding(horizontal = 14.dp, vertical = 4.dp),
+                        shape = RoundedCornerShape(18.dp),
+                        color = MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f),
                     ) {
-                        val thumb = uiState.songUIState.thumbnails
-                        AsyncImage(
-                            model =
-                                ImageRequest
-                                    .Builder(LocalPlatformContext.current)
-                                    .data(thumb)
-                                    .diskCachePolicy(CachePolicy.ENABLED)
-                                    .diskCacheKey(thumb)
-                                    .build(),
-                            placeholder = rememberHolderPainter(),
-                            error = rememberHolderPainter(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Inside,
+                        Row(
                             modifier =
                                 Modifier
-                                    .align(Alignment.CenterVertically)
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .size(60.dp),
-                        )
-                        Spacer(modifier = Modifier.width(20.dp))
-                        Column(verticalArrangement = Arrangement.Center) {
-                            Text(
-                                text = uiState.songUIState.title,
-                                style = typo().labelMedium,
-                                // typo() bakes a colour into the style, computed from the app's own
-                                // scheme — on this always-dark sheet that reads as washed out next
-                                // to the ActionButton rows below, which take their colour from here.
-                                color = rememberSurfaceDarkColors().content,
-                                maxLines = 1,
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val thumb = uiState.songUIState.thumbnails
+                            AsyncImage(
+                                model =
+                                    ImageRequest
+                                        .Builder(LocalPlatformContext.current)
+                                        .data(thumb)
+                                        .diskCachePolicy(CachePolicy.ENABLED)
+                                        .diskCacheKey(thumb)
+                                        .build(),
+                                placeholder = rememberHolderPainter(),
+                                error = rememberHolderPainter(),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
                                 modifier =
                                     Modifier
-                                        .wrapContentHeight(Alignment.CenterVertically)
-                                        .basicMarquee(animationMode = MarqueeAnimationMode.Immediately)
-                                        .focusable(),
+                                        .align(Alignment.CenterVertically)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .size(54.dp),
                             )
-                            Text(
-                                text =
-                                    uiState.songUIState.listArtists
-                                        .toListName()
-                                        .connectArtists(),
-                                style = typo().bodyMedium,
-                                color = rememberSurfaceDarkColors().subtitle,
-                                maxLines = 1,
-                                modifier =
-                                    Modifier
-                                        .wrapContentHeight(Alignment.CenterVertically)
-                                        .basicMarquee(animationMode = MarqueeAnimationMode.Immediately)
-                                        .focusable(),
-                            )
+                            Spacer(modifier = Modifier.width(14.dp))
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = uiState.songUIState.title,
+                                    style = typo().titleSmall,
+                                    color = colors.content,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier =
+                                        Modifier
+                                            .wrapContentHeight(Alignment.CenterVertically)
+                                            .basicMarquee(animationMode = MarqueeAnimationMode.Immediately)
+                                            .focusable(),
+                                )
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text =
+                                        uiState.songUIState.listArtists
+                                            .toListName()
+                                            .connectArtists(),
+                                    style = typo().bodyMedium,
+                                    color = colors.subtitle,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier =
+                                        Modifier
+                                            .wrapContentHeight(Alignment.CenterVertically)
+                                            .basicMarquee(animationMode = MarqueeAnimationMode.Immediately)
+                                            .focusable(),
+                                )
+                            }
                         }
                     }
-                    Spacer(modifier = Modifier.height(5.dp))
-                    HorizontalDivider(color = Color.Transparent, 
+                    Spacer(modifier = Modifier.height(6.dp))
+                    HorizontalDivider(
+                        color = colors.disabled.copy(alpha = 0.15f), 
                         modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-                        thickness = 1.dp,
+                        thickness = 0.8.dp,
                     )
-                    Spacer(modifier = Modifier.height(2.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
                     Crossfade(targetState = onDelete != null) {
                         if (it) {
                             ActionButton(
@@ -1891,8 +1909,8 @@ fun NowPlayingBottomSheet(
                                                 stringResource(Res.string.sleep_timer, sleepTimerState.timeRemaining.toString())
                                             },
                                         text = null,
-                                        textColor = seed,
-                                        iconColor = seed,
+                                        textColor = MaterialTheme.colorScheme.primary,
+                                        iconColor = MaterialTheme.colorScheme.primary,
                                     ) {
                                         sleepTimerWarning = true
                                     }
@@ -1948,40 +1966,102 @@ fun ActionButton(
 ) {
     val c = rememberSurfaceDarkColors()
     val resolvedIconColor = if (iconColor == Color.Unspecified) c.content else iconColor
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enable) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "actionButtonScale",
+    )
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isPressed && enable) 20.dp else 16.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "actionButtonCornerRadius",
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isPressed && enable) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "actionButtonContainerColor",
+    )
+
     Box(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .wrapContentHeight(Alignment.CenterVertically)
+                .padding(horizontal = 14.dp, vertical = 2.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(containerColor)
                 .then(
-                    if (enable) Modifier.clickable { onClick.invoke() } else Modifier.greyScale(),
+                    if (enable) {
+                        Modifier.clickable(
+                            interactionSource = interactionSource,
+                            indication = null,
+                        ) {
+                            onClick.invoke()
+                        }
+                    } else {
+                        Modifier.greyScale()
+                    },
                 ),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(horizontal = 20.dp),
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
         ) {
-            Image(
-                imageVector = icon,
-                contentDescription = if (text != null) stringResource(text) else textString ?: "",
+            Box(
                 modifier =
                     Modifier
-                        .wrapContentSize(Alignment.Center)
-                        .padding(12.dp),
-                colorFilter =
-                    if (enable) {
-                        ColorFilter.tint(resolvedIconColor)
-                    } else {
-                        ColorFilter.tint(c.disabled)
-                    },
-            )
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (isPressed && enable) {
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                            },
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    imageVector = icon,
+                    contentDescription = if (text != null) stringResource(text) else textString ?: "",
+                    modifier = Modifier.size(22.dp),
+                    colorFilter =
+                        if (enable) {
+                            ColorFilter.tint(resolvedIconColor)
+                        } else {
+                            ColorFilter.tint(c.disabled)
+                        },
+                )
+            }
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text = if (text != null) stringResource(text) else textString ?: "",
-                style = typo().labelSmall,
+                style = typo().labelMedium,
                 color = if (enable) textColor ?: c.content else c.disabled,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
-                        .padding(start = 10.dp)
+                        .weight(1f)
                         .wrapContentHeight(Alignment.CenterVertically),
             )
         }
@@ -1995,11 +2075,51 @@ fun CheckBoxActionButton(
     onChangeListener: (checked: Boolean) -> Unit,
 ) {
     var stateChecked by remember { mutableStateOf(defaultChecked) }
+    val c = rememberSurfaceDarkColors()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "checkBoxScale",
+    )
+    val cornerRadius by animateDpAsState(
+        targetValue = if (isPressed) 20.dp else 16.dp,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium,
+        ),
+        label = "checkBoxCornerRadius",
+    )
+    val containerColor by animateColorAsState(
+        targetValue = if (isPressed) {
+            MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
+        } else {
+            Color.Transparent
+        },
+        animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+        label = "checkBoxContainerColor",
+    )
+
     Box(
         modifier =
             Modifier
-                .wrapContentSize(align = Alignment.Center)
-                .clickable {
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 2.dp)
+                .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
+                }
+                .clip(RoundedCornerShape(cornerRadius))
+                .background(containerColor)
+                .clickable(
+                    interactionSource = interactionSource,
+                    indication = null,
+                ) {
                     stateChecked = !stateChecked
                     onChangeListener(stateChecked)
                 },
@@ -2008,22 +2128,54 @@ fun CheckBoxActionButton(
             verticalAlignment = Alignment.CenterVertically,
             modifier =
                 Modifier
-                    .padding(horizontal = 20.dp)
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 8.dp),
         ) {
-            Box(Modifier.padding(10.dp)) {
+            Box(
+                modifier =
+                    Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(
+                            if (stateChecked) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.7f)
+                            } else {
+                                MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = 0.5f)
+                            },
+                        ),
+                contentAlignment = Alignment.Center,
+            ) {
                 if (isHeartIcon) {
-                    HeartCheckBox(checked = stateChecked, size = 30)
+                    HeartCheckBox(
+                        checked = stateChecked,
+                        size = 22,
+                        tint = if (stateChecked) MaterialTheme.colorScheme.primary else c.content,
+                        onStateChange = {
+                            stateChecked = !stateChecked
+                            onChangeListener(stateChecked)
+                        },
+                    )
                 } else {
                     Crossfade(stateChecked) {
                         if (it) {
-                            Icon(SimpIcons.CheckCircle, "")
+                            Icon(
+                                SimpIcons.CheckCircle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(22.dp),
+                            )
                         } else {
-                            Icon(SimpIcons.AddCircleOutline, "")
+                            Icon(
+                                SimpIcons.AddCircleOutline,
+                                contentDescription = null,
+                                tint = c.content,
+                                modifier = Modifier.size(22.dp),
+                            )
                         }
                     }
                 }
             }
+            Spacer(modifier = Modifier.width(14.dp))
             Text(
                 text =
                     if (stateChecked) {
@@ -2031,13 +2183,13 @@ fun CheckBoxActionButton(
                     } else {
                         stringResource(Res.string.like)
                     },
-                style = typo().labelSmall,
-                // Matches [ActionButton], which this sits directly above in every sheet that uses
-                // both — without it the label alone falls back to the colour typo() carries.
-                color = rememberSurfaceDarkColors().content,
+                style = typo().labelMedium,
+                color = if (stateChecked) MaterialTheme.colorScheme.primary else c.content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier =
                     Modifier
-                        .padding(start = 10.dp)
+                        .weight(1f)
                         .wrapContentHeight(Alignment.CenterVertically),
             )
         }
@@ -2108,7 +2260,7 @@ fun PlaybackSpeedPitchBottomSheet(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
         ) {
             Column(
@@ -2739,7 +2891,7 @@ fun ArtistModalBottomSheet(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -2832,7 +2984,7 @@ fun PlaylistBottomSheet(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -2888,7 +3040,7 @@ fun PlaylistBottomSheet(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -3022,7 +3174,7 @@ fun LocalPlaylistBottomSheet(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -3072,7 +3224,7 @@ fun LocalPlaylistBottomSheet(
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-                shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+                shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                 colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -3165,7 +3317,7 @@ fun SortPlaylistBottomSheet(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -3246,7 +3398,7 @@ fun DevLogInBottomSheet(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -3310,7 +3462,7 @@ fun DevCookieLogInBottomSheet(
     ) {
         Card(
             modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp),
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
             colors = CardDefaults.cardColors().copy(containerColor = rememberSurfaceDarkColors().container),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
