@@ -3,6 +3,7 @@ package com.maxrave.simpmusic.ui.screen.player.content
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.StartOffset
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -45,11 +46,14 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -71,6 +75,7 @@ import com.maxrave.simpmusic.ui.icon.QueueMusic
 import com.maxrave.simpmusic.ui.icon.SimpIcons
 import com.maxrave.simpmusic.ui.theme.typo
 import com.maxrave.simpmusic.viewModel.UIEvent
+import kotlin.math.roundToInt
 import kotlin.math.roundToLong
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -91,52 +96,41 @@ fun NowPlayingContentAmbientGlow(
     val startColor = state.startColor.value
     val endColor = state.endColor.value
 
-    val infiniteTransition = rememberInfiniteTransition(label = "ambientPulse")
-    val pulseScale by infiniteTransition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.06f,
-        animationSpec =
-            infiniteRepeatable(
-                animation = tween(4200, easing = FastOutSlowInEasing),
-                repeatMode = RepeatMode.Reverse,
-            ),
-        label = "ambientPulseScale",
-    )
-
     Box(
         modifier =
             Modifier
                 .fillMaxSize()
                 .background(Color(0xFF0A0A0E)),
     ) {
-        // Floating Ambient Glow Orbs
-        Box(
-            modifier =
-                Modifier
-                    .size(360.dp)
-                    .align(Alignment.TopStart)
-                    .scale(pulseScale)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(startColor.copy(alpha = 0.42f), Color.Transparent),
-                            center = Offset(180f, 180f),
-                            radius = 450f,
-                        ),
-                    ),
+        // Ambient mesh lighting. Three radial sources breathe on independent phases — distinct
+        // periods and start offsets — so the canvas never lands in the same configuration twice
+        // and never reads as a mechanical pulse. All of this is animation-clock driven; nothing
+        // here touches the audio path, so there is no PCM overhead regardless of what is playing.
+        AmbientOrb(
+            size = 360.dp,
+            color = startColor,
+            periodMs = 5400,
+            startOffsetMs = 0,
+            alpha = 0.42f,
+            modifier = Modifier.align(Alignment.TopStart),
         )
-        Box(
-            modifier =
-                Modifier
-                    .size(380.dp)
-                    .align(Alignment.BottomEnd)
-                    .scale(pulseScale)
-                    .background(
-                        Brush.radialGradient(
-                            colors = listOf(endColor.copy(alpha = 0.35f), Color.Transparent),
-                            center = Offset(200f, 200f),
-                            radius = 500f,
-                        ),
-                    ),
+        AmbientOrb(
+            size = 380.dp,
+            color = endColor,
+            periodMs = 4600,
+            startOffsetMs = 1500,
+            alpha = 0.35f,
+            modifier = Modifier.align(Alignment.BottomEnd),
+        )
+        // The palette's midpoint, centred behind the artwork and slowest of the three, is what
+        // makes the field read as one connected mesh rather than two blobs orbiting a spare.
+        AmbientOrb(
+            size = 430.dp,
+            color = lerp(startColor, endColor, 0.5f),
+            periodMs = 6800,
+            startOffsetMs = 3100,
+            alpha = 0.30f,
+            modifier = Modifier.align(Alignment.Center),
         )
 
         Column(
@@ -381,4 +375,94 @@ fun NowPlayingContentAmbientGlow(
             }
         }
     }
+}
+
+/**
+ * One radial light source in the ambient mesh behind [NowPlayingContentAmbientGlow].
+ *
+ * Breathing is driven by [rememberInfiniteTransition] on the animation clock — no audio data is
+ * consulted, so a source costs nothing extra while music plays. Each instance owns its own
+ * transition, so callers desynchronise the sources simply by handing them different [periodMs]
+ * and [startOffsetMs]; three sources on coprime-ish periods never resync into a visible loop.
+ *
+ * The orb breathes in two independent ways. [breathScale] pulses the whole box (as the original
+ * two orbs did), while [breathCentreX]/[breathCentreY] drift the gradient's focal point inside a
+ * box that does not move — the light leans rather than just inflating, which is what makes the
+ * field feel like light moving in a room instead of a balloon pumping. The two axes run at
+ * different periods so the drift path is itself non-repeating.
+ *
+ * The gradient is multi-stop: full colour at the centre, a soft shoulder partway out, then
+ * transparent. The shoulder is what stops the light from cutting off at the edge of its box.
+ */
+@Composable
+private fun AmbientOrb(
+    size: Dp,
+    color: Color,
+    periodMs: Int,
+    startOffsetMs: Int,
+    alpha: Float,
+    modifier: Modifier = Modifier,
+) {
+    val transition = rememberInfiniteTransition(label = "ambientOrb")
+
+    val breathScale by transition.animateFloat(
+        initialValue = 0.94f,
+        targetValue = 1.06f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(periodMs, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+                initialStartOffset = StartOffset(startOffsetMs),
+            ),
+        label = "orbScale",
+    )
+
+    // Drift the focal point over roughly a quarter of the box. The two axes use unrelated periods
+    // so the light never retraces the same path.
+    val breathCentreX by transition.animateFloat(
+        initialValue = 0.38f,
+        targetValue = 0.62f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween((periodMs * 1.7f).roundToInt(), easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+                initialStartOffset = StartOffset(startOffsetMs + 900),
+            ),
+        label = "orbCentreX",
+    )
+    val breathCentreY by transition.animateFloat(
+        initialValue = 0.42f,
+        targetValue = 0.58f,
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween((periodMs * 1.3f).roundToInt(), easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+                initialStartOffset = StartOffset(startOffsetMs + 1700),
+            ),
+        label = "orbCentreY",
+    )
+
+    // The box is square, so a single side length resolves the gradient's centre and radius in the
+    // same coordinate space.
+    val side = with(LocalDensity.current) { size.toPx() }
+    val centre = Offset(side * breathCentreX, side * breathCentreY)
+
+    Box(
+        modifier =
+            modifier
+                .size(size)
+                .scale(breathScale)
+                .background(
+                    Brush.radialGradient(
+                        colors =
+                            listOf(
+                                color.copy(alpha = alpha),
+                                color.copy(alpha = alpha * 0.45f),
+                                Color.Transparent,
+                            ),
+                        center = centre,
+                        radius = side * 0.72f,
+                    ),
+                ),
+    )
 }
