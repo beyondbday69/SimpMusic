@@ -1,0 +1,1 @@
+HeartCheckBox(checked = liked, size = 26, tint = textColor) { ... }

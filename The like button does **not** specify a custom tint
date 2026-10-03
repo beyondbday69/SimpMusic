@@ -1,0 +1,1 @@
+HeartCheckBox(checked = controllerState.isLiked, size = 32) { ... }
