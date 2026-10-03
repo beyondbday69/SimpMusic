@@ -113,7 +113,7 @@ import com.maxrave.domain.mediaservice.handler.RepeatState
 import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.expect.ui.MediaPlayerView
 import com.maxrave.simpmusic.expect.ui.MediaPlayerViewWithSubtitle
-import com.maxrave.simpmusic.expect.ui.PlatformCastButton
+import com.maxrave.simpmusic.ui.component.CastSlot
 import com.maxrave.simpmusic.expect.ui.toImageBitmap
 import com.maxrave.simpmusic.extension.formatDuration
 import com.maxrave.simpmusic.extension.getColorFromPalette
@@ -1025,9 +1025,10 @@ fun NowPlayingContentSpotify(
                                             // Cyan rather than colorScheme.primary: this screen is force-dark whatever
                                             // the app theme is, so a light-theme primary would sink into the black
                                             // backdrop. Mirrors the `if (forceDark) Color.Cyan` rule in FullWidthItems.
-                                            PlatformCastButton(
-                                                modifier = Modifier.size(24.dp),
+                                            CastSlot(
                                                 tint = if (state.castState.isRemote) Color.Cyan else Color.White,
+                                                iconSize = 24.dp,
+                                                modifier = Modifier.size(24.dp),
                                             )
                                             AnimatedVisibility(visible = state.castState.isRemote) {
                                                 Text(

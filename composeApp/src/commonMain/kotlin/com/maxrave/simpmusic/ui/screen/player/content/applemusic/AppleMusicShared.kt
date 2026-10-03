@@ -76,8 +76,7 @@ import com.maxrave.domain.mediaservice.handler.ControlState
 import com.maxrave.domain.mediaservice.handler.RepeatState
 import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.expect.ui.DeviceVolumeController
-import com.maxrave.simpmusic.expect.ui.PlatformCastButton
-import com.maxrave.simpmusic.expect.ui.isPlatformCastAvailable
+import com.maxrave.simpmusic.ui.component.CastSlot
 import com.maxrave.simpmusic.extension.formatDuration
 import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.ExplicitBadge
@@ -734,8 +733,8 @@ internal fun AppleMusicDockButton(
 }
 
 /**
- * Lyrics · Cast · Queue. The Cast slot renders [PlatformCastButton] itself (which hides when
- * Cast is unavailable) and takes no "active" tint of its own — same rule M3E's connected group
+ * Lyrics · Cast · Queue. The Cast slot is [CastSlot], which hides entirely when Cast is
+ * unavailable and takes no "active" tint of its own — same rule M3E's connected group
  * follows for its Cast slot.
  */
 @Composable
@@ -764,14 +763,11 @@ internal fun AppleMusicDock(
                 onSelectView(if (viewState == AppleMusicView.LYRICS) AppleMusicView.MAIN else AppleMusicView.LYRICS)
             },
         )
-        if (isPlatformCastAvailable()) {
-            Box(modifier = Modifier.appleMusicPressInflate().size(40.dp), contentAlignment = Alignment.Center) {
-                PlatformCastButton(
-                    modifier = Modifier.size(22.dp),
-                    tint = if (castState.isRemote) activeColor else Color.White,
-                )
-            }
-        }
+        CastSlot(
+            tint = if (castState.isRemote) activeColor else Color.White,
+            iconSize = 22.dp,
+            modifier = Modifier.appleMusicPressInflate().size(40.dp),
+        )
         AppleMusicDockButton(
             icon = SimpIcons.QueueMusic,
             active = viewState == AppleMusicView.QUEUE,

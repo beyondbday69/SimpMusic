@@ -107,8 +107,7 @@ import com.maxrave.domain.mediaservice.handler.QueueData
 import com.maxrave.domain.utils.toSongEntity
 import com.maxrave.simpmusic.expect.shareUrl
 import com.maxrave.simpmusic.expect.ui.MediaPlayerView
-import com.maxrave.simpmusic.expect.ui.PlatformCastButton
-import com.maxrave.simpmusic.expect.ui.isPlatformCastAvailable
+import com.maxrave.simpmusic.ui.component.CastSlot
 import com.maxrave.simpmusic.expect.ui.layerBackdrop
 import com.maxrave.simpmusic.expect.ui.rememberBackdrop
 import com.maxrave.simpmusic.expect.ui.toImageBitmap
@@ -661,8 +660,8 @@ fun ArtistScreen(
  * - Dynamic color transitions with FastOutSlowInEasing.
  * - Bouncy icon scale and ease-in-out fade transitions for the Follow toggle state.
  *
- * The Cast slot renders only where Cast exists ([isPlatformCastAvailable]); the surrounding
- * container belongs to the row, so it is gated here rather than by the button itself.
+ * The Cast slot renders only where Cast exists; [CastSlot] owns that gate, so the surrounding
+ * container disappears with the button instead of leaving an empty slot in the row.
  */
 @Composable
 private fun ArtistActionRow(
@@ -835,31 +834,24 @@ private fun ArtistActionRow(
             }
         }
 
-        // Cast Button — the platform button owns its own click handling and hides itself when
-        // no receiver is reachable, so it is hosted in a NON-clickable container gated on the
-        // same availability flag (a clickable wrapper would swallow its taps). Tint signals an
-        // active session.
-        if (isPlatformCastAvailable()) {
-            Surface(
-                shape = RoundedCornerShape(castCorner),
-                color = castContainerColor,
-                border = BorderStroke(1.5.dp, castBorderColor),
-                modifier = Modifier
-                    .size(52.dp)
-                    .graphicsLayer {
-                        scaleX = radioAppearance.value
-                        scaleY = radioAppearance.value
-                        alpha = radioAppearance.value
-                    },
-            ) {
-                Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
-                    PlatformCastButton(
-                        modifier = Modifier.size(24.dp),
-                        tint = if (isCastRemote) artistAccent else artistAccent.copy(alpha = 0.85f),
-                    )
-                }
-            }
-        }
+        // Cast Button — hosted in a non-clickable CastSlot so the platform button (a real
+        // MediaRouteButton through AndroidView) still receives its own taps, and so the slot
+        // disappears entirely where Cast is unavailable instead of leaving an empty container in
+        // the row. Tint signals an active session.
+        CastSlot(
+            tint = if (isCastRemote) artistAccent else artistAccent.copy(alpha = 0.85f),
+            shape = RoundedCornerShape(castCorner),
+            color = castContainerColor,
+            border = BorderStroke(1.5.dp, castBorderColor),
+            iconSize = 24.dp,
+            modifier = Modifier
+                .size(52.dp)
+                .graphicsLayer {
+                    scaleX = radioAppearance.value
+                    scaleY = radioAppearance.value
+                    alpha = radioAppearance.value
+                },
+        )
 
         // Shuffle Primary Hero CTA Pill Button
         Surface(

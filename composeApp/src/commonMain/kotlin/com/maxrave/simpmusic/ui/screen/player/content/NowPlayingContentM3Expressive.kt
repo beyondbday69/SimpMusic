@@ -86,8 +86,7 @@ import com.materialkolor.PaletteStyle
 import com.materialkolor.rememberDynamicColorScheme
 import com.maxrave.domain.mediaservice.handler.RepeatState
 import com.maxrave.simpmusic.Platform
-import com.maxrave.simpmusic.expect.ui.PlatformCastButton
-import com.maxrave.simpmusic.expect.ui.isPlatformCastAvailable
+import com.maxrave.simpmusic.ui.component.CastSlot
 import com.maxrave.simpmusic.extension.formatDuration
 import com.maxrave.simpmusic.extension.getScreenSizeInfo
 import com.maxrave.simpmusic.extension.isElementVisible
@@ -965,20 +964,16 @@ private fun ExpressiveConnectedGroup(
                 modifier = Modifier.size(22.dp),
             )
         }
-        // Cast — PlatformCastButton owns its own click and hides itself when Cast is
-        // unavailable, but it can't hide this wrapper slot, so the slot is gated too.
-        // Active session tints primary, like Classic's cyan.
-        if (isPlatformCastAvailable()) {
-            ExpressiveConnectedSlot(
-                shape = middle,
-                onClick = null,
-            ) {
-                PlatformCastButton(
-                    modifier = Modifier.size(24.dp),
-                    tint = if (state.castState.isRemote) colorScheme.primary else colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        // Cast — the slot owns the availability gate and stays non-clickable so the platform
+        // button (a real MediaRouteButton) still receives its own taps. Active session tints
+        // primary, like Classic's cyan.
+        CastSlot(
+            tint = if (state.castState.isRemote) colorScheme.primary else colorScheme.onSurfaceVariant,
+            shape = middle,
+            color = colorScheme.surfaceContainerHigh,
+            iconSize = 24.dp,
+            modifier = Modifier.weight(1f).fillMaxHeight(),
+        )
         ExpressiveConnectedSlot(
             shape = middle,
             active = state.controllerState.isShuffle,
