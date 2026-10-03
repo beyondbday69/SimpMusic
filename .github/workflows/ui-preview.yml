@@ -115,6 +115,22 @@ jobs:
             --notes "$RELEASE_NOTES" \
             --prerelease || true
 
+      - name: Upload to Firebase App Distribution
+        if: success() && env.BUILD_FLAVOR == 'release'
+        continue-on-error: true
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: "1:160945537270:android:0a1116bfe83ad9e169ecd7"
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.FIREBASE_CREDENTIALS }}
+          token: ${{ secrets.FIREBASE_TOKEN }}
+          file: ${{ env.APK_FILES }}
+          groups: ${{ secrets.FIREBASE_TESTER_GROUPS || 'testers' }}
+          releaseNotes: |
+            Mp3ify v2.2.0
+            - Material 3 Expressive motion physics and dynamic colors
+            - Plus Jakarta Sans typography
+            - Dynamic seed coloring on NowPlaying sheet & ActionButtons
+
       - name: Clean Gradle Locks Before Caching
         if: always()
         run: |
