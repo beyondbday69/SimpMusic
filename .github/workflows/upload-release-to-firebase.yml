@@ -47,22 +47,28 @@ jobs:
             TAG="${{ github.event.release.tag_name }}"
           fi
 
-          if [ -n "$TAG" ]; then
-            echo "Downloading APK from release tag: $TAG..."
-            gh release download "$TAG" --repo "${{ github.repository }}" --pattern "*.apk" --dir apk_download
-          else
-            echo "Downloading APK from latest release..."
-            gh release download --repo "${{ github.repository }}" --pattern "*.apk" --dir apk_download
+          if [ -z "$TAG" ]; then
+            echo "Resolving newest release containing an APK asset..."
+            TAG=$(gh api "repos/${{ github.repository }}/releases?per_page=10" --jq '.[] | select(.assets[]?.name | endswith(".apk")) | .tag_name' | head -n 1)
           fi
+
+          if [ -z "$TAG" ]; then
+            echo "❌ No release containing an APK was found!"
+            exit 1
+          fi
+
+          echo "Downloading APK from release tag: $TAG..."
+          gh release download "$TAG" --repo "${{ github.repository }}" --pattern "*.apk" --dir apk_download
 
           APK_PATH=$(find apk_download -name "*.apk" -type f | head -n 1)
           if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
-            echo "❌ No APK asset found in the release!"
+            echo "❌ No APK asset found after download!"
             exit 1
           fi
 
           echo "Found APK: $APK_PATH ($(du -h "$APK_PATH" | cut -f1))"
           echo "DOWNLOADED_APK=$APK_PATH" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$TAG" >> $GITHUB_ENV
 
       - name: Upload APK to Firebase App Distribution
         env:
@@ -73,5 +79,5 @@ jobs:
           python scripts/upload_to_firebase.py \
             --apk "$DOWNLOADED_APK" \
             --app-id "1:160945537270:android:0a1116bfe83ad9e169ecd7" \
-            --release-notes "$RELEASE_NOTES" \
+            --release-notes "$RELEASE_NOTES (from $RELEASE_TAG)" \
             --groups "$GROUPS"
