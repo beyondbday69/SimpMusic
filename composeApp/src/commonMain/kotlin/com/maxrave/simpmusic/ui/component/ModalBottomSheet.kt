@@ -2149,7 +2149,11 @@ fun CheckBoxActionButton(
                     HeartCheckBox(
                         checked = stateChecked,
                         size = 22,
-                        tint = if (stateChecked) MaterialTheme.colorScheme.primary else c.content,
+                        // The filled heart follows the same dynamic colour the rest of this row
+                        // already uses (primaryContainer chip + primary label) instead of the red
+                        // the old vector drawable had baked in.
+                        checkedTint = MaterialTheme.colorScheme.primary,
+                        tint = c.content,
                         onStateChange = {
                             stateChecked = !stateChecked
                             onChangeListener(stateChecked)
@@ -2201,6 +2205,10 @@ fun HeartCheckBox(
     size: Int = 24,
     checked: Boolean,
     tint: Color = rememberSurfaceDarkColors().content,
+    // Colour of the FILLED heart. Defaults to the theme's primary so a liked track reads as an
+    // accent, the same token the dock / mini player / M3 controls use, instead of the hardcoded
+    // #D10000 the old baseline_favorite_24 vector had baked into it.
+    checkedTint: Color = MaterialTheme.colorScheme.primary,
     onStateChange: (() -> Unit)? = null,
 ) {
     val burstState = rememberHeartBurstState()
@@ -2226,6 +2234,7 @@ fun HeartCheckBox(
                     painter = painterResource(Res.drawable.baseline_favorite_24),
                     contentDescription = "Favorite checked",
                     modifier = Modifier.fillMaxSize().padding(4.dp),
+                    colorFilter = ColorFilter.tint(checkedTint),
                 )
             } else {
                 Image(

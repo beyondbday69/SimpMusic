@@ -13,13 +13,43 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import org.jetbrains.compose.resources.Font
 import simpmusic.composeapp.generated.resources.Res
+import simpmusic.composeapp.generated.resources.plus_jakarta_sans_bold
+import simpmusic.composeapp.generated.resources.plus_jakarta_sans_medium
+import simpmusic.composeapp.generated.resources.plus_jakarta_sans_regular
+import simpmusic.composeapp.generated.resources.plus_jakarta_sans_semibold
+import simpmusic.composeapp.generated.resources.poppins_bold
 import simpmusic.composeapp.generated.resources.poppins_medium
+import simpmusic.composeapp.generated.resources.poppins_regular
 
+/**
+ * Plus Jakarta Sans font family — the premiere geometric typeface for Material 3.
+ * Features clean geometric forms, open counters, tall x-height, and refined weight contrast.
+ */
 @Composable
-fun fontFamily(): FontFamily =
+fun plusJakartaSansFamily(): FontFamily =
     FontFamily(
-        Font(Res.font.poppins_medium, FontWeight.Normal, FontStyle.Normal),
+        Font(Res.font.plus_jakarta_sans_regular, FontWeight.Normal, FontStyle.Normal),
+        Font(Res.font.plus_jakarta_sans_medium, FontWeight.Medium, FontStyle.Normal),
+        Font(Res.font.plus_jakarta_sans_semibold, FontWeight.SemiBold, FontStyle.Normal),
+        Font(Res.font.plus_jakarta_sans_bold, FontWeight.Bold, FontStyle.Normal),
     )
+
+/**
+ * Poppins font family fallback.
+ */
+@Composable
+fun poppinsFamily(): FontFamily =
+    FontFamily(
+        Font(Res.font.poppins_regular, FontWeight.Normal, FontStyle.Normal),
+        Font(Res.font.poppins_medium, FontWeight.Medium, FontStyle.Normal),
+        Font(Res.font.poppins_bold, FontWeight.Bold, FontStyle.Normal),
+    )
+
+/**
+ * Active application font family. Uses Material 3 Plus Jakarta Sans with full optical weights.
+ */
+@Composable
+fun fontFamily(): FontFamily = plusJakartaSansFamily()
 
 /**
  * When true, [typo] keeps the original always-light text colors (pure white titles, #A8A8A8 body)
@@ -107,6 +137,13 @@ fun typo(
                     fontWeight = FontWeight.Bold,
                     fontFamily = fontFamily,
                     color = bodyColor,
+                ),
+            labelLarge =
+                TextStyle(
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    fontFamily = fontFamily,
+                    color = titleColor,
                 ),
             labelMedium =
                 TextStyle(
