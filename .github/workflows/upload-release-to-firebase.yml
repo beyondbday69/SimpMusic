@@ -1,0 +1,77 @@
+name: Upload Release APK to Firebase App Distribution
+
+on:
+  release:
+    types: [published, created]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Specific release tag to upload (leave empty for latest release)'
+        required: false
+        type: string
+      release_notes:
+        description: 'Release notes for Firebase testers (optional)'
+        required: false
+        type: string
+      groups:
+        description: 'Tester group aliases (e.g. "testers", optional)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  upload-release-to-firebase:
+    name: Download Release APK & Upload to Firebase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install cryptography
+
+      - name: Download Release APK from GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p apk_download
+          TAG="${{ inputs.tag }}"
+          if [ -z "$TAG" ] && [ -n "${{ github.event.release.tag_name }}" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+          fi
+
+          if [ -n "$TAG" ]; then
+            echo "Downloading APK from release tag: $TAG..."
+            gh release download "$TAG" --repo "${{ github.repository }}" --pattern "*.apk" --dir apk_download
+          else
+            echo "Downloading APK from latest release..."
+            gh release download --repo "${{ github.repository }}" --pattern "*.apk" --dir apk_download
+          fi
+
+          APK_PATH=$(find apk_download -name "*.apk" -type f | head -n 1)
+          if [ -z "$APK_PATH" ] || [ ! -f "$APK_PATH" ]; then
+            echo "❌ No APK asset found in the release!"
+            exit 1
+          fi
+
+          echo "Found APK: $APK_PATH ($(du -h "$APK_PATH" | cut -f1))"
+          echo "DOWNLOADED_APK=$APK_PATH" >> $GITHUB_ENV
+
+      - name: Upload APK to Firebase App Distribution
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          RELEASE_NOTES: ${{ inputs.release_notes || github.event.release.body || 'SimpMusic / Mp3ify Release' }}
+          GROUPS: ${{ inputs.groups || '' }}
+        run: |
+          python scripts/upload_to_firebase.py \
+            --apk "$DOWNLOADED_APK" \
+            --app-id "1:160945537270:android:0a1116bfe83ad9e169ecd7" \
+            --release-notes "$RELEASE_NOTES" \
+            --groups "$GROUPS"

@@ -118,18 +118,19 @@ jobs:
       - name: Upload to Firebase App Distribution
         if: success() && env.BUILD_FLAVOR == 'release'
         continue-on-error: true
-        uses: wzieba/Firebase-Distribution-Github-Action@v1
-        with:
-          appId: "1:160945537270:android:0a1116bfe83ad9e169ecd7"
-          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT || secrets.FIREBASE_CREDENTIALS }}
-          token: ${{ secrets.FIREBASE_TOKEN }}
-          file: ${{ env.APK_FILES }}
-          groups: ${{ secrets.FIREBASE_TESTER_GROUPS || 'testers' }}
-          releaseNotes: |
-            Mp3ify v2.2.0
-            - Material 3 Expressive motion physics and dynamic colors
-            - Plus Jakarta Sans typography
-            - Dynamic seed coloring on NowPlaying sheet & ActionButtons
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
+            pip install cryptography
+            APK_FILE=$(ls ${{ env.APK_FILES }} | head -n 1)
+            python scripts/upload_to_firebase.py \
+              --apk "$APK_FILE" \
+              --app-id "1:160945537270:android:0a1116bfe83ad9e169ecd7" \
+              --release-notes "Mp3ify v2.2.0 - Material 3 Expressive motion physics, dynamic colors, and Plus Jakarta Sans typography."
+          else
+            echo "ℹ️ FIREBASE_SERVICE_ACCOUNT secret not provided, skipping Firebase upload."
+          fi
 
       - name: Clean Gradle Locks Before Caching
         if: always()
