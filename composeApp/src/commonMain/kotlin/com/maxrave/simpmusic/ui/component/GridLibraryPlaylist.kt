@@ -137,7 +137,7 @@ internal inline fun <reified T> GridLibraryPlaylist(
         onRefresh = onReload,
         isRefreshing = data is LocalResource.Loading,
         indicator = {
-            PullToRefreshDefaults.Indicator(
+            CenterLoadingPullToRefreshIndicator(
                 state = pullToRefreshState,
                 isRefreshing = data is LocalResource.Loading,
                 modifier =
@@ -146,8 +146,6 @@ internal inline fun <reified T> GridLibraryPlaylist(
                         .padding(
                             top = contentPadding.calculateTopPadding(),
                         ),
-                containerColor = PullToRefreshDefaults.indicatorContainerColor,
-                color = PullToRefreshDefaults.indicatorColor,
                 maxDistance = PullToRefreshDefaults.PositionalThreshold,
             )
         },

@@ -108,6 +108,7 @@ import com.maxrave.simpmusic.extension.rgbFactor
 import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.BlogPromoDialog
 import com.maxrave.simpmusic.ui.component.CenterLoadingBox
+import com.maxrave.simpmusic.ui.component.CenterLoadingPullToRefreshIndicator
 import com.maxrave.simpmusic.ui.component.Chip
 import com.maxrave.simpmusic.ui.component.DropdownButton
 import com.maxrave.simpmusic.ui.component.EndOfPage
@@ -530,7 +531,7 @@ fun HomeScreen(
             onRefresh = onRefresh,
             isRefreshing = isRefreshing,
             indicator = {
-                PullToRefreshDefaults.Indicator(
+                CenterLoadingPullToRefreshIndicator(
                     state = pullToRefreshState,
                     isRefreshing = isRefreshing,
                     modifier =
@@ -542,8 +543,6 @@ fun HomeScreen(
                                         topAppBarHeightPx.toDp()
                                     },
                             ),
-                    containerColor = PullToRefreshDefaults.indicatorContainerColor,
-                    color = PullToRefreshDefaults.indicatorColor,
                     maxDistance = PullToRefreshDefaults.PositionalThreshold,
                 )
             },

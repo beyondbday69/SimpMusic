@@ -124,6 +124,7 @@ import com.maxrave.simpmusic.extension.getScreenSizeInfo
 import com.maxrave.simpmusic.getPlatform
 import com.maxrave.simpmusic.ui.component.AddToPlaylistModalBottomSheet
 import com.maxrave.simpmusic.ui.component.CenterLoadingBox
+import com.maxrave.simpmusic.ui.component.CenterLoadingPullToRefreshIndicator
 import com.maxrave.simpmusic.ui.component.AudioPlayingIndicator
 import com.maxrave.simpmusic.ui.component.MoodCategoryCard
 import com.maxrave.simpmusic.ui.component.rememberHolderPainter
@@ -888,7 +889,7 @@ fun SearchScreen(
                             },
                             isRefreshing = uiState is SearchScreenUIState.Loading,
                             indicator = {
-                                PullToRefreshDefaults.Indicator(
+                                CenterLoadingPullToRefreshIndicator(
                                     state = pullToRefreshState,
                                     isRefreshing = uiState is SearchScreenUIState.Loading,
                                     // Anchored to the top of the box, which now starts under the
@@ -898,8 +899,6 @@ fun SearchScreen(
                                         Modifier
                                             .align(Alignment.TopCenter)
                                             .padding(top = searchBarHeight),
-                                    containerColor = PullToRefreshDefaults.indicatorContainerColor,
-                                    color = PullToRefreshDefaults.indicatorColor,
                                     maxDistance = PullToRefreshDefaults.PositionalThreshold - 5.dp,
                                 )
                             },
