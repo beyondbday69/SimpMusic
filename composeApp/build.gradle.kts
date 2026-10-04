@@ -834,15 +834,20 @@ buildkonfig {
     packageName = "com.maxrave.simpmusic"
     exposeObjectWithName = "BuildKonfig"
     defaultConfigs {
-        val versionName =
-            libs.versions.version.name
-                .get()
-        val versionCode =
-            libs.versions.version.code
-                .get()
-                .toInt()
-        buildConfigField(STRING, "versionName", versionName)
-        buildConfigField(INT, "versionCode", "$versionCode")
+        val computedVersionName =
+            (project.findProperty("versionName") as? String)
+                ?: System.getenv("APP_VERSION_NAME")
+                ?: System.getenv("VERSION_NAME")
+                ?: libs.versions.version.name.get()
+
+        val computedVersionCode =
+            (project.findProperty("versionCode") as? String)?.toIntOrNull()
+                ?: System.getenv("APP_VERSION_CODE")?.toIntOrNull()
+                ?: System.getenv("VERSION_CODE")?.toIntOrNull()
+                ?: libs.versions.version.code.get().toInt()
+
+        buildConfigField(STRING, "versionName", computedVersionName)
+        buildConfigField(INT, "versionCode", "$computedVersionCode")
 
         if (isFullBuild) {
             try {

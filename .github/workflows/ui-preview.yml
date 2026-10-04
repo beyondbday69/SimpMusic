@@ -60,19 +60,41 @@ jobs:
       - name: Export Library Definitions
         run: ./gradlew exportLibraryDefinitions
 
+      - name: Configure Build Version
+        run: |
+          BUILD_NUM="${{ github.run_number }}"
+          TIMESTAMP="$(date +'%Y%m%d%H%M')"
+          BASE_VERSION="2.2.0"
+          APP_VERSION_CODE=$((59000 + BUILD_NUM))
+          APP_VERSION_NAME="${BASE_VERSION}-b${BUILD_NUM}-${TIMESTAMP}"
+          RELEASE_TAG="v${APP_VERSION_NAME}"
+          echo "APP_VERSION_CODE=$APP_VERSION_CODE" >> $GITHUB_ENV
+          echo "APP_VERSION_NAME=$APP_VERSION_NAME" >> $GITHUB_ENV
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+          echo "Configured build version: $APP_VERSION_NAME (code: $APP_VERSION_CODE, tag: $RELEASE_TAG)"
+
       - name: Build Android App (APK)
         run: |
-          ./gradlew :androidApp:assembleRelease -x lint -x test
+          ./gradlew :androidApp:assembleRelease -PversionCode=${{ env.APP_VERSION_CODE }} -PversionName=${{ env.APP_VERSION_NAME }} -x lint -x test
 
-      - name: Locate Output APKs
+      - name: Locate & Name Output APKs
         run: |
+          mkdir -p release_apk_named
           if ls androidApp/build/outputs/apk/release/*.apk 1> /dev/null 2>&1; then
-            echo "APK_FILES=androidApp/build/outputs/apk/release/*.apk" >> $GITHUB_ENV
-            echo "BUILD_FLAVOR=release" >> $GITHUB_ENV
+            SRC_APK=$(ls androidApp/build/outputs/apk/release/*.apk | head -n 1)
+            BUILD_FLAVOR="release"
           else
-            echo "APK_FILES=androidApp/build/outputs/apk/debug/*.apk" >> $GITHUB_ENV
-            echo "BUILD_FLAVOR=debug" >> $GITHUB_ENV
+            SRC_APK=$(ls androidApp/build/outputs/apk/debug/*.apk | head -n 1)
+            BUILD_FLAVOR="debug"
           fi
+          
+          NAMED_APK="release_apk_named/SimpMusic-${APP_VERSION_NAME}-arm64-v8a.apk"
+          cp "$SRC_APK" "$NAMED_APK"
+          cp "$SRC_APK" release_apk_named/androidApp-arm64-v8a-release.apk
+          
+          echo "APK_FILES=release_apk_named/*.apk" >> $GITHUB_ENV
+          echo "PRIMARY_APK=$NAMED_APK" >> $GITHUB_ENV
+          echo "BUILD_FLAVOR=$BUILD_FLAVOR" >> $GITHUB_ENV
 
       - name: Upload Android APK Artifact
         uses: actions/upload-artifact@v4
@@ -86,7 +108,7 @@ jobs:
           APPETIZE_TOKEN: ${{ secrets.APPETIZE_API_TOKEN || 'tok_zju2qp2a6s6iak5zgyqeres2au' }}
           APPETIZE_PUBLIC_KEY: "xlbp5fcq67yo5d2amk2rqqcasi"
         run: |
-          APK_FILE=$(ls ${{ env.APK_FILES }} | head -n 1)
+          APK_FILE="${{ env.PRIMARY_APK }}"
           echo "Deploying $APK_FILE to Appetize.io..."
           RESP=$(curl -s -u "$APPETIZE_TOKEN:" \
             "https://api.appetize.io/v1/apps/$APPETIZE_PUBLIC_KEY" \
@@ -103,15 +125,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG="v2.2.0-preview-$(date +'%Y%m%d%H%M%S')"
+          TAG="${{ env.RELEASE_TAG }}"
           RELEASE_NOTES="### 📱 Live In-Browser Preview
           Test and interact with this build live without installing:
           👉 **[Launch SimpMusic on Appetize.io](${APPETIZE_PREVIEW_URL})**
 
           ### 📦 Download APK
-          Fast, optimized ARM64-v8a release APK with unofficial app warning eliminated, zero-lag dock, thick M3 Expressive progress bar without dot, and smooth hardware-accelerated transitions."
+          **SimpMusic ${APP_VERSION_NAME}** (Version Code: \`${APP_VERSION_CODE}\`)
+          Features direct in-app updating from GitHub, Material 3 Expressive motion physics, dynamic colors, and Plus Jakarta Sans typography."
           gh release create "$TAG" ${{ env.APK_FILES }} \
-            --title "SimpMusic ARM64 Release ($TAG)" \
+            --title "SimpMusic ${APP_VERSION_NAME}" \
             --notes "$RELEASE_NOTES" \
             --prerelease || true
 
@@ -123,11 +146,11 @@ jobs:
         run: |
           if [ -n "$FIREBASE_SERVICE_ACCOUNT" ]; then
             pip install cryptography
-            APK_FILE=$(ls ${{ env.APK_FILES }} | head -n 1)
+            APK_FILE="${{ env.PRIMARY_APK }}"
             python scripts/upload_to_firebase.py \
               --apk "$APK_FILE" \
               --app-id "1:160945537270:android:0a1116bfe83ad9e169ecd7" \
-              --release-notes "Mp3ify v2.2.0 - Material 3 Expressive motion physics, dynamic colors, and Plus Jakarta Sans typography."
+              --release-notes "SimpMusic ${APP_VERSION_NAME} (Build ${APP_VERSION_CODE}) - Direct in-app GitHub updater, Material 3 Expressive motion, and dynamic colors."
           else
             echo "ℹ️ FIREBASE_SERVICE_ACCOUNT secret not provided, skipping Firebase upload."
           fi

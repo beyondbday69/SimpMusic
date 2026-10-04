@@ -37,13 +37,17 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import com.maxrave.simpmusic.viewModel.UpdateDownloadState
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -461,7 +465,7 @@ fun App(
     LaunchedEffect(updateData) {
         val response = updateData ?: return@LaunchedEffect
         if (viewModel.showedUpdateDialog &&
-            response.tagName != getString(Res.string.version_format, VersionManager.getVersionName())
+            response.tagName.removePrefix("v").trim() != VersionManager.getVersionName().trim()
         ) {
             shouldShowUpdateDialog = true
         }
@@ -928,35 +932,80 @@ fun App(
 
                 if (shouldShowUpdateDialog) {
                     val response = updateData ?: return@Scaffold
+                    val downloadState by viewModel.updateDownloadState.collectAsStateWithLifecycle()
+                    val isDownloading = downloadState is UpdateDownloadState.Downloading
+
                     AlertDialog(
                         properties =
                             DialogProperties(
-                                dismissOnBackPress = false,
-                                dismissOnClickOutside = false,
+                                dismissOnBackPress = !isDownloading,
+                                dismissOnClickOutside = !isDownloading,
                             ),
                         onDismissRequest = {
-                            shouldShowUpdateDialog = false
-                            viewModel.showedUpdateDialog = false
+                            if (!isDownloading) {
+                                shouldShowUpdateDialog = false
+                                viewModel.dismissUpdateDialog()
+                            }
                         },
                         confirmButton = {
-                            TextButton(
-                                onClick = {
-                                    shouldShowUpdateDialog = false
-                                    viewModel.showedUpdateDialog = false
-                                    openUrl("https://simpmusic.org/download")
-                                },
-                            ) {
-                                Text(
-                                    stringResource(Res.string.download),
-                                    style = typo().bodySmall,
-                                )
+                            when (val state = downloadState) {
+                                is UpdateDownloadState.Idle -> {
+                                    Button(
+                                        onClick = {
+                                            if (response.downloadUrl != null) {
+                                                viewModel.startDownloadUpdate(response)
+                                            } else {
+                                                openUrl("https://github.com/beyondbday69/SimpMusic/releases")
+                                            }
+                                        },
+                                    ) {
+                                        Text(
+                                            stringResource(Res.string.download),
+                                            style = typo().bodySmall,
+                                        )
+                                    }
+                                }
+
+                                is UpdateDownloadState.Downloading -> {
+                                    // Downloading in progress
+                                }
+
+                                is UpdateDownloadState.Completed -> {
+                                    Button(
+                                        onClick = {
+                                            viewModel.installUpdate(state.filePath)
+                                        },
+                                    ) {
+                                        Text(
+                                            "Install",
+                                            style = typo().bodySmall,
+                                        )
+                                    }
+                                }
+
+                                is UpdateDownloadState.Error -> {
+                                    Button(
+                                        onClick = {
+                                            viewModel.startDownloadUpdate(response)
+                                        },
+                                    ) {
+                                        Text(
+                                            "Retry",
+                                            style = typo().bodySmall,
+                                        )
+                                    }
+                                }
                             }
                         },
                         dismissButton = {
                             TextButton(
                                 onClick = {
-                                    shouldShowUpdateDialog = false
-                                    viewModel.showedUpdateDialog = false
+                                    if (isDownloading) {
+                                        viewModel.cancelDownloadUpdate()
+                                    } else {
+                                        shouldShowUpdateDialog = false
+                                        viewModel.dismissUpdateDialog()
+                                    }
                                 },
                             ) {
                                 Text(
@@ -967,81 +1016,190 @@ fun App(
                         },
                         title = {
                             Text(
-                                stringResource(Res.string.update_available),
-                                style = typo().labelSmall,
+                                text =
+                                    when (downloadState) {
+                                        is UpdateDownloadState.Downloading -> "Downloading Update"
+                                        is UpdateDownloadState.Completed -> "Update Ready"
+                                        is UpdateDownloadState.Error -> "Download Failed"
+                                        else -> stringResource(Res.string.update_available)
+                                    },
+                                style = typo().titleMedium,
                             )
                         },
                         text = {
-                            val formatted =
-                                response.releaseTime?.let { input ->
-                                    try {
-                                        val instant = kotlin.time.Instant.parse(input)
-                                        val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
-                                        dateTime.format(
-                                            LocalDateTime.Format {
-                                                day()
-                                                char(' ')
-                                                monthName(MonthNames.ENGLISH_ABBREVIATED)
-                                                char(' ')
-                                                year()
-                                                char(' ')
-                                                hour()
-                                                char(':')
-                                                minute()
-                                                char(':')
-                                                second()
-                                            },
-                                        )
-                                    } catch (e: Exception) {
-                                        stringResource(Res.string.unknown)
-                                    }
-                                } ?: stringResource(Res.string.unknown)
+                            when (val state = downloadState) {
+                                is UpdateDownloadState.Downloading -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        val mbDownloaded =
+                                            "${state.bytesDownloaded / 1048576}.${(state.bytesDownloaded % 1048576) * 10 / 1048576}"
+                                        val totalMb =
+                                            if (state.totalBytes > 0) {
+                                                "${state.totalBytes / 1048576}.${(state.totalBytes % 1048576) * 10 / 1048576}"
+                                            } else {
+                                                null
+                                            }
+                                        val percentText =
+                                            if (state.progress >= 0f) {
+                                                "${(state.progress * 100).toInt()}%"
+                                            } else {
+                                                "..."
+                                            }
 
-                            val updateMessage =
-                                runBlocking {
-                                    getString(
-                                        Res.string.update_message,
-                                        response.tagName,
-                                        formatted,
-                                    )
+                                        Text(
+                                            text =
+                                                if (totalMb != null) {
+                                                    "$mbDownloaded MB / $totalMb MB ($percentText)"
+                                                } else {
+                                                    "$mbDownloaded MB downloaded"
+                                                },
+                                            style = typo().bodyMedium,
+                                        )
+
+                                        if (state.progress >= 0f) {
+                                            LinearProgressIndicator(
+                                                progress = { state.progress },
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .height(8.dp)
+                                                        .clip(RoundedCornerShape(4.dp)),
+                                            )
+                                        } else {
+                                            LinearProgressIndicator(
+                                                modifier =
+                                                    Modifier
+                                                        .fillMaxWidth()
+                                                        .height(8.dp)
+                                                        .clip(RoundedCornerShape(4.dp)),
+                                            )
+                                        }
+                                    }
                                 }
-                            Column(
-                                Modifier
-                                    .heightIn(
-                                        max = 400.dp,
-                                    ).verticalScroll(
-                                        rememberScrollState(),
-                                    ),
-                            ) {
-                                Text(
-                                    text = updateMessage,
-                                    style = typo().labelMedium,
-                                    modifier =
-                                        Modifier.padding(
-                                            vertical = 8.dp,
-                                        ),
-                                )
-                                Markdown(
-                                    response.body,
-                                    typography =
-                                        markdownTypography(
-                                            h1 = typo().labelLarge,
-                                            h2 = typo().labelMedium,
-                                            h3 = typo().labelSmall,
-                                            text = typo().bodySmall,
-                                            bullet = typo().bodySmall,
-                                            paragraph = typo().bodySmall,
-                                            textLink =
-                                                TextLinkStyles(
-                                                    SpanStyle(
-                                                        fontSize = 11.sp,
-                                                        fontWeight = FontWeight.Normal,
-                                                        fontFamily = fontFamily(),
-                                                        textDecoration = TextDecoration.Underline,
-                                                    ),
+
+                                is UpdateDownloadState.Completed -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = "Update downloaded successfully.\nTap Install to finish updating SimpMusic.",
+                                            style = typo().bodyMedium,
+                                        )
+                                    }
+                                }
+
+                                is UpdateDownloadState.Error -> {
+                                    Column(
+                                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = state.message,
+                                            style = typo().bodyMedium,
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                        if (response.downloadUrl != null) {
+                                            TextButton(
+                                                onClick = {
+                                                    openUrl(response.downloadUrl)
+                                                },
+                                                modifier = Modifier.align(Alignment.End),
+                                            ) {
+                                                Text(
+                                                    "Open in browser",
+                                                    style = typo().bodySmall,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                is UpdateDownloadState.Idle -> {
+                                    val formatted =
+                                        response.releaseTime?.let { input ->
+                                            try {
+                                                val instant = kotlin.time.Instant.parse(input)
+                                                val dateTime = instant.toLocalDateTime(TimeZone.currentSystemDefault())
+                                                dateTime.format(
+                                                    LocalDateTime.Format {
+                                                        day()
+                                                        char(' ')
+                                                        monthName(MonthNames.ENGLISH_ABBREVIATED)
+                                                        char(' ')
+                                                        year()
+                                                        char(' ')
+                                                        hour()
+                                                        char(':')
+                                                        minute()
+                                                        char(':')
+                                                        second()
+                                                    },
+                                                )
+                                            } catch (e: Exception) {
+                                                stringResource(Res.string.unknown)
+                                            }
+                                        } ?: stringResource(Res.string.unknown)
+
+                                    val updateMessage =
+                                        runBlocking {
+                                            getString(
+                                                Res.string.update_message,
+                                                response.tagName,
+                                                formatted,
+                                            )
+                                        }
+                                    Column(
+                                        Modifier
+                                            .heightIn(
+                                                max = 400.dp,
+                                            ).verticalScroll(
+                                                rememberScrollState(),
+                                            ),
+                                    ) {
+                                        Text(
+                                            text = updateMessage,
+                                            style = typo().labelMedium,
+                                            modifier =
+                                                Modifier.padding(
+                                                    vertical = 8.dp,
                                                 ),
-                                        ),
-                                )
+                                        )
+                                        if (response.apkSize != null && response.apkSize > 0) {
+                                            val apkSizeMb =
+                                                "${response.apkSize / 1048576}.${(response.apkSize % 1048576) * 10 / 1048576} MB"
+                                            Text(
+                                                text = "Size: $apkSizeMb",
+                                                style = typo().bodySmall,
+                                                color = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.padding(bottom = 8.dp),
+                                            )
+                                        }
+                                        Markdown(
+                                            response.body,
+                                            typography =
+                                                markdownTypography(
+                                                    h1 = typo().labelLarge,
+                                                    h2 = typo().labelMedium,
+                                                    h3 = typo().labelSmall,
+                                                    text = typo().bodySmall,
+                                                    bullet = typo().bodySmall,
+                                                    paragraph = typo().bodySmall,
+                                                    textLink =
+                                                        TextLinkStyles(
+                                                            SpanStyle(
+                                                                fontSize = 11.sp,
+                                                                fontWeight = FontWeight.Normal,
+                                                                fontFamily = fontFamily(),
+                                                                textDecoration = TextDecoration.Underline,
+                                                            ),
+                                                        ),
+                                                ),
+                                        )
+                                    }
+                                }
                             }
                         },
                     )

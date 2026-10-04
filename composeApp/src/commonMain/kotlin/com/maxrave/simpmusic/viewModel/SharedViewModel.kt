@@ -68,6 +68,8 @@ import com.maxrave.simpmusic.Platform
 import com.maxrave.simpmusic.expect.getDownloadFolderPath
 import com.maxrave.simpmusic.expect.ui.toByteArray
 import com.maxrave.simpmusic.getPlatform
+import com.maxrave.simpmusic.data.AppUpdateService
+import com.maxrave.simpmusic.model.AppUpdateInfo
 import com.maxrave.simpmusic.utils.VersionManager
 import com.maxrave.simpmusic.viewModel.base.BaseViewModel
 import kotlinx.coroutines.Dispatchers
@@ -103,11 +105,13 @@ import simpmusic.composeapp.generated.resources.added_to_youtube_liked
 import simpmusic.composeapp.generated.resources.error
 import simpmusic.composeapp.generated.resources.lastfm_login_failed
 import simpmusic.composeapp.generated.resources.login_success
+import simpmusic.composeapp.generated.resources.no_update
 import simpmusic.composeapp.generated.resources.play_next
 import simpmusic.composeapp.generated.resources.removed_from_youtube_liked
 import simpmusic.composeapp.generated.resources.shared
 import simpmusic.composeapp.generated.resources.updated
 import simpmusic.composeapp.generated.resources.vote_submitted
+import com.maxrave.simpmusic.expect.PlatformAppUpdater
 import java.io.FileOutputStream
 import kotlin.math.abs
 import kotlin.reflect.KClass
@@ -115,6 +119,17 @@ import kotlin.reflect.KClass
 // DataStore key for the kotlin-footguns star prompt. Cleared on every version bump,
 // so the ask comes back after an update - same policy as OPEN_APP_TIME.
 const val FOOTGUNS_STAR_KEY = "footguns_starred"
+
+sealed interface UpdateDownloadState {
+    data object Idle : UpdateDownloadState
+    data class Downloading(
+        val progress: Float,
+        val bytesDownloaded: Long,
+        val totalBytes: Long,
+    ) : UpdateDownloadState
+    data class Completed(val filePath: String) : UpdateDownloadState
+    data class Error(val message: String) : UpdateDownloadState
+}
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class SharedViewModel(
@@ -127,6 +142,7 @@ class SharedViewModel(
     private val playlistRepository: PlaylistRepository,
     private val lyricsCanvasRepository: LyricsCanvasRepository,
     private val cacheRepository: CacheRepository,
+    private val appUpdateService: AppUpdateService = AppUpdateService(),
 ) : BaseViewModel() {
     var isFirstLiked: Boolean = false
     var isFirstMiniplayer: Boolean = false
@@ -1062,10 +1078,15 @@ class SharedViewModel(
             }
     }
 
-    private var _updateResponse = MutableStateFlow<UpdateData?>(null)
-    val updateResponse: StateFlow<UpdateData?> = _updateResponse
+    private var _updateResponse = MutableStateFlow<AppUpdateInfo?>(null)
+    val updateResponse: StateFlow<AppUpdateInfo?> = _updateResponse
 
-    fun checkForUpdate() {
+    private val _updateDownloadState = MutableStateFlow<UpdateDownloadState>(UpdateDownloadState.Idle)
+    val updateDownloadState: StateFlow<UpdateDownloadState> = _updateDownloadState.asStateFlow()
+
+    private var updateDownloadJob: Job? = null
+
+    fun checkForUpdate(fromUserClick: Boolean = false) {
         viewModelScope.launch {
             _isCheckingUpdate.value = true
             val updateChannel = dataStoreManager.updateChannel.first()
@@ -1073,38 +1094,108 @@ class SharedViewModel(
                 "CheckForUpdateAt",
                 System.currentTimeMillis().toString(),
             )
-            if (updateChannel == DataStoreManager.GITHUB) {
-                updateRepository.checkForGithubReleaseUpdate().collectLatest { response ->
-                    val data = response.data
-                    when (response) {
-                        is Resource.Success if (data != null) -> {
-                            _updateResponse.value = data
-                            showedUpdateDialog = true
-                        }
-
-                        else -> {
-                            log("Check for update error: ${response.message}", LogLevel.WARN)
-                        }
-                    }
-                    _isCheckingUpdate.value = false
-                }
-            } else if (updateChannel == DataStoreManager.FDROID) {
+            if (updateChannel == DataStoreManager.FDROID) {
                 updateRepository.checkForFdroidUpdate().collectLatest { response ->
                     val data = response.data
                     when (response) {
                         is Resource.Success if (data != null) -> {
-                            _updateResponse.value = data
-                            showedUpdateDialog = true
+                            val currentVersion = VersionManager.getVersionName().trim()
+                            val latestVersion = data.tagName.removePrefix("v").trim()
+                            if (latestVersion == currentVersion) {
+                                if (fromUserClick) {
+                                    makeToast(getString(Res.string.no_update))
+                                }
+                            } else {
+                                _updateResponse.value =
+                                    AppUpdateInfo(
+                                        tagName = data.tagName,
+                                        releaseTime = data.releaseTime,
+                                        body = data.body,
+                                        downloadUrl = "https://f-droid.org/packages/com.maxrave.simpmusic/",
+                                        fileName = null,
+                                        apkSize = null,
+                                    )
+                                showedUpdateDialog = true
+                            }
                         }
 
                         else -> {
                             log("Check for update error: ${response.message}", LogLevel.WARN)
+                            if (fromUserClick) {
+                                makeToast("${getString(Res.string.error)}: ${response.message}")
+                            }
                         }
                     }
                     _isCheckingUpdate.value = false
                 }
+            } else {
+                appUpdateService.getLatestRelease().fold(
+                    onSuccess = { info ->
+                        val currentVersion = VersionManager.getVersionName().trim()
+                        val latestVersion = info.tagName.removePrefix("v").trim()
+                        if (latestVersion == currentVersion) {
+                            if (fromUserClick) {
+                                makeToast(getString(Res.string.no_update))
+                            }
+                        } else {
+                            _updateResponse.value = info
+                            showedUpdateDialog = true
+                        }
+                        _isCheckingUpdate.value = false
+                    },
+                    onFailure = { err ->
+                        log("Check for update error: ${err.message}", LogLevel.WARN)
+                        if (fromUserClick) {
+                            makeToast("${getString(Res.string.error)}: ${err.message ?: "Unknown error"}")
+                        }
+                        _isCheckingUpdate.value = false
+                    },
+                )
             }
         }
+    }
+
+    fun startDownloadUpdate(updateData: AppUpdateInfo) {
+        val downloadUrl = updateData.downloadUrl ?: return
+        val fileName = updateData.fileName ?: "SimpMusic-${updateData.tagName}.apk"
+        updateDownloadJob?.cancel()
+        updateDownloadJob =
+            viewModelScope.launch(Dispatchers.IO) {
+                _updateDownloadState.value = UpdateDownloadState.Downloading(0f, 0L, updateData.apkSize ?: 0L)
+                PlatformAppUpdater.downloadUpdate(
+                    url = downloadUrl,
+                    fileName = fileName,
+                    onProgress = { downloaded, total ->
+                        val progress = if (total > 0) downloaded.toFloat() / total.toFloat() else -1f
+                        _updateDownloadState.value = UpdateDownloadState.Downloading(progress, downloaded, total)
+                    },
+                ).fold(
+                    onSuccess = { filePath ->
+                        _updateDownloadState.value = UpdateDownloadState.Completed(filePath)
+                        installUpdate(filePath)
+                    },
+                    onFailure = { err ->
+                        _updateDownloadState.value = UpdateDownloadState.Error(err.message ?: "Download failed")
+                    },
+                )
+            }
+    }
+
+    fun installUpdate(filePath: String) {
+        PlatformAppUpdater.installUpdate(filePath).onFailure { err ->
+            log("Install update error: ${err.message}", LogLevel.WARN)
+        }
+    }
+
+    fun cancelDownloadUpdate() {
+        updateDownloadJob?.cancel()
+        _updateDownloadState.value = UpdateDownloadState.Idle
+    }
+
+    fun dismissUpdateDialog() {
+        cancelDownloadUpdate()
+        _updateResponse.value = null
+        showedUpdateDialog = false
     }
 
     /**

@@ -19,17 +19,24 @@ android {
     namespace = "com.maxrave.simpmusic"
     compileSdk = 37
 
+    val computedVersionCode: Int =
+        (project.findProperty("versionCode") as? String)?.toIntOrNull()
+            ?: System.getenv("APP_VERSION_CODE")?.toIntOrNull()
+            ?: System.getenv("VERSION_CODE")?.toIntOrNull()
+            ?: libs.versions.version.code.get().toInt()
+
+    val computedVersionName: String =
+        (project.findProperty("versionName") as? String)
+            ?: System.getenv("APP_VERSION_NAME")
+            ?: System.getenv("VERSION_NAME")
+            ?: libs.versions.version.name.get()
+
     defaultConfig {
         applicationId = "com.maxrave.simpmusic"
         minSdk = 26
         targetSdk = 36
-        versionCode =
-            libs.versions.version.code
-                .get()
-                .toInt()
-        versionName =
-            libs.versions.version.name
-                .get()
+        versionCode = computedVersionCode
+        versionName = computedVersionName
         vectorDrawables.useSupportLibrary = true
         multiDexEnabled = true
 
